@@ -32,6 +32,7 @@ pub struct App {
     pub search_results: Option<SymbolSearchResponse>,
     pub news_data: Option<NewsResponse>,
     pub should_quit: bool,
+    pub should_fetch_ticker: bool,
     pub symbol: String,
     pub portfolio: Vec<PortfolioItem>,
     pub portfolio_state: TableState,
@@ -53,6 +54,7 @@ impl App {
             search_results: None,
             news_data: None,
             should_quit: false,
+            should_fetch_ticker: false,
             symbol: String::from("AAPL"),
             portfolio: config.portfolio.clone(),
             portfolio_state: TableState::default(),
@@ -71,10 +73,10 @@ impl App {
 
         loop {
             draw(terminal, self)?;
+
             match events.next().map_err(|e| io::Error::new(io::ErrorKind::Other, e))? {
                 Event::Input(input) => handle_event(self, input),
                 Event::Tick => {
-                    // Periodically update data based on active tab
                     match self.active_tab {
                         Tab::StockView => self.fetch_ticker_data().await,
                         Tab::Charts => self.fetch_historical_data().await,
@@ -84,7 +86,10 @@ impl App {
                 }
             }
 
-
+            if self.should_fetch_ticker {
+                self.fetch_ticker_data().await;
+                self.should_fetch_ticker = false;
+            }
 
             if self.should_quit {
                 return Ok(());

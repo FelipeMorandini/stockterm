@@ -157,25 +157,36 @@ impl App {
     }
 
     pub fn check_alerts(&mut self) {
+        // First, collect all the symbols and their current prices
+        let prices: Vec<(String, f64)> = self.alerts
+            .iter()
+            .filter_map(|alert| {
+                self.get_current_price(&alert.symbol)
+                    .map(|price| (alert.symbol.clone(), price))
+            })
+            .collect();
+
+        // Then update the alerts with the collected prices
+        let mut updated = false;
         for alert in &mut self.alerts {
-            if let Some(current_price) = self.get_current_price(&alert.symbol) {
-                match alert.condition {
-                    AlertCondition::Above => {
-                        if current_price > alert.price {
-                            alert.triggered = true;
-                        }
-                    },
-                    AlertCondition::Below => {
-                        if current_price < alert.price {
-                            alert.triggered = true;
-                        }
-                    },
+            if let Some((_, price)) = prices.iter().find(|(symbol, _)| symbol == &alert.symbol) {
+                let is_triggered = match alert.condition {
+                    AlertCondition::Above => *price > alert.price,
+                    AlertCondition::Below => *price < alert.price,
+                };
+
+                if is_triggered && !alert.triggered {
+                    alert.triggered = true;
+                    updated = true;
                 }
             }
         }
 
-        // Save triggered state
-        self.save_alerts();
+        if updated {
+            // Save to config
+            self.config.alerts = self.alerts.clone();
+            self.config.save();
+        }
     }
 
     fn save_alerts(&self) {

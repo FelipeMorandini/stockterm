@@ -2,12 +2,14 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use crate::models::portfolio::PortfolioItem;
+use crate::models::alerts::Alert;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
     pub refresh_rate: u64,
     pub api_key: String,
+    pub alerts: Vec<Alert>,
 }
 
 impl Config {

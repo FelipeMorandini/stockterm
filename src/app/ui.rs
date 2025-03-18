@@ -2,8 +2,7 @@ use crate::app::App;
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
-    style::{Color, Style},
-    text::{Span, Text},
+    text::{Span, Text, Line},
     widgets::{Block, Borders, Paragraph},
     Terminal,
 };
@@ -23,10 +22,10 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &App) -> io::Result<()>
         let text = if let Some(ticker_data) = &app.ticker_data {
             let ticker_info = format!("{:#?}", ticker_data.results[0]);
             Text::from(vec![
-                Span::raw(ticker_info),
+                Line::from(vec![Span::raw(ticker_info)]),
             ])
         } else {
-            Text::from(Span::raw("Loading..."))
+            Text::from(Line::from(vec![Span::raw("Loading...")]))
         };
 
         let paragraph = Paragraph::new(text).block(block);

@@ -31,7 +31,7 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             modifiers: KeyModifiers::NONE,
             ..
         } => {
-            tokio::spawn(app.fetch_ticker_data());
+            app.should_fetch_ticker = true;
         }
         _ => {}
     }
