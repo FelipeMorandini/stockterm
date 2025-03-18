@@ -10,6 +10,8 @@ pub struct Config {
     pub refresh_rate: u64,
     pub api_key: String,
     pub alerts: Vec<Alert>,
+    pub default_symbol: String,
+    pub theme: Option<Theme>,
 }
 
 impl Config {

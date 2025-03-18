@@ -2,15 +2,16 @@ use crate::models::ticker::TickerResponse;
 use crate::models::historical::HistoricalResponse;
 use crate::models::search::SymbolSearchResponse;
 use crate::models::news::NewsResponse;
+use crate::config::Config;
 use reqwest;
 
 const API_KEY: &str = "YOUR_POLYGON_API_KEY";
 const BASE_URL: &str = "https://api.polygon.io";
 
-pub async fn get_ticker_data(symbol: &str) -> Result<TickerResponse, reqwest::Error> {
+pub async fn get_ticker_data(symbol: &str, config: &Config) -> Result<TickerResponse, reqwest::Error> {
     let url = format!(
         "{}/v2/aggs/ticker/{}/range/1/day/2023-01-01/2023-12-31?apiKey={}",
-        BASE_URL, symbol, API_KEY
+        BASE_URL, symbol, &config.api_key
     );
 
     let response = reqwest::get(&url).await?;
