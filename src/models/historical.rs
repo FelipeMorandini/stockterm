@@ -2,10 +2,15 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct HistoricalResponse {
+    #[serde(default)]
     pub ticker: String,
+    #[serde(default)]
     pub results: Vec<HistoricalData>,
+    #[serde(default)]
     pub status: String,
+    #[serde(default)]
     pub request_id: String,
+    #[serde(default)]
     pub count: u32,
 }
 

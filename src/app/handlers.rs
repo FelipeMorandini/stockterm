@@ -1,7 +1,9 @@
-use crate::app::App;
+use crate::app::alerts::handle_alerts_events;
+use crate::app::portfolio::handle_portfolio_events;
+use crate::app::{App, Tab};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-pub fn handle_event(app: &mut App, key: KeyEvent) {
+pub async fn handle_event(app: &mut App, key: KeyEvent) {
     match key {
         KeyEvent {
             code: KeyCode::Char('q'),
@@ -11,13 +13,40 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             app.should_quit = true;
         }
         KeyEvent {
+            code: KeyCode::Tab,
+            ..
+        } => {
+            app.next_tab();
+        }
+        KeyEvent {
+            code: KeyCode::BackTab,
+            ..
+        } => {
+            app.prev_tab();
+        }
+        key => match app.active_tab {
+            Tab::Portfolio => {
+                handle_portfolio_events(app, key).await;
+            }
+            Tab::Alerts => {
+                handle_alerts_events(app, key);
+            }
+            Tab::StockView => {
+                handle_stock_view_keys(app, key);
+            }
+            _ => {}
+        },
+    }
+}
+
+fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
+    match key {
+        KeyEvent {
             code: KeyCode::Char(c),
             modifiers: KeyModifiers::NONE,
             ..
-        } => {
-            if c.is_ascii_uppercase() {
-                app.symbol.push(c);
-            }
+        } if c.is_ascii_uppercase() => {
+            app.symbol.push(c);
         }
         KeyEvent {
             code: KeyCode::Backspace,
