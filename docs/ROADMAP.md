@@ -300,7 +300,7 @@ issue before code):
    - Wire `next_tab`/`prev_tab` and per-tab handlers into `handle_event`.
    - Author initial `docs/SPEC.md` + `docs/QA_PLAN.md` covering the existing
      tabs.
-   - **Merge:** opened as a PR from `feat/issue-1-mvp-stabilize` (link in Issue #1 comment). Manual verification: `docs/QA_PLAN.md`. Follow-up tech debt → new GitHub issues created at ship time.
+   - **Merge:** https://github.com/FelipeMorandini/stockterm/pull/26 — manual verification: `docs/QA_PLAN.md`. Follow-up tech debt → GitHub issues filed at ship.
 2. **M1 — Swap data source to Yahoo Finance**
    - Replace Polygon client with a Yahoo-Finance-backed module
      (see §7). Keep model layer (`TickerResult`, `HistoricalData`, etc.) as
