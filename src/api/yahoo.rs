@@ -1,7 +1,7 @@
 //! Yahoo Finance (unofficial) [`MarketDataProvider`](crate::api::provider::MarketDataProvider).
 
 use async_trait::async_trait;
-use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
 use serde::Deserialize;
 use urlencoding::encode;
 
@@ -311,13 +311,167 @@ fn map_search_quote(q: SearchQuote) -> Option<SymbolResult> {
     })
 }
 
+/// Yahoo `query2` **`/v2/finance/news`** often returns HTTP 500. Prefer **`query1` search**
+/// (`newsCount`) and RSS, then keep query2 as a last resort.
 async fn yahoo_news(symbol: &str) -> ProviderResult<NewsResponse> {
+    if let Ok(r) = yahoo_news_via_search(symbol).await {
+        return Ok(r);
+    }
+    if let Ok(r) = yahoo_news_via_rss(symbol).await {
+        return Ok(r);
+    }
+    yahoo_news_query2(symbol).await
+}
+
+async fn yahoo_news_via_search(symbol: &str) -> ProviderResult<NewsResponse> {
+    let enc = encode(symbol);
+    let url = format!(
+        "{}/v1/finance/search?q={}&newsCount=20&quotesCount=0",
+        QUERY1, enc
+    );
+    let text = fetch_text(&url).await?;
+    let env: SearchNewsEnvelope = serde_json::from_str(&text).map_err(|e| {
+        ProviderError::ApiMessage(format!("Yahoo search/news JSON: {e}"))
+    })?;
+    let items = env.news.unwrap_or_default();
+    let results: Vec<NewsItem> = items
+        .into_iter()
+        .filter_map(|w| map_search_news_wire(w, symbol))
+        .collect();
+    let count = results.len() as u32;
+    Ok(NewsResponse {
+        status: "OK".to_string(),
+        count,
+        results,
+    })
+}
+
+fn map_search_news_wire(item: SearchNewsWire, symbol: &str) -> Option<NewsItem> {
+    let title = item.title.filter(|t| !t.is_empty())?;
+    let url = item.link.unwrap_or_default();
+    let id = item
+        .uuid
+        .filter(|u| !u.is_empty())
+        .unwrap_or_else(|| format!("{:x}", md5_hash(&format!("{title}{url}"))));
+    let published_utc = item
+        .provider_publish_time
+        .and_then(|ts| Utc.timestamp_opt(ts, 0).single())
+        .map(|d| d.to_rfc3339())
+        .unwrap_or_default();
+    Some(NewsItem {
+        id,
+        publisher: Publisher {
+            name: item.publisher.unwrap_or_default(),
+            homepage_url: String::new(),
+            logo_url: String::new(),
+            favicon_url: String::new(),
+        },
+        title,
+        author: None,
+        published_utc,
+        article_url: url,
+        tickers: vec![symbol.to_uppercase()],
+        amp_url: None,
+        image_url: None,
+        description: None,
+        keywords: vec![],
+    })
+}
+
+async fn yahoo_news_via_rss(symbol: &str) -> ProviderResult<NewsResponse> {
+    let enc = encode(symbol);
+    let url = format!(
+        "https://feeds.finance.yahoo.com/rss/2.0/headline?s={}&region=US&lang=en-US",
+        enc
+    );
+    let xml = fetch_text(&url).await?;
+    let results = parse_yahoo_rss_items(&xml, symbol);
+    if results.is_empty() {
+        return Err(ProviderError::ApiMessage(
+            "Yahoo RSS headline feed returned no items".to_string(),
+        ));
+    }
+    let count = results.len() as u32;
+    Ok(NewsResponse {
+        status: "OK".to_string(),
+        count,
+        results,
+    })
+}
+
+fn parse_yahoo_rss_items(xml: &str, symbol: &str) -> Vec<NewsItem> {
+    let mut out = Vec::new();
+    let mut rest = xml;
+    while let Some(start) = rest.find("<item>") {
+        let after = &rest[start + 6..];
+        let Some(end) = after.find("</item>") else {
+            break;
+        };
+        let item_xml = &after[..end];
+        rest = &after[end + 7..];
+        let Some(title) = tag_inner_text(item_xml, "title") else {
+            continue;
+        };
+        if title.is_empty() {
+            continue;
+        }
+        let link = tag_inner_text(item_xml, "link").unwrap_or_default();
+        let pub_date = tag_inner_text(item_xml, "pubDate").unwrap_or_default();
+        let guid = tag_inner_text(item_xml, "guid").unwrap_or_default();
+        let id = if guid.is_empty() {
+            format!("{:x}", md5_hash(&format!("{title}{link}")))
+        } else {
+            guid
+        };
+        out.push(NewsItem {
+            id,
+            publisher: Publisher {
+                name: "Yahoo Finance".to_string(),
+                homepage_url: String::new(),
+                logo_url: String::new(),
+                favicon_url: String::new(),
+            },
+            title,
+            author: None,
+            published_utc: pub_date,
+            article_url: link,
+            tickers: vec![symbol.to_uppercase()],
+            amp_url: None,
+            image_url: None,
+            description: None,
+            keywords: vec![],
+        });
+    }
+    out
+}
+
+fn tag_inner_text(block: &str, tag: &str) -> Option<String> {
+    let needle = format!("<{tag}");
+    let start = block.find(&needle)?;
+    let from_tag = &block[start..];
+    let gt = from_tag.find('>')?;
+    let inner_start = start + gt + 1;
+    let close = format!("</{tag}>");
+    let rest = &block[inner_start..];
+    let end = rest.find(&close)?;
+    let raw = rest[..end].trim();
+    Some(strip_cdata(raw))
+}
+
+fn strip_cdata(s: &str) -> String {
+    let s = s.trim();
+    if let Some(inner) = s.strip_prefix("<![CDATA[") {
+        if let Some(x) = inner.strip_suffix("]]>") {
+            return x.to_string();
+        }
+    }
+    s.to_string()
+}
+
+async fn yahoo_news_query2(symbol: &str) -> ProviderResult<NewsResponse> {
     let enc_sym = encode(symbol);
     let url = format!("{}/v2/finance/news?symbols={}", QUERY2, enc_sym);
-    let text = match fetch_text(&url).await {
-        Ok(t) => t,
-        Err(e) => return Err(e),
-    };
+    let text = fetch_text(&url).await?;
 
     // Try structured stream format (common for query2).
     if let Ok(env) = serde_json::from_str::<NewsEnvelope>(&text) {
@@ -475,6 +629,22 @@ struct SearchEnvelope {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct SearchNewsEnvelope {
+    news: Option<Vec<SearchNewsWire>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchNewsWire {
+    uuid: Option<String>,
+    title: Option<String>,
+    publisher: Option<String>,
+    link: Option<String>,
+    provider_publish_time: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct SearchQuote {
     symbol: Option<String>,
     shortname: Option<String>,
@@ -579,5 +749,26 @@ mod tests {
     fn provider_error_display_smoke() {
         let e = ProviderError::Timeout;
         assert_eq!(e.to_string(), "Request timed out");
+    }
+
+    #[test]
+    fn yahoo_search_news_maps_wire_row() {
+        let json = r#"{"news":[{"uuid":"u1","title":"Hello","publisher":"Pub","link":"https://x","providerPublishTime":1700000000}]}"#;
+        let env: SearchNewsEnvelope = serde_json::from_str(json).expect("parse");
+        let w = env.news.expect("news").into_iter().next().expect("one");
+        let n = map_search_news_wire(w, "AAPL").expect("map");
+        assert_eq!(n.title, "Hello");
+        assert_eq!(n.publisher.name, "Pub");
+        assert_eq!(n.article_url, "https://x");
+        assert!(n.published_utc.contains("2023"));
+    }
+
+    #[test]
+    fn yahoo_rss_parses_minimal_item() {
+        let xml = r#"<rss><channel><item><title>T1</title><link>https://a</link><pubDate>Mon, 1 Jan 2024 00:00:00 GMT</pubDate></item></channel></rss>"#;
+        let v = parse_yahoo_rss_items(xml, "MSFT");
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].title, "T1");
+        assert_eq!(v[0].article_url, "https://a");
     }
 }

@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9 migration playbook, planned).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR).
 
 **Sources (Issue #3):**
 
@@ -490,14 +490,13 @@ Set **`TickerResponse.ticker`** from Yahoo **`symbol`** string (fallback: reques
 
 **Goal:** Populate [`NewsResponse`](../src/models/news.rs) / [`NewsItem`](../src/models/news.rs) without Polygon.
 
-**Approach:** Implement against a Yahoo JSON feed that returns **title**, **URL**, **publisher**, **published time** per item. Common pattern (verify live during dev):
+**Approach (implementation order):** `query2` **`/v2/finance/news`** often returns **HTTP 500**; the provider therefore tries, in order:
 
-`GET https://query2.finance.yahoo.com/v2/finance/news?symbols={SYMBOL}`
+1. **`GET https://query1.finance.yahoo.com/v1/finance/search?q={SYMBOL}&newsCount=20&quotesCount=0`** — JSON **`news`** array (`title`, `publisher`, `link`, `providerPublishTime`).
+2. **RSS:** `GET https://feeds.finance.yahoo.com/rss/2.0/headline?s={SYMBOL}&region=US&lang=en-US` — parse `<item>` / `<title>` / `<link>` / `<pubDate>`.
+3. **Legacy:** `GET https://query2.finance.yahoo.com/v2/finance/news?symbols={SYMBOL}` — existing stream JSON mapper.
 
-If the endpoint shape shifts:
-
-1. Prefer fixing parsers + fixtures.
-2. If temporarily unavailable: return **`NewsResponse { status: "OK".into(), count: 0, results: vec![] }`** **without** treating as fatal **`ProviderError`** **only** when HTTP succeeded but content empty — **do** surface **`ProviderError`** on HTTP/parse failure.
+If endpoints shift: fix parsers + fixtures; on HTTP success with empty content, **`Ok`** with zero results is acceptable per empty-news UX — still surface **`ProviderError`** on hard HTTP/parse failure after all attempts.
 
 **Mapping highlights:**
 
@@ -598,3 +597,155 @@ Yahoo **`v7/finance/quote`** accepts **comma-separated `symbols`**. Current **`J
 - **Dependencies:** `async-trait` **0.1.89** (see `Cargo.lock`).
 - **Code:** `src/api/{http,error,provider,yahoo}.rs`, refactored [`src/api/polygon.rs`](../src/api/polygon.rs); [`src/config/config.rs`](../src/config/config.rs) `MarketProviderKind`; [`src/app/app.rs`](../src/app/app.rs) `provider_ready` / `market_provider_for`; fixtures under [`tests/fixtures/`](../tests/fixtures/).
 - **PR:** https://github.com/FelipeMorandini/stockterm/pull/57
+
+---
+
+## 10. M3 — Search, News, Settings tabs (Issues #29, #5, #11, #12)
+
+**Umbrella:** [Issue #29](https://github.com/FelipeMorandini/stockterm/issues/29) — replace stub panes with real UIs and tab-local key handling.
+
+**Child issues (acceptance detail):**
+
+- [Issue #5](https://github.com/FelipeMorandini/stockterm/issues/5) — Search: typeahead, debounce, list navigation, Enter → Stock View.
+- [Issue #11](https://github.com/FelipeMorandini/stockterm/issues/11) — News: scrollable headlines, loading/empty states, Enter → open URL or copy (best-effort).
+- [Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12) — Settings: edit `refresh_rate` / `default_symbol`, placeholders for theme/keymap, persist via `Config::try_save`.
+
+**Related:** [#17](https://github.com/FelipeMorandini/stockterm/issues/17) — search/news/settings fetches must stay off the draw/input hot path (extend existing `FetchDone` + `tokio::spawn` pattern). [#19](https://github.com/FelipeMorandini/stockterm/issues/19) — surface `try_save` failures on `App.error_message`. Keyboard parity: reuse [`letter_key_plain`](../src/app/keyboard.rs) where letter keys must not fire under Ctrl/Alt/Meta chords.
+
+**Verified baseline (tree):**
+
+| Area | Location | State |
+|------|----------|--------|
+| Search UI | [`src/app/ui.rs`](../src/app/ui.rs) `draw_search` | Empty stub. |
+| News UI | `draw_news` | Empty stub. |
+| Settings UI | `draw_settings` | Empty stub. |
+| Search API | [`FetchDone::Search`](../src/app/app.rs) + `spawn_search_task` | Debounced tick on `Tab::Search`; stale guard on generation + query string. |
+| News fetch | `try_spawn_news_fetch`, `FetchDone::News` | Background fetch on `Tab::News` only; data never rendered. |
+| State | `App` | `search_query`, `search_results`, `news_data`, `news_refresh_inflight` exist; `selected_index` is **unused** — replace or repurpose for list selection. |
+
+---
+
+### 10.1 Crate & module layout
+
+- **Single package** `stockterm`; no new crate unless clipboard/open requires a tiny helper crate (prefer **no** new dependency: shell out to `open` / `xdg-open` / `cmd.exe /c start` for URLs).
+- **`src/app/ui.rs`:** Implement `draw_search`, `draw_news`, `draw_settings` (layout: `Block`, `Paragraph`, `Table` or `List`, `Layout`, consistent with Stock/Portfolio panes).
+- **`src/app/handlers.rs`:** Dispatch `Tab::Search`, `Tab::News`, `Tab::Settings` to new `handle_search_events`, `handle_news_events`, `handle_settings_events` (mirror `handle_portfolio_events` style).
+- **Optional file split:** If `handlers.rs` grows, add `src/app/search_tab.rs`, `news_tab.rs`, `settings_tab.rs` exporting only the `handle_*` + small helpers — optional; keep diff focused.
+- **`src/app/app.rs`:**
+  - Extend **`FetchDone`** with **`Search { generation: u64, query: String, result: Result<SymbolSearchResponse, String> }`** (or `Err` maps to same string pattern as `News`).
+  - Add search-specific fields: e.g. **`search_list_state: ratatui::widgets::ListState`**, **`search_request_generation: u64`**, **`search_refresh_inflight: bool`**, **`search_debounce_deadline: Option<Instant>`** (or a single **`search_pending_query: Option<String>`** + deadline).
+  - Add **`news_list_state: ListState`** for News selection (do **not** overload `watchlist_state`).
+  - Settings: **`settings_row: usize`**, **`settings_editing: Option<SettingsEdit>`** enum (`RefreshRate`, `DefaultSymbol`) with **`edit_buffer: String`**, optional **`settings_saved_flash_until: Option<Instant>`** for a short “Saved” hint.
+- **`src/config/`:** No schema change required for MVP beyond existing `refresh_rate`, `default_symbol`, `theme: Option<Theme>`, `provider`. Settings screen may show **`provider`** as **read-only** text (editing provider belongs to a later issue unless explicitly extended).
+
+---
+
+### 10.2 Search tab (Issue #5) — behavior & async
+
+**UI:**
+
+- Top: single-line **query** bound to `App.search_query` (prefix with label e.g. `Query:`).
+- Below: **results table** from `search_results` — columns **Symbol | Name | Type | Exchange** (map `SymbolResult`: `ticker`, `name`, `type_`, `primary_exchange` or `market`).
+- Footer/status: **`Searching…`** when `search_refresh_inflight`; **`No results`** when response is success with empty `results`; provider error on `error_message` line.
+
+**Keys (Search tab only):**
+
+- Printable ASCII that belongs in company/ticker search: **letters, digits, space, `-`, `.`** — append to `search_query` when `letter_key_plain` allows, with an explicit arm for **digits and punctuation** that still requires **no** Ctrl/Alt/Meta (same safety as Stock View).
+- **Backspace** — pop char (modifiers: **NONE** only for Backspace/Enter/Esc, matching Issue #44 §8.5).
+- **Esc** — clear `search_query`, clear results, reset list selection, cancel pending debounced request (bump generation so stale responses drop).
+- **Enter** — if results non-empty, take **highlighted** row’s ticker: `normalize_symbol`, set `app.symbol`, set `active_tab = Tab::StockView`, clear or keep query per UX (recommend **keep** query for repeat searches), call **`request_immediate_stock_poll()`** (same as Stock View Enter path).
+- **Up/Down** or **j/k** (with `letter_key_plain` for `j`/`k`) — move `search_list_state` selection within bounds.
+
+**Debounce & concurrency:**
+
+- **Debounce interval:** **250 ms** from last mutation to `search_query` (character add/remove/clear).
+- On each qualifying tick (`Event::Tick`) while `active_tab == Tab::Search`, if deadline elapsed and query non-empty and `provider_ready()`:
+  - If `search_refresh_inflight`, **do not** stack another request; optionally set a **“pending retry”** flag when the in-flight query ≠ current query (when current completes, if query changed, schedule again).
+  - Else increment **`search_request_generation`**, spawn **`tokio::spawn`** that calls `provider.search_symbols(&query, &cfg).await`, send **`FetchDone::Search { generation, query, result }`**.
+- **`apply_fetch_done`:** For `Search`, clear `search_refresh_inflight`. Apply result **only if** `generation == search_request_generation` **and** `query == search_query` (stale guard). On success, replace `search_results`; clamp `search_list_state` selection; on error, set `error_message` and clear or keep last results (recommend **clear** results on error to avoid misleading rows).
+
+**Empty query:** Do not call API; set `search_results = None` and show hint text.
+
+**Polygon gate:** If `!provider_ready()`, mirror existing `MISSING_API_KEY_FOR_POLYGON_MSG` on `error_message` and skip spawn.
+
+---
+
+### 10.3 News tab (Issue #11) — behavior
+
+**UI:**
+
+- **`List`** (or table) of items from `news_data.results`: **publisher name** (truncate), **title** (truncate with ellipsis), **published_utc** (short form), optional **URL** column or footer line for selection.
+- **`news_list_state`** for highlight.
+- While **`news_refresh_inflight`:** show **Loading…** (reuse pattern from Stock refresh if any).
+- **Empty:** `news_data` present with `results.is_empty()` or count 0 → **No news available** message; distinguish from “not yet loaded”.
+
+**Keys:**
+
+- **Up/Down**, **j/k** — navigate list (`letter_key_plain` for `j`/`k`).
+- **Enter** — **best-effort** open article:
+  - **macOS:** `Command::new("open").arg(url)`  
+  - **Windows:** `cmd /C start "" <url>` (or `start` pattern that avoids injection — use single arg).  
+  - **Unix (non-mac):** `xdg-open <url>` if desired, else skip.  
+  - If spawn fails, set a short `error_message` (“Could not open URL”).  
+  - **Optional:** If open fails or user prefers copy, try clipboard via **`pbcopy`** / **`wl-copy`** / **`xclip -selection clipboard`** when `which` succeeds — document in QA as platform-dependent; **not** required for closure if open works on primary dev OS.
+
+**Refresh semantics:**
+
+- Keep **`try_spawn_news_fetch`** on **`Tab::News`** tick with existing throttle (`data_poll_interval`).
+- **When `symbol` changes** while user is on News (e.g. after returning from Search): stale responses are already ignored in `apply_fetch_done` by symbol match — additionally **reset `news_list_state`**, and either **clear `news_data`** until next fetch or **force** immediate news poll when `symbol` changes and `active_tab == News` (recommend **clear + reset `last_news_network_poll` to None** for instant refresh on next tick, or call a small `request_immediate_news_poll` helper).
+
+---
+
+### 10.4 Settings tab (Issue #12) — behavior
+
+**UI:**
+
+- Menu of rows (numbered or plain list): **Refresh interval (seconds)**, **Default symbol**, **Theme** (show JSON-ish summary or “Not configured” / accent keys from [`Theme`](../src/config/theme.rs)), **Provider** (read-only: `yahoo` / `polygon`), **Keymap** (placeholder: “Coming later” / issue reference).
+- **Enter** on editable row enters **edit mode** (`settings_editing`). In edit mode, typing fills **`edit_buffer`**; **Enter** commits, **Esc** cancels edit.
+- **Refresh rate editor:** numeric only; validate **integer ≥ 1** (document interaction with existing **`data_poll_interval`** minimum of **5** seconds in [`App::data_poll_interval`](../src/app/app.rs) — UI may allow typing `3` but effective poll remains 5; show inline note “Minimum effective: 5s” or clamp on commit with message).
+- **Default symbol:** `normalize_symbol` on commit; reject empty after trim with inline error.
+- **Persist:** On successful commit, assign `self.config.refresh_rate` / `self.config.default_symbol`, call **`Config::try_save()`**; on `Err`, set **`error_message`** (Issue #19). On success, set **`settings_saved_flash_until = now + 2s`** (tunable).
+- **Live default symbol:** Changing `default_symbol` updates config only; **current session** `symbol` unchanged until next app launch — matches Issue #12 acceptance (“on next launch, `App::new` uses it”). Optionally document in QA.
+
+**Theme row:** No editing in this milestone — display only (Issue #12 checklist).
+
+---
+
+### 10.5 Keyboard & global keys
+
+- **Tab / Shift+Tab** — already switch tabs; ensure Search/News/Settings do not consume these.
+- **`q`** — global quit unchanged (**NONE** only).
+- Reuse **`letter_key_plain`** for Search/News letter keys consistent with Issues #3/#44.
+
+---
+
+### 10.6 Out of scope
+
+- Editing **`provider`** or **`api_key`** in Settings (security / validation — separate issue).
+- Full **theme** application across widgets ([#14](https://github.com/FelipeMorandini/stockterm/issues/14) or roadmap M6).
+- Custom **keymap** editing ([#13](https://github.com/FelipeMorandini/stockterm/issues/13)).
+- Watchlist management from Settings (Issue #3 / `w` only).
+- Changing Yahoo batch quote N→1 ([#53](https://github.com/FelipeMorandini/stockterm/issues/53)).
+
+---
+
+### 10.7 Automated verification
+
+- `cargo build --release`
+- `cargo clippy -- -D warnings`
+- `cargo test`
+- **Unit tests (recommended):** stale-search generation helper (pure fn), optional `normalize_symbol` / settings validation if extracted.
+
+---
+
+### 10.8 Approval
+
+After maintainer approval of §10, implementation may proceed per `.cursor/rules/sdd_workflow.mdc` and [`docs/QA_PLAN.md`](QA_PLAN.md) (M3 / Issues #29, #5, #11, #12 section).
+
+### 10.9 Shipment record
+
+- **Status:** Shipped — manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (M3 sign-off, 2026-05-10).
+- **Tracking:** [Issue #29](https://github.com/FelipeMorandini/stockterm/issues/29), [#5](https://github.com/FelipeMorandini/stockterm/issues/5), [#11](https://github.com/FelipeMorandini/stockterm/issues/11), [#12](https://github.com/FelipeMorandini/stockterm/issues/12).
+- **PR:** _(link added at ship time — see GitHub PR merging this branch)._
+- **Code:** `src/app/{app,handlers,ui,open_url}.rs`; `FetchDone::Search`; Settings via `Config::try_save`; Yahoo `get_news` uses `query1` search + RSS before `query2` (`src/api/yahoo.rs`).
+- **Follow-up issues:** [#58](https://github.com/FelipeMorandini/stockterm/issues/58) (clipboard), [#59](https://github.com/FelipeMorandini/stockterm/issues/59) (non-blocking open), [#60](https://github.com/FelipeMorandini/stockterm/issues/60) (Search Esc vs global error).

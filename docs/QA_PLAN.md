@@ -1,6 +1,99 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior. **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors.
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior. **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3).
+
+---
+
+## Issues #29, #5, #11, #12 — M3: Search, News, Settings
+
+**Scope:**
+
+- [Issue #29](https://github.com/FelipeMorandini/stockterm/issues/29) — umbrella: non-empty tab UIs + handlers for Search, News, Settings.
+- [Issue #5](https://github.com/FelipeMorandini/stockterm/issues/5) — Search typeahead, debounce, navigation, Enter → Stock View + quote fetch.
+- [Issue #11](https://github.com/FelipeMorandini/stockterm/issues/11) — News list, scroll, loading/empty, Enter → open URL (and/or copy).
+- [Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12) — Settings: edit refresh rate & default symbol, placeholders, `try_save`.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §10.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+### Manual — Search (#5 / #29)
+
+1. **Yahoo (default):** `cargo run --release`, switch to **Search** (Tab).
+
+2. Type **`appl`** slowly then pause ≥300 ms.  
+   **Pass:** Results include **`AAPL`** (or equivalent Apple row) within ~500 ms of last keystroke; pane is **not** blank.
+
+3. **Debounce:** Type several letters quickly; use network monitor or logs if available.  
+   **Pass:** No unbounded parallel searches; at most one in-flight request for the latest query (stale responses do not overwrite newer typing — per SPEC §10.2).
+
+4. **Navigate:** **`j`/`k`** or arrows move highlight; **Enter** on **`AAPL`**.  
+   **Pass:** Switches to **Stock View** with **`AAPL`** active; quote fetch runs (table/detail updates or clear error).
+
+5. **Backspace / Esc:** Shrink query with Backspace; **Esc** clears query and list.  
+   **Pass:** Matches acceptance.
+
+6. **Polygon regression:** Set **`provider`: `polygon`** with valid key; repeat a short query.  
+   **Pass:** Search works or shows structured error; no panic.
+
+7. **Chord safety:** **`Ctrl+a`** on Search does not append (parity with Issue #44).
+
+### Manual — News (#11 / #29)
+
+1. Set active symbol (**`AAPL`** on Stock View), open **News** tab.
+
+2. **Pass:** Headlines list appears (publisher/title/date); **Loading…** may flash briefly; not an empty pane when data exists.
+
+3. **Scroll:** **`j`/`k`** or arrows.  
+   **Pass:** Selection moves; long titles do not break layout catastrophically.
+
+4. **Enter:** On a row with a URL, press **Enter**.  
+   **Pass:** Browser opens article **or** URL copied per platform (document which happened); failure shows a short error, no panic.
+
+5. **Empty:** Symbol with no news (or mocked empty) — **Pass:** **No news available** (or equivalent), not a blank screen.
+
+6. **Symbol change:** From Stock View change symbol (or use Search → Enter), return to **News**.  
+   **Pass:** List eventually matches new symbol (no permanent stale headlines).
+
+### Manual — Settings (#12 / #29)
+
+1. Open **Settings** tab.  
+   **Pass:** Rows show **`refresh_rate`**, **`default_symbol`**, theme summary / placeholder, provider (read-only), keymap placeholder.
+
+2. Edit **refresh rate** to a valid integer (e.g. **10**), commit with **Enter**.  
+   **Pass:** `~/.stockterm.json` updates; optional “Saved” flash; quote/news throttle behavior respects new value after change (may still enforce app minimum 5 s — per SPEC).
+
+3. Edit **default symbol** to **`MSFT`**, save. **Quit** and relaunch.  
+   **Pass:** Startup symbol is **`MSFT`** when watchlist empty (or as documented in SPEC §10.4); JSON persisted.
+
+4. **Validation:** Try empty default symbol or invalid refresh text.  
+   **Pass:** Inline or status error; config file not corrupted.
+
+5. **Save failure (optional):** If safe to simulate read-only config, **Pass:** `error_message` surfaces (Issue #19 pattern).
+
+### Sign-off — M3 (#29 / #5 / #11 / #12)
+
+_Manual validation passed 2026-05-10 (pre-merge). Clipboard copy deferred to [#58](https://github.com/FelipeMorandini/stockterm/issues/58); News `Enter` opens URL._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-10 | Pass |
+| Search: typeahead + debounce + Enter | maintainer | 2026-05-10 | Pass |
+| Search: Esc / Backspace / chord safety | maintainer | 2026-05-10 | Pass |
+| News: list + scroll + Enter open/copy | maintainer | 2026-05-10 | Pass |
+| News: empty + symbol change | maintainer | 2026-05-10 | Pass |
+| Settings: edit + persist + relaunch default | maintainer | 2026-05-10 | Pass |
+| Settings: validation + placeholders | maintainer | 2026-05-10 | Pass |
 
 ---
 

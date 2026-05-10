@@ -10,7 +10,7 @@ use crate::models::portfolio::PortfolioItem;
 use crate::models::search::SymbolSearchResponse;
 use crate::models::ticker::TickerResponse;
 use ratatui::backend::Backend;
-use ratatui::widgets::TableState;
+use ratatui::widgets::{ListState, TableState};
 use ratatui::Terminal;
 use std::collections::{HashMap, HashSet};
 use std::io;
@@ -19,6 +19,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
     StockView,
     Portfolio,
@@ -27,6 +28,12 @@ pub enum Tab {
     News,
     Charts,
     Settings,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingsEdit {
+    RefreshRate,
+    DefaultSymbol,
 }
 
 /// Outcomes from background HTTP tasks (never awaited on the draw/input hot path).
@@ -43,6 +50,11 @@ pub enum FetchDone {
     News {
         symbol: String,
         result: Result<NewsResponse, String>,
+    },
+    Search {
+        generation: u64,
+        query: String,
+        result: Result<SymbolSearchResponse, String>,
     },
 }
 
@@ -65,7 +77,17 @@ pub struct App {
     pub active_tab: Tab,
     pub error_message: Option<String>,
     pub search_query: String,
-    pub selected_index: usize,
+    pub search_table_state: TableState,
+    pub search_request_generation: u64,
+    pub search_refresh_inflight: bool,
+    search_debounce_deadline: Option<Instant>,
+    pub news_list_state: ListState,
+    /// Settings tab: selected menu row (0..SETTINGS_ROW_COUNT).
+    pub settings_row: usize,
+    pub settings_editing: Option<SettingsEdit>,
+    pub settings_edit_buffer: String,
+    pub settings_inline_error: Option<String>,
+    pub settings_saved_flash_until: Option<Instant>,
     /// Throttle tick-driven network calls so quote refreshes respect `refresh_rate`.
     last_stock_network_poll: Option<Instant>,
     last_charts_network_poll: Option<Instant>,
@@ -76,12 +98,19 @@ pub struct App {
     stock_fetch_generation: u64,
     stock_refresh_pending: bool,
     hist_refresh_inflight: bool,
-    news_refresh_inflight: bool,
+    pub news_refresh_inflight: bool,
 }
 
 const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
 
 const MAX_CONCURRENT_QUOTES: usize = 2;
+
+const SEARCH_DEBOUNCE: Duration = Duration::from_millis(250);
+
+/// Rows in the Settings tab (refresh, default symbol, theme, provider, keymap).
+pub const SETTINGS_ROW_COUNT: usize = 5;
+
+const SETTINGS_SAVED_FLASH: Duration = Duration::from_secs(2);
 
 /// Trim and uppercase ticker input; returns `None` if empty after trim.
 pub fn normalize_symbol(s: &str) -> Option<String> {
@@ -185,7 +214,16 @@ impl App {
             active_tab: Tab::StockView,
             error_message: None,
             search_query: String::new(),
-            selected_index: 0,
+            search_table_state: TableState::default(),
+            search_request_generation: 0,
+            search_refresh_inflight: false,
+            search_debounce_deadline: None,
+            news_list_state: ListState::default(),
+            settings_row: 0,
+            settings_editing: None,
+            settings_edit_buffer: String::new(),
+            settings_inline_error: None,
+            settings_saved_flash_until: None,
             last_stock_network_poll: None,
             last_charts_network_poll: None,
             last_news_network_poll: None,
@@ -414,6 +452,282 @@ impl App {
             Tab::StockView | Tab::Alerts => self.try_spawn_stock_poll_throttled(),
             Tab::Charts => self.try_spawn_historical_fetch(),
             Tab::News => self.try_spawn_news_fetch(),
+            Tab::Search => self.try_spawn_search_tick(),
+            _ => {}
+        }
+    }
+
+    /// Call after `search_query` mutates (typing); schedules debounced API call on Search tab.
+    pub fn touch_search_debounce(&mut self) {
+        if self.search_query.trim().is_empty() {
+            self.search_debounce_deadline = None;
+            return;
+        }
+        self.search_debounce_deadline = Some(Instant::now() + SEARCH_DEBOUNCE);
+    }
+
+    /// Clear search UI and invalidate in-flight responses (Esc).
+    pub fn search_esc_reset(&mut self) {
+        self.search_query.clear();
+        self.search_results = None;
+        self.search_table_state.select(None);
+        self.search_debounce_deadline = None;
+        self.search_request_generation = self.search_request_generation.wrapping_add(1);
+        self.error_message = None;
+    }
+
+    fn try_spawn_search_tick(&mut self) {
+        if self.search_query.trim().is_empty() {
+            self.search_results = None;
+            self.search_debounce_deadline = None;
+            return;
+        }
+        if !self.provider_ready() {
+            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
+            return;
+        }
+        let Some(deadline) = self.search_debounce_deadline else {
+            return;
+        };
+        if Instant::now() < deadline {
+            return;
+        }
+        if self.search_refresh_inflight {
+            return;
+        }
+        self.search_debounce_deadline = None;
+        self.spawn_search_task();
+    }
+
+    fn spawn_search_task(&mut self) {
+        let query = self.search_query.clone();
+        if query.trim().is_empty() || !self.provider_ready() {
+            return;
+        }
+        let Some(tx) = self.fetch_done_tx.clone() else {
+            return;
+        };
+        self.search_request_generation = self.search_request_generation.wrapping_add(1);
+        let generation = self.search_request_generation;
+        let cfg = self.config.clone();
+        self.search_refresh_inflight = true;
+        tokio::spawn(async move {
+            let provider = market_provider_for(cfg.provider);
+            let result = provider.search_symbols(&query, &cfg).await.map_err(|e| e.to_string());
+            let _ = tx.send(FetchDone::Search {
+                generation,
+                query,
+                result,
+            });
+        });
+    }
+
+    /// Clear news UI when the active symbol changes while on the News tab (SPEC §10.3).
+    pub fn notify_symbol_changed_for_news(&mut self) {
+        if self.active_tab != Tab::News {
+            return;
+        }
+        self.news_data = None;
+        self.news_list_state.select(None);
+        self.last_news_network_poll = None;
+    }
+
+    pub fn search_results_len(&self) -> usize {
+        self.search_results
+            .as_ref()
+            .map(|r| r.results.len())
+            .unwrap_or(0)
+    }
+
+    pub fn search_select_next(&mut self) {
+        let n = self.search_results_len();
+        if n == 0 {
+            return;
+        }
+        let i = match self.search_table_state.selected() {
+            None => 0,
+            Some(i) => (i + 1).min(n - 1),
+        };
+        self.search_table_state.select(Some(i));
+    }
+
+    pub fn search_select_prev(&mut self) {
+        let n = self.search_results_len();
+        if n == 0 {
+            return;
+        }
+        let i = match self.search_table_state.selected() {
+            None => 0,
+            Some(i) => i.saturating_sub(1),
+        };
+        self.search_table_state.select(Some(i));
+    }
+
+    pub fn search_pick_symbol_go_stock(&mut self) {
+        let n = self.search_results_len();
+        if n == 0 {
+            return;
+        }
+        let i = self
+            .search_table_state
+            .selected()
+            .unwrap_or(0)
+            .min(n - 1);
+        let Some(row) = self
+            .search_results
+            .as_ref()
+            .and_then(|r| r.results.get(i))
+        else {
+            return;
+        };
+        let Some(sym) = normalize_symbol(&row.ticker) else {
+            return;
+        };
+        self.symbol = sym;
+        self.notify_symbol_changed_for_news();
+        self.active_tab = Tab::StockView;
+        self.sync_watchlist_selection_to_symbol();
+        self.request_immediate_stock_poll();
+    }
+
+    pub fn news_select_next(&mut self) {
+        let n = self
+            .news_data
+            .as_ref()
+            .map(|d| d.results.len())
+            .unwrap_or(0);
+        if n == 0 {
+            return;
+        }
+        let i = match self.news_list_state.selected() {
+            None => 0,
+            Some(i) => (i + 1).min(n - 1),
+        };
+        self.news_list_state.select(Some(i));
+    }
+
+    pub fn news_select_prev(&mut self) {
+        let n = self
+            .news_data
+            .as_ref()
+            .map(|d| d.results.len())
+            .unwrap_or(0);
+        if n == 0 {
+            return;
+        }
+        let i = match self.news_list_state.selected() {
+            None => 0,
+            Some(i) => i.saturating_sub(1),
+        };
+        self.news_list_state.select(Some(i));
+    }
+
+    pub fn news_try_open_selected(&mut self) {
+        use crate::app::open_url::open_article_url;
+        let Some(data) = self.news_data.as_ref() else {
+            return;
+        };
+        let n = data.results.len();
+        if n == 0 {
+            return;
+        }
+        let i = self.news_list_state.selected().unwrap_or(0).min(n - 1);
+        let Some(item) = data.results.get(i) else {
+            return;
+        };
+        if let Err(e) = open_article_url(&item.article_url) {
+            self.error_message = Some(format!("Could not open URL: {e}"));
+        } else {
+            self.error_message = None;
+        }
+    }
+
+    pub fn settings_row_prev(&mut self) {
+        if self.settings_editing.is_some() {
+            return;
+        }
+        self.settings_row = self.settings_row.saturating_sub(1);
+    }
+
+    pub fn settings_row_next(&mut self) {
+        if self.settings_editing.is_some() {
+            return;
+        }
+        self.settings_row = (self.settings_row + 1).min(SETTINGS_ROW_COUNT - 1);
+    }
+
+    pub fn settings_begin_edit(&mut self) {
+        self.settings_inline_error = None;
+        match self.settings_row {
+            0 => {
+                self.settings_editing = Some(SettingsEdit::RefreshRate);
+                self.settings_edit_buffer = self.config.refresh_rate.to_string();
+            }
+            1 => {
+                self.settings_editing = Some(SettingsEdit::DefaultSymbol);
+                self.settings_edit_buffer = self.config.default_symbol.clone();
+            }
+            _ => {}
+        }
+    }
+
+    pub fn settings_cancel_edit(&mut self) {
+        self.settings_editing = None;
+        self.settings_edit_buffer.clear();
+        self.settings_inline_error = None;
+    }
+
+    /// Commit settings edit (`Enter` in edit mode). Returns `true` if the row was handled.
+    pub fn settings_commit_edit(&mut self) -> bool {
+        let Some(field) = self.settings_editing else {
+            return false;
+        };
+        self.settings_inline_error = None;
+        match field {
+            SettingsEdit::RefreshRate => {
+                let trimmed = self.settings_edit_buffer.trim();
+                let Ok(v) = trimmed.parse::<u64>() else {
+                    self.settings_inline_error = Some("Refresh rate must be a positive integer.".into());
+                    return true;
+                };
+                if v < 1 {
+                    self.settings_inline_error = Some("Refresh rate must be at least 1.".into());
+                    return true;
+                }
+                self.config.refresh_rate = v;
+                if let Err(e) = self.config.try_save() {
+                    self.error_message = Some(format!("Failed to save settings: {e}"));
+                } else {
+                    self.error_message = None;
+                    self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
+                }
+            }
+            SettingsEdit::DefaultSymbol => {
+                let Some(sym) = normalize_symbol(&self.settings_edit_buffer) else {
+                    self.settings_inline_error =
+                        Some("Default symbol cannot be empty.".into());
+                    return true;
+                };
+                self.config.default_symbol = sym;
+                if let Err(e) = self.config.try_save() {
+                    self.error_message = Some(format!("Failed to save settings: {e}"));
+                } else {
+                    self.error_message = None;
+                    self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
+                }
+            }
+        }
+        self.settings_editing = None;
+        self.settings_edit_buffer.clear();
+        true
+    }
+
+    pub fn settings_try_enter_row(&mut self) {
+        if self.settings_editing.is_some() {
+            return;
+        }
+        match self.settings_row {
+            0 | 1 => self.settings_begin_edit(),
             _ => {}
         }
     }
@@ -450,12 +764,71 @@ impl App {
                 }
                 match result {
                     Ok(data) => {
+                        let n = data.results.len();
                         self.news_data = Some(data);
                         self.error_message = None;
+                        if n == 0 {
+                            self.news_list_state.select(None);
+                        } else {
+                            let i = self
+                                .news_list_state
+                                .selected()
+                                .unwrap_or(0)
+                                .min(n - 1);
+                            self.news_list_state.select(Some(i));
+                        }
                     }
                     Err(err) => {
                         self.error_message = Some(format!("Error fetching news: {err}"));
                         self.news_data = None;
+                        self.news_list_state.select(None);
+                    }
+                }
+            }
+            FetchDone::Search {
+                generation,
+                query,
+                result,
+            } => {
+                self.search_refresh_inflight = false;
+                if !search_result_matches_current(
+                    generation,
+                    self.search_request_generation,
+                    &query,
+                    &self.search_query,
+                ) {
+                    if self.active_tab == Tab::Search
+                        && !self.search_query.trim().is_empty()
+                        && self.provider_ready()
+                    {
+                        self.search_debounce_deadline = Some(Instant::now());
+                    }
+                    return;
+                }
+                match result {
+                    Ok(data) => {
+                        self.search_results = Some(data);
+                        self.error_message = None;
+                        let n = self
+                            .search_results
+                            .as_ref()
+                            .map(|r| r.results.len())
+                            .unwrap_or(0);
+                        if n == 0 {
+                            self.search_table_state.select(None);
+                        } else {
+                            let i = self
+                                .search_table_state
+                                .selected()
+                                .unwrap_or(0)
+                                .min(n - 1);
+                            self.search_table_state.select(Some(i));
+                        }
+                    }
+                    Err(e) => {
+                        self.error_message = Some(format!("Error searching symbols: {e}"));
+                        self.search_results = None;
+                        self.search_table_state.select(None);
                     }
                 }
             }
@@ -532,6 +905,7 @@ impl App {
             self.error_message = None;
         }
         self.watchlist_state.select(Some(self.watchlist.len().saturating_sub(1)));
+        self.notify_symbol_changed_for_news();
     }
 
     pub fn remove_selected_watchlist_row(&mut self) {
@@ -562,6 +936,7 @@ impl App {
             .watchlist_quotes
             .get(&self.symbol)
             .cloned();
+        self.notify_symbol_changed_for_news();
     }
 
     pub fn watchlist_select_prev(&mut self) {
@@ -578,6 +953,7 @@ impl App {
         if let Some(i) = self.watchlist_state.selected() {
             self.symbol = self.watchlist[i].clone();
         }
+        self.notify_symbol_changed_for_news();
     }
 
     pub fn watchlist_select_next(&mut self) {
@@ -594,6 +970,7 @@ impl App {
         if let Some(i) = self.watchlist_state.selected() {
             self.symbol = self.watchlist[i].clone();
         }
+        self.notify_symbol_changed_for_news();
     }
 
     pub async fn fetch_historical_data(&mut self) {
@@ -630,57 +1007,6 @@ impl App {
             Err(err) => {
                 self.error_message = Some(format!("Error fetching historical data: {err}"));
                 self.historical_data = None;
-            }
-        }
-    }
-
-    pub async fn search_symbols(&mut self) {
-        if self.search_query.is_empty() {
-            return;
-        }
-
-        if !self.provider_ready() {
-            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
-            self.search_results = None;
-            return;
-        }
-
-        let provider = market_provider_for(self.config.provider);
-        match provider
-            .search_symbols(&self.search_query, &self.config)
-            .await
-        {
-            Ok(data) => {
-                self.search_results = Some(data);
-                self.error_message = None;
-            }
-            Err(err) => {
-                self.error_message = Some(format!("Error searching symbols: {err}"));
-                self.search_results = None;
-            }
-        }
-    }
-
-    pub async fn fetch_news(&mut self) {
-        if self.symbol.is_empty() {
-            return;
-        }
-
-        if !self.provider_ready() {
-            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
-            self.news_data = None;
-            return;
-        }
-
-        let provider = market_provider_for(self.config.provider);
-        match provider.get_news(&self.symbol, &self.config).await {
-            Ok(data) => {
-                self.news_data = Some(data);
-                self.error_message = None;
-            }
-            Err(err) => {
-                self.error_message = Some(format!("Error fetching news: {err}"));
-                self.news_data = None;
             }
         }
     }
@@ -775,7 +1101,7 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_symbol;
+    use super::{normalize_symbol, search_result_matches_current};
 
     #[test]
     fn normalize_symbol_trims_and_uppercases() {
@@ -786,4 +1112,21 @@ mod tests {
         assert_eq!(normalize_symbol("   "), None);
         assert_eq!(normalize_symbol(""), None);
     }
+
+    #[test]
+    fn search_result_matches_current_requires_gen_and_query() {
+        assert!(search_result_matches_current(1, 1, "appl", "appl"));
+        assert!(!search_result_matches_current(1, 2, "appl", "appl"));
+        assert!(!search_result_matches_current(1, 1, "ap", "appl"));
+    }
+}
+
+/// Stale-guard for `FetchDone::Search` (SPEC §10.2).
+pub(crate) fn search_result_matches_current(
+    response_generation: u64,
+    app_generation: u64,
+    response_query: &str,
+    app_query: &str,
+) -> bool {
+    response_generation == app_generation && response_query == app_query
 }

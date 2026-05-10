@@ -1,5 +1,6 @@
 #[allow(clippy::module_inception)]
 pub mod app;
+mod open_url;
 pub mod ui;
 pub mod event;
 pub mod handlers;
@@ -8,4 +9,4 @@ pub mod charts;
 pub mod portfolio;
 pub mod alerts;
 
-pub use self::app::{normalize_symbol, App, FetchDone, Tab};
+pub use self::app::{normalize_symbol, App, FetchDone, SettingsEdit, Tab, SETTINGS_ROW_COUNT};

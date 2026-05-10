@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-10
+Last updated: 2026-05-10 (M3 Search/News/Settings + Yahoo news fallbacks)
 
 ---
 
@@ -95,13 +95,10 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 ### 4.2 Core — Symbol search with typeahead
 
-- **Partial — search backend only**
-  - Evidence: `api/polygon.rs::search_symbols`, `models/search.rs`
-    (`SymbolSearchResponse`), `App::search_symbols`, `App.search_query`,
-    `App.search_results`.
-  - Gaps: `draw_search` in `src/app/ui.rs` is an empty stub; no debounce, no
-    typeahead suggestion list, no key handling for the Search tab in
-    `app/handlers.rs`.
+- **Implemented (Issues #5 / #29)**
+  - Evidence: `draw_search` + `handle_search_events` (`src/app/ui.rs`,
+    `handlers.rs`); debounced `FetchDone::Search` + `spawn_search_task`
+    (`src/app/app.rs`); provider `search_symbols` via Yahoo/Polygon.
 
 ### 4.3 Core — Portfolio (CRUD, totals, P/L, share counts)
 
@@ -161,18 +158,19 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 ### 4.7 Core — News headlines
 
-- **Partial — backend only**
-  - Evidence: `api/polygon.rs::get_news`, `models/news.rs`,
-    `App::fetch_news`, tick-driven on `Tab::News`.
-  - Gap: `draw_news` in `src/app/ui.rs` is an empty stub — headlines never
-    render even when fetched.
+- **Implemented (Issues #11 / #29); clipboard copy follow-up #58**
+  - Evidence: `draw_news`, `news_list_state`, `handle_news_events`; throttled
+    `try_spawn_news_fetch` + `FetchDone::News`. Yahoo path uses `query1`
+    search `news` + RSS fallback before legacy `query2` (`src/api/yahoo.rs`).
+  - Gap: optional clipboard copy (#58); non-blocking `open` tracked in #59.
 
 ### 4.8 TUI — Layout, color, formatting
 
 - **Implemented — base layout**
   - Evidence: `ui.rs::draw` builds a top tab bar + content + status bar with
     `ratatui::Layout`, `Tabs`, `Block::borders`, color spans for change/P/L.
-- **Partial — empty tabs** — Search, News, Settings panes are stubs.
+- **Partial — empty tabs** — Charts-focused stubs only; Search, News, Settings
+  implemented (Issues #29 / #5 / #11 / #12).
 
 ### 4.9 TUI — Interactive charts (zoom/pan)
 
@@ -273,7 +271,8 @@ Alert persistence landed in Issue #27._
 
 Open gaps worth tracking:
 
-1. `draw_search`, `draw_news`, `draw_settings` remain minimal or stub UIs.
+1. Charts / candlestick / time-range UX remain partial; Search/News/Settings
+   are implemented (M3).
 2. Test coverage is thin (a few unit tests only); expand per milestone M7.
 3. Main loop still awaits network I/O inline (UI can stall on slow API) — see §4.13; [Issue #17](https://github.com/FelipeMorandini/stockterm/issues/17).
 
