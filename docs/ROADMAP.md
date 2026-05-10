@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-09
+Last updated: 2026-05-10
 
 ---
 
@@ -215,21 +215,16 @@ incomplete, broken, or unwired; **Missing** = no code path.
 ### 4.14 Technical — Stock API integration with rate limits & errors
 
 - **Partial**
-  - Evidence: `api/polygon.rs` calls Polygon.io endpoints; errors are
-    propagated via `reqwest::Error` and surfaced in `App.error_message`.
+  - Evidence: [Issue #31](https://github.com/FelipeMorandini/stockterm/issues/31)
+    landed **`MarketDataProvider`** (`yahoo` default, `polygon` opt-in),
+    shared **`reqwest::Client`** with connect/request timeouts (`src/api/http.rs`),
+    and **`ProviderError`** (`src/api/error.rs`). Polygon requests use the same
+    client; HTTP errors shown to the user omit query strings (no `apiKey` leak).
   - Gaps:
-    - **Hard-coded `API_KEY = "YOUR_POLYGON_API_KEY"`** in
-      `src/api/polygon.rs:8` — all functions except `get_ticker_data` use
-      this placeholder, so news/historical/search will not work without
-      patching the source.
-    - `get_ticker_data(symbol, &config)` takes `&Config` but is called as
-      `get_ticker_data(&self.symbol)` from `App::fetch_ticker_data` — **this
-      will not compile** until reconciled.
-    - No rate-limit handling (429 / `Retry-After`), no exponential backoff,
-      no concurrency cap — Polygon's free tier is 5 req/min.
-    - No HTTP status check (any non-2xx is parsed as JSON and returns a
-      misleading `serde` error).
-    - No request timeout configured on the `reqwest` client.
+    - Full rate-limit handling (429 / `Retry-After`), exponential backoff,
+      and richer **`ProviderError`** taxonomy — [Issue #18](https://github.com/FelipeMorandini/stockterm/issues/18).
+    - Watchlist fan-out still uses **N** Yahoo quote requests — batching follow-up
+      [Issue #53](https://github.com/FelipeMorandini/stockterm/issues/53).
 
 ### 4.15 Technical — Config file for prefs / portfolio
 

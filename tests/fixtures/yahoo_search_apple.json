@@ -1,0 +1,34 @@
+{
+  "explains": [],
+  "count": 3,
+  "quotes": [
+    {
+      "exchange": "NMS",
+      "shortname": "Apple Inc.",
+      "quoteType": "EQUITY",
+      "symbol": "AAPL",
+      "index": "quotes",
+      "score": 20004,
+      "typeDisp": "Equity",
+      "longname": "Apple Inc.",
+      "exchDisp": "NASDAQ",
+      "sector": "Technology",
+      "currency": "USD",
+      "hasPrePostMarketData": true
+    },
+    {
+      "exchange": "NMS",
+      "shortname": "Apple Hospitality REIT",
+      "quoteType": "EQUITY",
+      "symbol": "APLE",
+      "index": "quotes",
+      "score": 20001,
+      "typeDisp": "Equity",
+      "currency": "USD"
+    }
+  ],
+  "news": [],
+  "nav": [],
+  "indices": [],
+  "cryptosCount": 0
+}

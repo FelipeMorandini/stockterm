@@ -2,5 +2,5 @@
 pub mod config;
 pub mod theme;
 
-pub use self::config::{Config, ConfigError};
+pub use self::config::{Config, ConfigError, MarketProviderKind};
 pub use self::theme::Theme;
