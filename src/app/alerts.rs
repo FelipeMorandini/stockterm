@@ -225,6 +225,14 @@ impl App {
             }
         }
 
+        if let Some(sym) = crate::app::normalize_symbol(symbol) {
+            if let Some(resp) = self.watchlist_quotes.get(&sym) {
+                if let Some(bar) = resp.latest_result() {
+                    return Some(bar.c);
+                }
+            }
+        }
+
         // Otherwise check if it's in the portfolio with a current price
         if let Some(portfolio_item) = self.portfolio.iter().find(|item| item.symbol == symbol) {
             return portfolio_item.current_price;

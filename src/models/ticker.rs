@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 /// Polygon `/v2/aggs/ticker/.../range/...` body. The `ticker` field is omitted on some responses
 /// (empty results, delayed/error payloads), so it must not be required for deserialization.
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TickerResponse {
     #[serde(default)]
     pub ticker: String,
@@ -14,7 +14,7 @@ pub struct TickerResponse {
     pub error: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TickerResult {
     pub o: f64,
     pub h: f64,

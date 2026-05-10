@@ -3,7 +3,7 @@ use crate::app::portfolio::handle_portfolio_events;
 use crate::app::{App, Tab};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-pub async fn handle_event(app: &mut App, key: KeyEvent) {
+pub fn handle_event(app: &mut App, key: KeyEvent) {
     match key {
         KeyEvent {
             code: KeyCode::Char('q'),
@@ -26,7 +26,7 @@ pub async fn handle_event(app: &mut App, key: KeyEvent) {
         }
         key => match app.active_tab {
             Tab::Portfolio => {
-                handle_portfolio_events(app, key).await;
+                handle_portfolio_events(app, key);
             }
             Tab::Alerts => {
                 handle_alerts_events(app, key);
@@ -41,6 +41,49 @@ pub async fn handle_event(app: &mut App, key: KeyEvent) {
 
 fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
     match key {
+        KeyEvent {
+            code: KeyCode::Char('w'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => {
+            app.add_current_to_watchlist();
+        }
+        KeyEvent {
+            code: KeyCode::Char('x'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => {
+            app.remove_selected_watchlist_row();
+        }
+        KeyEvent {
+            code: KeyCode::Char('d'),
+            modifiers: KeyModifiers::SHIFT,
+            ..
+        } => {
+            app.remove_selected_watchlist_row();
+        }
+        KeyEvent {
+            code: KeyCode::Char('j'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        }
+        | KeyEvent {
+            code: KeyCode::Down,
+            ..
+        } => {
+            app.watchlist_select_next();
+        }
+        KeyEvent {
+            code: KeyCode::Char('k'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        }
+        | KeyEvent {
+            code: KeyCode::Up,
+            ..
+        } => {
+            app.watchlist_select_prev();
+        }
         KeyEvent {
             code: KeyCode::Char(c),
             modifiers: KeyModifiers::NONE,

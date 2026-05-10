@@ -7,4 +7,4 @@ pub mod charts;
 pub mod portfolio;
 pub mod alerts;
 
-pub use self::app::{App, Tab};
+pub use self::app::{normalize_symbol, App, FetchDone, Tab};

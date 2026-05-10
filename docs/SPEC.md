@@ -1,105 +1,156 @@
-# SPEC — Issues #30, #37, #38: Alerts loop + table layout
+# SPEC — Issue #3: Multi-symbol watchlist & multi-row quote table
 
 **Sources:**
 
-- [GitHub Issue #30](https://github.com/FelipeMorandini/stockterm/issues/30) — wire `check_alerts` into main loop / tick path without blocking the UI.
-- [GitHub Issue #37](https://github.com/FelipeMorandini/stockterm/issues/37) — fix `draw_alerts` table: header/row column count vs `Constraint` count mismatch.
-- [GitHub Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38) — invoke `check_alerts` from `App::run` at a sensible cadence; document in SPEC/QA.
+- [GitHub Issue #3](https://github.com/FelipeMorandini/stockterm/issues/3) — `Watchlist` in config, fan-out quotes, Stock View table, navigation, persistence, bounded concurrency, non-blocking refresh.
 
-**Overlap:** #30 and #38 describe the same functional gap (`App::check_alerts` never called from `App::run`). This SPEC treats them as **one implementation** with both issues closed by the same change set.
+**Related issues (dependencies / alignment):**
 
-**Prerequisite:** [Issue #27](https://github.com/FelipeMorandini/stockterm/issues/27) — `save_alerts` → `Config::try_save` and `check_alerts` persistence on `triggered` transitions are already implemented in `src/app/alerts.rs`.
+- [#4](https://github.com/FelipeMorandini/stockterm/issues/4) — `Config.refresh_rate` drives quote refresh cadence (seconds); UI tick stays fast (~200 ms).
+- [#17](https://github.com/FelipeMorandini/stockterm/issues/17) — Network I/O must not sit inline between redraws; input stays responsive during slow API.
+- [#18](https://github.com/FelipeMorandini/stockterm/issues/18) — Shared HTTP client, timeouts, 429/backoff, concurrency cap (this SPEC adopts a **minimal** cap for watchlist fan-out; full `ProviderError` work can extend #18).
+- [#19](https://github.com/FelipeMorandini/stockterm/issues/19) — Surface `Config::try_save` failures via `App.error_message`; avoid silent persistence loss for watchlist edits.
+
+**Overlap note:** Issue #3 acceptance says refresh must respect `refresh_rate` and not block input. Today `App::run` still `await`s `fetch_*` on the main path ([`src/app/app.rs`](../src/app/app.rs)), so **meeting the full acceptance bar implies completing or partially landing #17 in the same delivery as #3** (or immediately before). This SPEC describes the target architecture assuming that constraint is satisfied.
 
 ---
 
 ## 1. Current gaps (verified in tree)
 
-| ID | Location | Problem |
-|----|----------|---------|
-| #37 | `src/app/alerts.rs` — `draw_alerts` | Header and rows expose **five** columns (`Symbol`, `Condition`, `Price`, `Current`, `Status`), but `Table::new` passes **seven** `Constraint::Length` entries with portfolio-style comments (Shares, Avg, Value, P/L, etc.). Ratatui may mis-layout or panic depending on version; layout is wrong regardless. |
-| #30 / #38 | `src/app/app.rs` — `App::run` / `fetch_ticker_data` | `check_alerts` is never called, so `Alert.triggered` never flips from `false` → `true` in the running app and `save_alerts` never runs for that transition. |
-| #30 / #38 | `App::run` — `Event::Tick` | Throttled `fetch_ticker_data` runs only when `active_tab == Tab::StockView`. If the user sits on **Alerts**, quotes (and thus prices used by `get_current_price`) may go stale unless they switch back to Stock View. |
+| Area | Location | Problem |
+|------|----------|---------|
+| Single symbol | `App::symbol` only | No persisted list; Stock View is a single-symbol paragraph ([`src/app/ui.rs`](../src/app/ui.rs) `draw_stock_view`). |
+| Config | [`src/config/config.rs`](../src/config/config.rs) | No `watchlist` field; older JSON files must still deserialize after adding the field (`serde(default)`). |
+| Quote cache | `App::ticker_data: Option<TickerResponse>` | Only one response; watchlist needs per-symbol quote cache for the table **and** for `get_current_price` ([`src/app/alerts.rs`](../src/app/alerts.rs)) for non-active alert symbols. |
+| Keys | [`src/app/handlers.rs`](../src/app/handlers.rs) `handle_stock_view_keys` | No `w` / remove / table navigation. |
+| Fan-out | `fetch_ticker_data` | Single `get_ticker_data(&self.symbol, …)` only. |
+| Blocking | `App::run` | Await on fetch between `draw` and `events.next()`; multi-symbol makes stalls worse without #17. |
 
-**Non-goals for this milestone:** OS notifications / terminal bell, alert creation dialog, multi-symbol batch quotes for arbitrary alert symbols, changing `get_current_price` semantics beyond documenting them.
+**Already helpful in tree:** `data_poll_interval()` uses `config.refresh_rate` with a minimum of 5 seconds ([`src/app/app.rs`](../src/app/app.rs)); `Config::try_save` exists for safe persistence.
 
 ---
 
 ## 2. Crate & module layout
 
-- **Single package:** `stockterm` (no new crates).
-- **`src/app/alerts.rs`:** `draw_alerts` constraint fix; no signature change to `check_alerts` unless needed.
-- **`src/app/app.rs`:** Call `check_alerts` from the quote-update path; adjust tick routing so Alerts tab keeps receiving throttled quote updates (shared throttle with Stock View).
+- **Single package:** `stockterm` (no new crate).
+- **`src/config/config.rs`:** Add `watchlist: Vec<String>` with `#[serde(default)]`; document default (empty). Optionally coordinate `default_symbol` with #19 — out of scope for #3 unless the same PR touches `App::new`.
+- **`src/app/app.rs`:** Watchlist state, fan-out fetch orchestration, throttle integration, `symbol` / selection invariants, portfolio back-fill from cached quotes where applicable.
+- **`src/app/ui.rs`:** Split Stock View into a **watchlist table** + **detail** region (or dedicated `draw_watchlist` in `src/app/stock_view.rs` if the module grows — optional file split).
+- **`src/app/handlers.rs`:** Stock View key bindings: add/remove/list navigation; avoid conflicting with existing `A`–`Z` symbol typing (see §3.5).
+- **`src/app/alerts.rs`:** Extend `get_current_price` to consult the watchlist quote cache before returning `None`.
+- **`src/api/polygon.rs`:** No schema change to `TickerResponse`; reuse `get_ticker_data`. Concurrency limiting may use a small helper or `tokio::sync::Semaphore` in `api` or `app` (prefer one shared semaphore for all Polygon quote calls if #18 lands later).
 
 ---
 
 ## 3. Implementation plan (Rust)
 
-### 3.1 Issue #37 — `draw_alerts` column constraints
+### 3.1 Config & migration
 
-- Replace the seven `Constraint::Length(...)` entries with **exactly five**, aligned to the header/row order:
-  - Symbol — moderate width (e.g. `Length(8)` or `Min(6)`).
-  - Condition — short (`Length(8)` or `Length(10)` for `"Above"`/`"Below"`).
-  - Price / Current — numeric (`Length(10)`–`Length(12)`).
-  - Status — `"TRIGGERED"` / `"Waiting"` (`Length(12)`–`Length(14)` or `Min(10)`).
-- Prefer **mixed constraints** if readability on narrow terminals matters: e.g. `Min` for Symbol/Status and `Length` for numeric columns, matching patterns used elsewhere (e.g. portfolio table).
-- **Acceptance:** constraint slice length equals **5**; table renders without layout glitches on a typical 80-column terminal.
+- Add `pub watchlist: Vec<String>` to `Config` with `#[serde(default)]` so missing field → empty vec on `try_load`.
+- Normalize symbols when persisting: uppercase, trim, reject empty strings; dedupe on add.
+- After any add/remove/reorder that should persist, assign `self.config.watchlist = self.watchlist.clone()` (or use config as single source of truth) and call **`self.config.try_save()`**; on `Err`, set `self.error_message` (align with #19 / `save_alerts` pattern).
 
-### 3.2 Issues #30 & #38 — When to call `check_alerts`
+### 3.2 Application state
 
-**Semantics (existing code, do not break):**
+- **`watchlist: Vec<String>`** — Loaded from `config.watchlist` in `App::new`; kept in sync with `config` on save.
+- **`watchlist_state: ratatui::widgets::TableState`** — Selection index into `watchlist` (same pattern as `portfolio_state` / `alerts_state`).
+- **`watchlist_quotes: std::collections::HashMap<String, TickerResponse>`** (or `HashMap<String, TickerResult>` if only the latest bar is needed) — Last successful quote per symbol; clear or mark stale per product decision (recommended: update in place on each successful fan-out; on per-symbol error keep previous bar and optionally store a side-channel error map or a single aggregated status string).
 
-- `check_alerts` uses `get_current_price(symbol)`, which returns a price only when:
-  - `ticker_data` matches that symbol (usually the **active** `App.symbol` after a successful fetch), or
-  - a **portfolio** row for that symbol has `current_price` set (back-filled when that symbol was last fetched).
-- Alerts for symbols with **no** cached price are skipped until a price exists — document in QA.
+**Active symbol (`App::symbol`):**
 
-**Call sites:**
+- Continues to drive Charts, News, alerts add (`'a'`), portfolio context, and the **detail** pane on Stock View.
+- **Invariant:** When the user moves the watchlist selection (`j`/`k` or arrows), set `self.symbol` to `watchlist[i]` so the rest of the app tracks the highlighted row.
+- **Typing buffer:** Today uppercase letters append to `symbol` and Backspace pops ([`handlers.rs`](../src/app/handlers.rs)). With a table, either:
+  - **Recommended:** Treat typing as editing the “pending” ticker: still mutate `symbol`; when the user confirms with **Enter**, fetch and optionally move selection to that symbol if it exists in the watchlist; **or**
+  - Keep selection and typed string in sync only when navigating rows (simpler UX: row change overwrites `symbol`).
 
-1. **`fetch_ticker_data` — success path**  
-   After updating `self.ticker_data` and after the existing portfolio back-fill for the active symbol (see `src/app/app.rs` today), call **`self.check_alerts()`**.  
-   - Ensures every successful quote refresh re-evaluates conditions.  
-   - Covers explicit refetch (`should_fetch_ticker`), initial `run()` fetch, and tick-driven fetches.
+Document the chosen behavior in QA steps.
 
-2. **`App::run` — `Event::Tick` throttled fetch**  
-   Extend the condition that triggers `fetch_ticker_data` so it runs when `active_tab` is **`Tab::StockView` OR `Tab::Alerts`**, still gated by `last_stock_network_poll` and `data_poll_interval()`.  
-   - Reuse **`last_stock_network_poll`** (same clock as Stock View) so we do not double API traffic when switching tabs.  
-   - Rationale: users on Alerts should see `triggered` / persisted state update without forcing a tab switch.
+### 3.3 Fan-out fetch & throttle
 
-**Async / blocking:**
+- Replace or extend the single-symbol path with **`fetch_watchlist_quotes`** (name flexible) that:
+  1. Builds the distinct set of symbols to refresh: **all `watchlist` entries** plus **`symbol`** if it is non-empty and not already in the set (so the typed ticker still gets a quote before `w` adds it).
+  2. Respects **bounded concurrency**: e.g. `const MAX_CONCURRENT_QUOTES: usize = 2` (tunable; Polygon free tier is 5 req/min — sequential or 2-wide fan-out is safer than unbounded `join_all`).
+  3. Uses `futures::stream::FuturesUnordered` + `buffer_unordered(N)`, or chunks of `N` with `futures::future::join_all`, or a `Semaphore` with `acquire_owned` around each `get_ticker_data` — all acceptable; pick one style and use it consistently.
+  4. Merges successes into `watchlist_quotes` and updates `ticker_data` for **`self.symbol`** from the cached map (or last fetch result) so existing code that reads `ticker_data` for the detail pane keeps working.
+  5. After successful updates, **portfolio `current_price` back-fill**: for each portfolio row whose symbol has a fresh quote in the map, update `current_price` (same idea as today’s single-symbol path in `fetch_ticker_data`).
+  6. Calls **`check_alerts()`** once after the batch (prices for multiple symbols may now exist via `watchlist_quotes` — see §3.4).
 
-- `check_alerts` remains **synchronous**, O(n) in alert count, no I/O except `save_alerts` on transition (already acceptable per #27).  
-- No new `await` inside `check_alerts`; “without blocking UI” means we do **not** add extra network calls here — only hook into the existing fetch cadence.
+- **Throttle:** Reuse `last_stock_network_poll` + `data_poll_interval()` so watchlist refresh runs on the same cadence as today’s stock poll for `Tab::StockView | Tab::Alerts` (and any other tab that the implementation decides needs fresh quotes — keep parity with current behavior unless SPEC is extended).
 
-### 3.3 Edge cases
+- **In-flight guard (#4):** If a watchlist fetch is still running, do not start another full fan-out; optionally set a flag or use a generation counter so only the **latest** completed batch applies (pairs with #17 cancellation semantics).
 
-- **Empty symbol / missing API key:** `fetch_ticker_data` returns early; `check_alerts` is not required on those paths (no new price).  
-- **Fetch error:** Do not call `check_alerts` on failure if prices are cleared; optional conservative call is unnecessary — **SPEC:** invoke only on the successful branch where `ticker_data` and portfolio back-fill have been updated.  
-- **Selection / table state:** `check_alerts` does not mutate `alerts_state`; no change expected.
+### 3.4 `get_current_price` & alerts
+
+Extend `get_current_price` order roughly to:
+
+1. If `ticker_data` matches the requested symbol (existing logic) → use it.
+2. Else if `watchlist_quotes.get(symbol)` has a latest bar → `Some(bar.c)`.
+3. Else portfolio `current_price` (existing).
+
+Then `check_alerts` can evaluate alerts for watchlist symbols without requiring that symbol to be the single global `ticker_data` row.
+
+### 3.5 UI — Stock View
+
+- **Layout:** Vertical split (e.g. `Layout`) — **top:** `Table` with columns **Symbol | Last | Change | % Change | Volume** (values from latest daily bar: `c`, `c-o`, percent vs `o`, `v` rounded).
+- **Bottom:** Existing detail block (open/high/low/volume narrative) for **`symbol`**, driven by `ticker_data` or by row lookup in `watchlist_quotes`.
+- **Highlight:** `TableState` selection; highlight style consistent with portfolio/alerts tables.
+- **Empty watchlist:** Show empty-state hint (“Press `w` to add current symbol”) and still allow typing a symbol and Enter to fetch detail.
+
+### 3.6 Key bindings (Stock View)
+
+| Key | Action |
+|-----|--------|
+| `w` | Add current `symbol` (normalized) to `watchlist` if not duplicate; persist with `try_save`. |
+| `x` or `Shift+d` (`D`) | Remove selected watchlist row; adjust selection; set `symbol` to new selection or first remaining; persist. |
+| `j` / `k` or `Up` / `Down` | Move selection; update `symbol` to selected ticker. |
+
+**Conflict check:** Lowercase `a`–`z` are not used today for symbol input (only uppercase). `w`, `x`, `j`, `k` are safe. Use `Shift+d` for delete if `d` would collide with future bindings.
+
+### 3.7 Non-blocking UI (#17)
+
+- **Requirement:** No `await` on `get_ticker_data` (or other HTTP) on the synchronous path between `terminal.draw` and processing the next user input event.
+- **Target pattern:** Spawn fetch work via `tokio::spawn` (or a dedicated worker task); send results through `tokio::sync::mpsc` (or `watch` channel); `App::run` uses `tokio::select!` between **input**, **tick**, and **fetch result** messages. Bridge crossterm input from a thread or blocking task into async channels as described in #17.
+- **Loading:** Status bar shows a short “Refreshing…” or spinner tick while a fan-out is in flight; redraws continue.
+
+If #17 is not ready, document **interim** blocking behavior in QA as **fail** for the non-blocking checklist until fixed.
+
+### 3.8 API robustness (#18) — minimal slice for #3
+
+- Prefer reusing a single `reqwest::Client` with timeouts once introduced for #18; until then, document that watchlist multiplies call volume and testers should use conservative `refresh_rate` on Polygon free tier.
+- Concurrency cap (§3.3) is mandatory for #3 even before full `ProviderError` types.
 
 ---
 
-## 4. Verification targets (automated)
+## 4. Automated verification
 
-- `cargo build --release` and `cargo clippy -- -D warnings` — clean.
+- `cargo build --release`
+- `cargo clippy -- -D warnings`
+- Optional: unit test for watchlist normalization / dedupe if pure functions are extracted.
 
 ---
 
 ## 5. Out of scope
 
-- [Issue #39](https://github.com/FelipeMorandini/stockterm/issues/39) / [Issue #40](https://github.com/FelipeMorandini/stockterm/issues/40) — portfolio `try_save`, async config I/O.  
-- Deduping GitHub #30 vs #38 as separate PRs — one PR may close both.
+- Yahoo migration / `MarketDataProvider` trait (ROADMAP §7).
+- Settings UI to edit watchlist (#12 / M3).
+- Full `ProviderError` and 429 backoff (#18) — unless merged in the same PR.
+- Watchlist ordering UI (drag/sort) — not required; optional stable sort by symbol.
 
 ---
 
 ## 6. Approval
 
-After maintainer approval of this SPEC, implementation may proceed per `.cursor/rules/sdd_workflow.mdc` and `docs/QA_PLAN.md`.
+After maintainer approval of this SPEC, implementation may proceed per `.cursor/rules/sdd_workflow.mdc` and [`docs/QA_PLAN.md`](QA_PLAN.md).
 
 ---
 
 ## 7. Shipment
 
-- **Status:** Implemented; closes [Issue #30](https://github.com/FelipeMorandini/stockterm/issues/30), [#37](https://github.com/FelipeMorandini/stockterm/issues/37), [#38](https://github.com/FelipeMorandini/stockterm/issues/38). Manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (with known limits: symbol entry, hard-coded alert add).
-- **Also in branch:** Polygon aggregate `v` (volume) deserialized as `f64` (`TickerResult`, `HistoricalData`) after live API returned fractional volume; display uses rounded whole numbers.
-- **Deferred:** [#42](https://github.com/FelipeMorandini/stockterm/issues/42) (Status vs `triggered`), [#43](https://github.com/FelipeMorandini/stockterm/issues/43) (block titles), [#44](https://github.com/FelipeMorandini/stockterm/issues/44) (Shift/symbol keys). Non-blocking UI: [#17](https://github.com/FelipeMorandini/stockterm/issues/17); alert dialog / UX: [#10](https://github.com/FelipeMorandini/stockterm/issues/10).
-- **PR:** https://github.com/FelipeMorandini/stockterm/pull/45
+- **Status:** Implemented; closes [Issue #3](https://github.com/FelipeMorandini/stockterm/issues/3). Manual verification: [`docs/QA_PLAN.md`](QA_PLAN.md).
+- **PR:** _Link posted on Issue #3 after merge of the feature branch._
+- **Follow-ups:** [Issue #44](https://github.com/FelipeMorandini/stockterm/issues/44) (Stock View symbol / modifier keys), [Issue #46](https://github.com/FelipeMorandini/stockterm/issues/46) (quote batch panic-safety), [#17](https://github.com/FelipeMorandini/stockterm/issues/17) / [#18](https://github.com/FelipeMorandini/stockterm/issues/18) (full non-blocking + API hardening).
+
+### Prior reference
+
+Alerts loop + table layout (Issues #30 / #37 / #38): [PR #45](https://github.com/FelipeMorandini/stockterm/pull/45).
