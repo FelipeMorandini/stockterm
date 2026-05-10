@@ -79,22 +79,19 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 ### 4.1 Core — Real-time quotes
 
-- **Partial — single-symbol quote display**
-  - Evidence: `App::fetch_ticker_data` (`src/app/app.rs`), `draw_stock_view`
-    (`src/app/ui.rs`) renders Symbol, Price, Change abs + %, Open, High, Low,
-    Volume from `TickerResult` (`src/models/ticker.rs`: `o,h,l,c,v,t`).
-  - Caveat: the data source is Polygon's daily-aggregate endpoint pinned to a
-    hard-coded `2023-01-01..2023-12-31` range
-    (`api/polygon.rs::get_ticker_data`), so values are **historical, not
-    real-time**.
-- **Missing — multiple symbols / watchlist**
-  - Evidence: `App.symbol: String` (single) — no `watchlist: Vec<String>`,
-    no multi-row quote table, no per-symbol tick loop.
+- **Partial — quotes (daily aggregates, not streaming)**
+  - Evidence: `get_ticker_data` (`api/polygon.rs`) uses Polygon daily aggregates
+    over a rolling window; `draw_stock_detail` / watchlist table (`src/app/ui.rs`)
+    show OHLCV from `TickerResult`.
+  - Values remain **EOD-style / daily**, not true streaming real-time.
+- **Implemented — watchlist + multi-row table (Issue #3)**
+  - Evidence: `Config.watchlist`, `App.watchlist` / `watchlist_quotes`,
+    `run_stock_quote_batch` + bounded concurrency (`src/app/app.rs`); Stock View
+    table + detail pane; persist via `Config::try_save`.
 - **Partial — configurable refresh**
-  - Evidence: `Config.refresh_rate: u64` exists in `src/config/config.rs` but
-    is **unused**. `Events::new` (`src/app/event.rs`) hard-codes
-    `Duration::from_millis(200)`. The 200 ms tick is also a UI tick, not a
-    data-fetch interval.
+  - Evidence: `data_poll_interval()` uses `Config.refresh_rate` (seconds, min 5)
+    for throttled quote / charts / news fetches. UI tick remains ~200 ms via
+    `spawn_event_thread` (`src/app/event.rs`).
 
 ### 4.2 Core — Symbol search with typeahead
 
@@ -117,14 +114,13 @@ incomplete, broken, or unwired; **Missing** = no code path.
     `calculate_portfolio_cost`, `calculate_portfolio_profit_loss`.
   - `draw_portfolio` (`src/app/portfolio.rs`) renders summary + holdings table
     (Symbol/Shares/Avg/Current/Value/P/L/P/L %).
-  - `current_price` is back-filled from the active ticker fetch.
+  - `current_price` is back-filled from the watchlist quote batch
+    (`watchlist_quotes`) when symbols match.
 - **Partial — UX wiring**
   - Add/remove are bound to `'a'`/`'d'` in `handle_portfolio_events` but with
     **hard-coded** `(1.0, 100.0)` shares/price — no input dialog.
-  - `handle_portfolio_events` is **not invoked** from `app/handlers.rs::handle_event`,
-    so portfolio key bindings are dead code at runtime.
-  - `app.fetch_ticker_data()` is called without `.await` inside
-    `handle_portfolio_events` (compile error if ever wired up).
+  - `handle_portfolio_events` is dispatched from `handlers.rs` on `Tab::Portfolio`;
+    Enter jumps to Stock View and triggers `request_immediate_stock_poll`.
 
 ### 4.4 Core — Historical charts in terminal
 
@@ -155,9 +151,9 @@ incomplete, broken, or unwired; **Missing** = no code path.
     - **Resolved (Issue #27):** `save_alerts` persists `alerts` to
       `~/.stockterm.json` via `Config::try_save`, with errors in
       `App.error_message`.
-    - **Resolved (Issues #30 / #38):** `check_alerts` runs after each successful
-      `fetch_ticker_data`; throttled quote fetch also runs on `Tab::Alerts`
-      (shared `last_stock_network_poll`).
+    - **Resolved (Issues #30 / #38 / #3):** `check_alerts` runs after each
+      successful quote batch update; throttled quote fetch on `Tab::StockView` and
+      `Tab::Alerts` (shared throttle).
     - `handle_alerts_events` is dispatched from `handlers.rs` on `Tab::Alerts`.
     - No OS-level notification (no `notify-rust` / bell / toast); only an
       in-pane "TRIGGERED" label.
@@ -210,12 +206,11 @@ incomplete, broken, or unwired; **Missing** = no code path.
 ### 4.13 Technical — Async fetching, non-blocking UI
 
 - **Partial**
-  - Evidence: `#[tokio::main]` in `main.rs`, async `App::run`, awaited
-    `fetch_*` calls.
-  - Gap: the main loop in `App::run` blocks on `events.next()` (sync
-    `mpsc::Receiver::recv`) and then **awaits the network call inline**
-    between draws. A slow API call freezes the UI. Consider `tokio::select!`
-    over a spawned fetch task plus a tokio channel for input.
+  - Evidence: `App::run` uses `tokio::select!` over async event + `FetchDone`
+    channels; stock / historical / news HTTP runs in `tokio::spawn` (Issue #3).
+  - Gap: [Issue #17](https://github.com/FelipeMorandini/stockterm/issues/17)
+    remains for cancellation semantics, `search_symbols` when Search tab ships,
+    and full acceptance criteria (smoke test with artificial delay).
 
 ### 4.14 Technical — Stock API integration with rate limits & errors
 
@@ -263,8 +258,9 @@ incomplete, broken, or unwired; **Missing** = no code path.
   - Portfolio persists via `Config.save` after add/remove.
     - Alerts persist on add/remove via `save_alerts` → `Config::try_save` (Issue
       #27); `triggered` transitions run via `check_alerts` after quote refresh
-      (Issues #30 / #38).
-  - Watchlist, last-selected tab, last symbol, and theme do not persist.
+      (Issues #30 / #38 / #3).
+  - **Watchlist persists** (`Config.watchlist`, Issue #3).
+  - Last-selected tab, last symbol (beyond watchlist default), and theme do not persist.
 
 ### 4.19 Advanced / optional
 
@@ -309,11 +305,8 @@ issue before code):
      an internal contract; add an adapter from the Yahoo response.
    - Add request timeout, non-2xx handling, structured errors.
 3. **M2 — Real-time-ish quotes & multi-symbol watchlist**
-   - Introduce `Watchlist: Vec<String>` in `Config`.
-   - Replace fixed 2023 date range with "latest quote" endpoint
-     (Yahoo `quote` / `chart?range=1d&interval=1m`).
-   - Use `Config.refresh_rate` to drive a background fetch task.
-   - Render multi-row quote table on `Tab::StockView`.
+   - **Partial — delivered:** [Issue #3](https://github.com/FelipeMorandini/stockterm/issues/3) — `Watchlist` in `Config`, multi-row table on Stock View, bounded concurrent Polygon quotes, `refresh_rate` throttle, background fetch via `tokio::select!` (see `docs/SPEC.md`).
+   - **Remaining:** intraday / "latest quote" feel (likely **M1** Yahoo `quote` or `chart?range=1d&interval=1m`), full #17 cancellation smoke test.
 4. **M3 — Search typeahead + News + Settings UI**
    - Implement `draw_search` with debounced typeahead suggestions.
    - Implement `draw_news` listing headlines (publisher, title, date, link).
@@ -383,7 +376,7 @@ provider without rewriting the app layer.
 ## 8. Deliverables checklist for this pass
 
 - [x] `docs/ROADMAP.md` (this file)
-- [ ] `docs/SPEC.md` — to be authored before any further feature code (SDD)
-- [ ] `docs/QA_PLAN.md` — to be authored alongside the SPEC
-- [ ] GitHub issues seeded from §6 — to be filed by the architect on request
+- [x] `docs/SPEC.md` — Issue #3 SPEC + shipment section (SDD)
+- [x] `docs/QA_PLAN.md` — manual steps for Issue #3
+- [x] GitHub issues — backlog tracked in repo (see Issues)
 

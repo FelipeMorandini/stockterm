@@ -12,6 +12,9 @@ use thiserror::Error;
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
+    /// Symbols to show in the Stock View watchlist table (uppercase tickers).
+    #[serde(default)]
+    pub watchlist: Vec<String>,
     pub refresh_rate: u64,
     pub api_key: String,
     pub alerts: Vec<Alert>,

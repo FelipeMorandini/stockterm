@@ -119,7 +119,7 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_stateful_widget(table, chunks[1], &mut app.portfolio_state);
 }
 
-pub async fn handle_portfolio_events(app: &mut App, key: crossterm::event::KeyEvent) {
+pub fn handle_portfolio_events(app: &mut App, key: crossterm::event::KeyEvent) {
     use crossterm::event::{KeyCode, KeyModifiers};
 
     match key {
@@ -182,7 +182,8 @@ pub async fn handle_portfolio_events(app: &mut App, key: crossterm::event::KeyEv
             if let Some(selected) = app.portfolio_state.selected() {
                 if selected < app.portfolio.len() {
                     app.symbol = app.portfolio[selected].symbol.clone();
-                    app.fetch_ticker_data().await;
+                    app.sync_watchlist_selection_to_symbol();
+                    app.request_immediate_stock_poll();
                     app.active_tab = Tab::StockView;
                 }
             }
