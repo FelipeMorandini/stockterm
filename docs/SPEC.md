@@ -148,7 +148,7 @@ After maintainer approval of this SPEC, implementation may proceed per `.cursor/
 ## 7. Shipment
 
 - **Status:** Implemented; closes [Issue #3](https://github.com/FelipeMorandini/stockterm/issues/3). Manual verification: [`docs/QA_PLAN.md`](QA_PLAN.md).
-- **PR:** _Link posted on Issue #3 after merge of the feature branch._
+- **PR:** https://github.com/FelipeMorandini/stockterm/pull/47
 - **Follow-ups:** [Issue #44](https://github.com/FelipeMorandini/stockterm/issues/44) (Stock View symbol / modifier keys), [Issue #46](https://github.com/FelipeMorandini/stockterm/issues/46) (quote batch panic-safety), [#17](https://github.com/FelipeMorandini/stockterm/issues/17) / [#18](https://github.com/FelipeMorandini/stockterm/issues/18) (full non-blocking + API hardening).
 
 ### Prior reference
