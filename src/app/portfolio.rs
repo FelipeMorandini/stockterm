@@ -1,15 +1,11 @@
-use crate::app::App;
-use crate::models::portfolio::PortfolioItem;
+use crate::app::{App, Tab};
 use ratatui::{
-    backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::{Span, Line},
-    widgets::{Block, Borders, Cell, Row, Table, Tabs},
+    text::{Line, Span},
+    widgets::{Block, Borders, Cell, Row, Table},
     Frame,
 };
-use std::format;
-use std::vec;
 
 pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::default()
@@ -78,7 +74,7 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
         .style(Style::default().add_modifier(Modifier::BOLD))
         .height(1);
 
-    let rows = app.portfolio.iter().enumerate().map(|(i, item)| {
+    let rows = app.portfolio.iter().map(|item| {
         let current_price = item.current_price.unwrap_or(0.0);
         let market_value = current_price * item.shares;
         let profit_loss = market_value - (item.purchase_price * item.shares);
@@ -123,7 +119,7 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_stateful_widget(table, chunks[1], &mut app.portfolio_state);
 }
 
-pub fn handle_portfolio_events(app: &mut App, key: crossterm::event::KeyEvent) {
+pub async fn handle_portfolio_events(app: &mut App, key: crossterm::event::KeyEvent) {
     use crossterm::event::{KeyCode, KeyModifiers};
 
     match key {
@@ -146,26 +142,35 @@ pub fn handle_portfolio_events(app: &mut App, key: crossterm::event::KeyEvent) {
                 app.remove_from_portfolio(selected);
             }
         }
+        // Terminals often set non-NONE modifiers on arrows; match code only (like Tab).
         crossterm::event::KeyEvent {
             code: KeyCode::Up,
-            modifiers: KeyModifiers::NONE,
             ..
         } => {
-            // Move selection up
-            let current = app.portfolio_state.selected().unwrap_or(0);
-            if current > 0 {
-                app.portfolio_state.select(Some(current - 1));
+            if app.portfolio.is_empty() {
+                return;
+            }
+            match app.portfolio_state.selected() {
+                None => app
+                    .portfolio_state
+                    .select(Some(app.portfolio.len().saturating_sub(1))),
+                Some(i) if i > 0 => app.portfolio_state.select(Some(i - 1)),
+                _ => {}
             }
         }
         crossterm::event::KeyEvent {
             code: KeyCode::Down,
-            modifiers: KeyModifiers::NONE,
             ..
         } => {
-            // Move selection down
-            let current = app.portfolio_state.selected().unwrap_or(0);
-            if current < app.portfolio.len().saturating_sub(1) {
-                app.portfolio_state.select(Some(current + 1));
+            if app.portfolio.is_empty() {
+                return;
+            }
+            match app.portfolio_state.selected() {
+                None => app.portfolio_state.select(Some(0)),
+                Some(i) if i < app.portfolio.len().saturating_sub(1) => {
+                    app.portfolio_state.select(Some(i + 1));
+                }
+                _ => {}
             }
         }
         crossterm::event::KeyEvent {
@@ -177,8 +182,8 @@ pub fn handle_portfolio_events(app: &mut App, key: crossterm::event::KeyEvent) {
             if let Some(selected) = app.portfolio_state.selected() {
                 if selected < app.portfolio.len() {
                     app.symbol = app.portfolio[selected].symbol.clone();
-                    app.fetch_ticker_data();
-                    app.active_tab = crate::app::app::Tab::StockView;
+                    app.fetch_ticker_data().await;
+                    app.active_tab = Tab::StockView;
                 }
             }
         }

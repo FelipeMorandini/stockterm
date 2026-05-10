@@ -15,14 +15,16 @@ use ratatui::{
     widgets::TableState,
 };
 use std::io;
+use std::time::{Duration, Instant};
 
 pub enum Tab {
     StockView,
     Portfolio,
+    Alerts,
     Search,
-    Settings,
     News,
     Charts,
+    Settings,
 }
 
 pub struct App {
@@ -42,12 +44,21 @@ pub struct App {
     pub error_message: Option<String>,
     pub search_query: String,
     pub selected_index: usize,
+    /// Throttle tick-driven network calls so the UI thread stays responsive.
+    last_stock_network_poll: Option<Instant>,
+    last_charts_network_poll: Option<Instant>,
+    last_news_network_poll: Option<Instant>,
 }
+
+const MISSING_POLYGON_KEY_MSG: &str = "Missing Polygon API key. Set non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY. (401 with an empty apiKey= query means no key was configured.)";
 
 impl App {
     pub fn new() -> App {
         let config = Config::load();
-        App {
+        let portfolio = config.portfolio.clone();
+        let alerts = config.alerts.clone();
+
+        let mut app = App {
             config: config.clone(),
             ticker_data: None,
             historical_data: None,
@@ -56,31 +67,79 @@ impl App {
             should_quit: false,
             should_fetch_ticker: false,
             symbol: String::from("AAPL"),
-            portfolio: config.portfolio.clone(),
+            portfolio,
             portfolio_state: TableState::default(),
-            alerts: Vec::new(),
+            alerts,
             alerts_state: TableState::default(),
             active_tab: Tab::StockView,
             error_message: None,
             search_query: String::new(),
             selected_index: 0,
+            last_stock_network_poll: None,
+            last_charts_network_poll: None,
+            last_news_network_poll: None,
+        };
+
+        if !app.portfolio.is_empty() {
+            app.portfolio_state.select(Some(0));
         }
+        if !app.alerts.is_empty() {
+            app.alerts_state.select(Some(0));
+        }
+
+        app
+    }
+
+    fn polygon_key_configured(&self) -> bool {
+        !self.config.effective_api_key().is_empty()
+    }
+
+    fn data_poll_interval(&self) -> Duration {
+        let secs = match self.config.refresh_rate {
+            0 => 30,
+            s => s,
+        };
+        Duration::from_secs(secs.max(5))
     }
 
     pub async fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
         let events = Events::new();
-        self.fetch_ticker_data().await; // Fetch initial data
+        self.fetch_ticker_data().await;
+        self.last_stock_network_poll = Some(Instant::now());
 
         loop {
             draw(terminal, self)?;
 
-            match events.next().map_err(|e| io::Error::new(io::ErrorKind::Other, e))? {
-                Event::Input(input) => handle_event(self, input),
+            match events.next().map_err(io::Error::other)? {
+                Event::Input(input) => handle_event(self, input).await,
                 Event::Tick => {
+                    let interval = self.data_poll_interval();
+                    let now = Instant::now();
                     match self.active_tab {
-                        Tab::StockView => self.fetch_ticker_data().await,
-                        Tab::Charts => self.fetch_historical_data().await,
-                        Tab::News => self.fetch_news().await,
+                        Tab::StockView
+                            if self.last_stock_network_poll.is_none_or(|t| {
+                                now.duration_since(t) >= interval
+                            }) =>
+                        {
+                            self.fetch_ticker_data().await;
+                            self.last_stock_network_poll = Some(Instant::now());
+                        }
+                        Tab::Charts
+                            if self.last_charts_network_poll.is_none_or(|t| {
+                                now.duration_since(t) >= interval
+                            }) =>
+                        {
+                            self.fetch_historical_data().await;
+                            self.last_charts_network_poll = Some(Instant::now());
+                        }
+                        Tab::News
+                            if self.last_news_network_poll.is_none_or(|t| {
+                                now.duration_since(t) >= interval
+                            }) =>
+                        {
+                            self.fetch_news().await;
+                            self.last_news_network_poll = Some(Instant::now());
+                        }
                         _ => {}
                     }
                 }
@@ -89,6 +148,7 @@ impl App {
             if self.should_fetch_ticker {
                 self.fetch_ticker_data().await;
                 self.should_fetch_ticker = false;
+                self.last_stock_network_poll = Some(Instant::now());
             }
 
             if self.should_quit {
@@ -96,26 +156,47 @@ impl App {
             }
         }
     }
+}
 
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl App {
     pub async fn fetch_ticker_data(&mut self) {
         if self.symbol.is_empty() {
             return;
         }
 
-        match get_ticker_data(&self.symbol).await {
-            Ok(data) => {
+        if !self.polygon_key_configured() {
+            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+            self.ticker_data = None;
+            return;
+        }
+
+        match get_ticker_data(&self.symbol, &self.config).await {
+            Ok(mut data) => {
+                if let Some(msg) = data.api_error_message() {
+                    self.error_message = Some(msg);
+                    self.ticker_data = None;
+                    return;
+                }
+                if data.ticker.is_empty() {
+                    data.ticker = self.symbol.clone();
+                }
                 self.ticker_data = Some(data);
                 self.error_message = None;
 
-                // Update portfolio prices if this symbol is in portfolio
                 if let Some(item) = self.portfolio.iter_mut().find(|i| i.symbol == self.symbol) {
                     if let Some(ticker_data) = &self.ticker_data {
-                        if !ticker_data.results.is_empty() {
-                            item.current_price = Some(ticker_data.results[0].c);
+                        if let Some(bar) = ticker_data.latest_result() {
+                            item.current_price = Some(bar.c);
                         }
                     }
                 }
-            },
+            }
             Err(err) => {
                 self.error_message = Some(format!("Error fetching ticker data: {}", err));
                 self.ticker_data = None;
@@ -128,12 +209,18 @@ impl App {
             return;
         }
 
+        if !self.polygon_key_configured() {
+            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+            self.historical_data = None;
+            return;
+        }
+
         // Default to 1 month of data
         let to_date = chrono::Local::now().format("%Y-%m-%d").to_string();
         let from_date = (chrono::Local::now() - chrono::Duration::days(30))
             .format("%Y-%m-%d").to_string();
 
-        match get_historical_data(&self.symbol, &from_date, &to_date, "day").await {
+        match get_historical_data(&self.symbol, &from_date, &to_date, "day", &self.config).await {
             Ok(data) => {
                 self.historical_data = Some(data);
                 self.error_message = None;
@@ -150,7 +237,13 @@ impl App {
             return;
         }
 
-        match search_symbols(&self.search_query).await {
+        if !self.polygon_key_configured() {
+            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+            self.search_results = None;
+            return;
+        }
+
+        match search_symbols(&self.search_query, &self.config).await {
             Ok(data) => {
                 self.search_results = Some(data);
                 self.error_message = None;
@@ -167,7 +260,13 @@ impl App {
             return;
         }
 
-        match get_news(&self.symbol).await {
+        if !self.polygon_key_configured() {
+            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+            self.news_data = None;
+            return;
+        }
+
+        match get_news(&self.symbol, &self.config).await {
             Ok(data) => {
                 self.news_data = Some(data);
                 self.error_message = None;
@@ -182,7 +281,8 @@ impl App {
     pub fn next_tab(&mut self) {
         self.active_tab = match self.active_tab {
             Tab::StockView => Tab::Portfolio,
-            Tab::Portfolio => Tab::Search,
+            Tab::Portfolio => Tab::Alerts,
+            Tab::Alerts => Tab::Search,
             Tab::Search => Tab::News,
             Tab::News => Tab::Charts,
             Tab::Charts => Tab::Settings,
@@ -194,7 +294,8 @@ impl App {
         self.active_tab = match self.active_tab {
             Tab::StockView => Tab::Settings,
             Tab::Portfolio => Tab::StockView,
-            Tab::Search => Tab::Portfolio,
+            Tab::Alerts => Tab::Portfolio,
+            Tab::Search => Tab::Alerts,
             Tab::News => Tab::Search,
             Tab::Charts => Tab::News,
             Tab::Settings => Tab::Charts,
@@ -225,15 +326,30 @@ impl App {
         // Save to config
         self.config.portfolio = self.portfolio.clone();
         self.config.save();
+
+        if !self.portfolio.is_empty() && self.portfolio_state.selected().is_none() {
+            self.portfolio_state.select(Some(self.portfolio.len() - 1));
+        }
     }
 
     pub fn remove_from_portfolio(&mut self, index: usize) {
-        if index < self.portfolio.len() {
-            self.portfolio.remove(index);
+        if index >= self.portfolio.len() {
+            return;
+        }
 
-            // Save to config
-            self.config.portfolio = self.portfolio.clone();
-            self.config.save();
+        self.portfolio.remove(index);
+        self.config.portfolio = self.portfolio.clone();
+        self.config.save();
+
+        if self.portfolio.is_empty() {
+            self.portfolio_state.select(None);
+        } else if let Some(mut sel) = self.portfolio_state.selected() {
+            if index < sel {
+                sel -= 1;
+            } else if index == sel {
+                sel = sel.min(self.portfolio.len() - 1);
+            }
+            self.portfolio_state.select(Some(sel));
         }
     }
 

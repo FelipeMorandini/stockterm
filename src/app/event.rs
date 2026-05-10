@@ -1,6 +1,4 @@
-use crossterm::{
-    event::{self, Event as CEvent, KeyCode, KeyEvent, KeyModifiers},
-};
+use crossterm::event::{self, Event as CEvent, KeyEvent};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -27,16 +25,18 @@ impl Events {
                     .checked_sub(last_tick.elapsed())
                     .unwrap_or_else(|| Duration::from_secs(0));
 
-                if event::poll(timeout).expect("poll works") {
-                    if let CEvent::Key(key) = event::read().expect("can read events") {
-                        event_tx.send(Event::Input(key)).expect("send events");
+                if event::poll(timeout).unwrap_or(false) {
+                    match event::read() {
+                        Ok(CEvent::Key(key)) => {
+                            let _ = event_tx.send(Event::Input(key));
+                        }
+                        Ok(_) => {}
+                        Err(_) => {}
                     }
                 }
 
-                if last_tick.elapsed() >= tick_rate {
-                    if let Ok(_) = event_tx.send(Event::Tick) {
-                        last_tick = Instant::now();
-                    }
+                if last_tick.elapsed() >= tick_rate && event_tx.send(Event::Tick).is_ok() {
+                    last_tick = Instant::now();
                 }
             }
         });
@@ -45,5 +45,11 @@ impl Events {
 
     pub fn next(&self) -> Result<Event<KeyEvent>, mpsc::RecvError> {
         self.rx.recv()
+    }
+}
+
+impl Default for Events {
+    fn default() -> Self {
+        Self::new()
     }
 }
