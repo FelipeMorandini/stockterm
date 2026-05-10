@@ -204,16 +204,15 @@ impl App {
         }
 
         if updated {
-            // Save to config
-            self.config.alerts = self.alerts.clone();
-            self.config.save();
+            self.save_alerts();
         }
     }
 
-    fn save_alerts(&self) {
-        // In a real implementation, you'd save to config
-        // self.config.alerts = self.alerts.clone();
-        // self.config.save();
+    fn save_alerts(&mut self) {
+        self.config.alerts = self.alerts.clone();
+        if let Err(e) = self.config.try_save() {
+            self.error_message = Some(format!("Failed to save alerts: {e}"));
+        }
     }
 
     pub fn get_current_price(&self, symbol: &str) -> Option<f64> {

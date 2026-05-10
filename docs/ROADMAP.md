@@ -152,10 +152,12 @@ incomplete, broken, or unwired; **Missing** = no code path.
     `draw_alerts` (`src/app/alerts.rs`).
   - `Config.alerts` field exists; `check_alerts` writes to it on transition.
   - Gaps:
-    - `App::save_alerts` is an empty stub (commented out body) — alerts
-      written via `add_alert` / `remove_alert` are **not persisted**.
-    - `App::check_alerts` is **never called** from the main loop.
-    - `handle_alerts_events` is not wired into the global key handler.
+    - **Resolved (Issue #27):** `save_alerts` persists `alerts` to
+      `~/.stockterm.json` via `Config::try_save`, with errors in
+      `App.error_message`.
+    - `App::check_alerts` is **never called** from the main loop — follow-up
+      [Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38).
+    - `handle_alerts_events` is dispatched from `handlers.rs` on `Tab::Alerts`.
     - No OS-level notification (no `notify-rust` / bell / toast); only an
       in-pane "TRIGGERED" label.
     - Alert add UX is hard-coded to `(Above, $100)` with no dialog.
@@ -258,7 +260,9 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 - **Partial**
   - Portfolio persists via `Config.save` after add/remove.
-  - Alerts **do not persist** on add/remove (`save_alerts` is a no-op).
+  - Alerts persist on add/remove via `save_alerts` → `Config::try_save` (Issue
+    #27); `triggered` transitions still require `check_alerts` to be driven from
+    the loop ([Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38)).
   - Watchlist, last-selected tab, last symbol, and theme do not persist.
 
 ### 4.19 Advanced / optional
@@ -271,22 +275,21 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 ## 5. Code-quality / Stability Gaps
 
-These will block any new feature work and should be triaged first.
+_Many pre–M0 items (Theme, Polygon key plumbing, tab handlers, async portfolio
+Enter) were fixed in Issue #1 ([PR #26](https://github.com/FelipeMorandini/stockterm/pull/26)).
+Alert persistence landed in Issue #27._
 
-1. `Theme` type referenced from `Config` but not defined (`src/config/config.rs:14`).
-2. `get_ticker_data` signature/usage mismatch (`api/polygon.rs` vs
-   `app/app.rs::fetch_ticker_data`).
-3. `API_KEY` hard-coded placeholder used by `get_historical_data`,
-   `search_symbols`, `get_news` — should read from `Config.api_key` (or env).
-4. `App::save_alerts` is an empty stub; alerts are lost between sessions.
-5. `App::check_alerts` is defined but never called from the main loop.
-6. `handle_portfolio_events` / `handle_alerts_events` never dispatched from
-   `app/handlers.rs::handle_event`.
-7. `app.fetch_ticker_data()` invoked without `.await` inside
-   `handle_portfolio_events` — async-fn used as sync.
-8. `draw_search`, `draw_news`, `draw_settings` are empty stubs.
-9. `Config.save` panics on write failure (`unwrap`).
-10. `tests/` is empty — no unit, integration, or snapshot tests.
+Open gaps worth tracking:
+
+1. `App::check_alerts` is not invoked from `App::run` — [Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38).
+2. `draw_search`, `draw_news`, `draw_settings` remain minimal or stub UIs.
+3. Test coverage is thin (a few unit tests only); expand per milestone M7.
+4. Main loop still awaits network I/O inline (UI can stall on slow API) — see §4.13.
+
+_Recent follow-ups from ship:_ [Issue #37](https://github.com/FelipeMorandini/stockterm/issues/37)
+(alerts table layout), [Issue #39](https://github.com/FelipeMorandini/stockterm/issues/39)
+(portfolio `try_save` parity), [Issue #40](https://github.com/FelipeMorandini/stockterm/issues/40)
+(non-blocking config I/O).
 
 ---
 
@@ -323,8 +326,8 @@ issue before code):
    - Replace text-table candlestick with a real candlestick widget
      (custom `ratatui::Widget` impl).
 6. **M5 — Alerts polish**
-   - Persist alerts (`save_alerts` -> `Config.save`).
-   - Drive `check_alerts` from the tick handler.
+   - Persist alerts — **done** (Issue #27: `save_alerts` → `Config::try_save`).
+   - Drive `check_alerts` from the tick handler ([Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38)).
    - Add OS notification (e.g. `notify-rust`) and terminal bell.
    - Add input dialog for symbol/condition/price.
 7. **M6 — Filters, customizable shortcuts, themes**

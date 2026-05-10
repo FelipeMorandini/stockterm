@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Run these after implementation of **Issue #1** (stabilize build & API wiring). Automated checks are listed first; the rest are manual.
+Run these after implementation of **[Issue #27](https://github.com/FelipeMorandini/stockterm/issues/27)** (persist alerts to `~/.stockterm.json`). Automated checks are listed first; the rest are manual.
 
 ## Automated (local)
 
@@ -13,7 +13,7 @@ Run these after implementation of **Issue #1** (stabilize build & API wiring). A
 
    **Pass:** Both exit 0; `cargo build` shows no warnings.
 
-2. Confirm no placeholder API key in source:
+2. **Regression:** Prior milestone checks still compile (no placeholder Polygon key in source):
 
    ```bash
    rg 'YOUR_POLYGON_API_KEY' src/ || true
@@ -21,34 +21,30 @@ Run these after implementation of **Issue #1** (stabilize build & API wiring). A
 
    **Pass:** No matches.
 
-3. **Pass (optional if `rg` unavailable):** Open `src/api/polygon.rs` and confirm there is no string literal placeholder key; all paths use config and/or `STOCKTERM_API_KEY` per SPEC.
-
 ---
 
-## Manual — runtime
+## Manual — persistence
 
-**Prerequisites:** To validate **Stock / Charts / News** (live Polygon data), you need a **non-empty** Polygon key in `~/.stockterm.json` (`api_key` string) **or** `export STOCKTERM_API_KEY=...`. If both are missing or empty, the app shows an explicit “Missing Polygon API key…” message and does not call Polygon with `apiKey=` (no spurious 401 from an empty key). You can still validate tabs, portfolio, and alerts without a key. A Yahoo/other provider migration is **not** in scope for Issue #1; this build remains Polygon-only.
+**Prerequisites:** Backup `~/.stockterm.json` if it contains data you care about. A valid file is optional; the app creates/overwrites it on save.
 
-1. **Launch:** Run `cargo run --release` (or the release binary).  
-   **Pass:** TUI starts; no immediate panic; status bar or UI visible.
+1. **Baseline file:** Note whether `~/.stockterm.json` exists and, if so, the current `"alerts"` array (may be `[]` or absent).
 
-2. **Tab / Shift+Tab:** Press `Tab` repeatedly, then `Shift+Tab`.  
-   **Pass:** Tab highlight cycles through all tabs including **Alerts** in a consistent order; content area changes to match (Portfolio shows portfolio UI, Alerts shows alerts UI, etc.).
+2. **Launch:** `cargo run --release`. Switch to the **Alerts** tab.
 
-3. **Portfolio tab — `a` / arrows / `d`:** Switch to **Portfolio**. With a non-empty symbol on Stock View first (e.g. `AAPL`), press `a`. Use **↑** / **↓** to move the `>` highlight; the first **↓** should select a row when none was selected.  
-   **Pass:** A row appears (or holdings update) per `add_to_portfolio` defaults; **`d` removes the highlighted row**. Uppercase letters must **not** append to the ticker while on Portfolio (no accidental symbol mutation from `a`).
+3. **Add alert:** Ensure **Stock View** has a non-empty symbol (e.g. `AAPL`), go to **Alerts**, press **`a`** (adds a row per current handler).  
+   **Pass:** Row appears in the table.
 
-4. **Alerts tab:** Switch to **Alerts**. Press `a`, then use **↑** / **↓** to highlight a row.  
-   **Pass:** An alert row appears; **`d` removes the highlighted alert**.
+4. **Verify disk:** Open `~/.stockterm.json` (or `cat` it).  
+   **Pass:** `alerts` includes at least one object with fields consistent with the model (`symbol`, `condition`, `price`, `triggered`).
 
-5. **Portfolio Enter (async refresh):** On Portfolio, select a row (arrow keys), press `Enter`.  
-   **Pass:** App switches to Stock View (or defined behavior); ticker data updates without panic; no “future not awaited” / deadlock — if issues occur, capture stderr.
+5. **Remove alert:** With a row selected, press **`d`**.  
+   **Pass:** Row disappears from the UI; `alerts` in `~/.stockterm.json` matches the new count (e.g. empty array if all removed).
 
-6. **Stock View — existing flow:** On Stock View, type a symbol with uppercase letters, press `Enter`.  
-   **Pass:** Fetch triggers (or error message in UI if API key missing); behavior matches pre-fix intent.
+6. **Survive restart:** Add at least one alert again, quit with **`q`**, relaunch `cargo run --release`, open **Alerts**.  
+   **Pass:** The same alert(s) appear without re-adding.
 
-7. **Quit:** Press `q`.  
-   **Pass:** Terminal restores; process exits 0.
+7. **Save error (optional):** If feasible, make the config path unwritable (e.g. read-only parent) and trigger **`a`** or **`d`**.  
+   **Pass:** Status area shows a clear error mentioning save/config failure; app does not panic.
 
 ---
 
@@ -56,9 +52,8 @@ Run these after implementation of **Issue #1** (stabilize build & API wiring). A
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated | | | |
-| Tab cycling | | | |
-| Portfolio a/d | | | |
-| Alerts tab | | | |
-| Portfolio Enter | | | |
-| Stock Enter | | | |
+| Automated build/clippy | | | |
+| JSON updated on add | | | |
+| JSON updated on remove | | | |
+| Restart restores alerts | | | |
+| Save error surfaced (optional) | | | |
