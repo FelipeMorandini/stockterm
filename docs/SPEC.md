@@ -1,6 +1,8 @@
-# SPEC — Issue #3: Multi-symbol watchlist & multi-row quote table
+# SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Sources:**
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9 migration playbook, planned).
+
+**Sources (Issue #3):**
 
 - [GitHub Issue #3](https://github.com/FelipeMorandini/stockterm/issues/3) — `Watchlist` in config, fan-out quotes, Stock View table, navigation, persistence, bounded concurrency, non-blocking refresh.
 
@@ -231,3 +233,368 @@ After maintainer approval of §8, implementation may proceed per `.cursor/rules/
 - **PR:** https://github.com/FelipeMorandini/stockterm/pull/52
 - **Code:** `src/app/keyboard.rs` (`letter_key_plain`), updates to [`src/app/handlers.rs`](../src/app/handlers.rs) and [`src/app/alerts.rs`](../src/app/alerts.rs).
 - **Follow-ups:** [#48](https://github.com/FelipeMorandini/stockterm/issues/48) (Portfolio keyboard parity), [#49](https://github.com/FelipeMorandini/stockterm/issues/49) (Stock View hints), [#50](https://github.com/FelipeMorandini/stockterm/issues/50) (Alerts copy), [#51](https://github.com/FelipeMorandini/stockterm/issues/51) (global quit/tab modifiers).
+
+---
+
+## 9. Issue #31 — Yahoo Finance default provider (engineer migration playbook)
+
+**Product decision (locked):** **`provider` defaults to `yahoo`**. Existing configs **without** a `provider` field deserialize as **`yahoo`** via `serde(default)` so users are **not** required to obtain a Polygon key to run the app. Polygon remains an **explicit opt-in** (`"provider": "polygon"` + API key).
+
+**Sources:**
+
+- [GitHub Issue #31](https://github.com/FelipeMorandini/stockterm/issues/31)
+- [`docs/ROADMAP.md`](ROADMAP.md) §7 — API strategy
+
+**Related:** [#18](https://github.com/FelipeMorandini/stockterm/issues/18) (429/backoff — follow-up), [#17](https://github.com/FelipeMorandini/stockterm/issues/17) (non-blocking UI — already landed; only swap call sites).
+
+---
+
+### 9.1 Problem inventory (verified in tree)
+
+| Area | Location | Issue |
+|------|----------|--------|
+| HTTP | [`src/api/polygon.rs`](../src/api/polygon.rs) | `reqwest::get` — **no** connect/request timeout; errors are raw **`reqwest::Error`**. |
+| Gating | [`src/app/app.rs`](../src/app/app.rs) | **`polygon_key_configured()`** blocks **`spawn_stock_fetch_task`**, **`try_spawn_historical_fetch`**, **`try_spawn_news_fetch`**, and sync **`fetch_historical_data` / `search_symbols` / `fetch_news`** — unusable without a key. |
+| Batch quotes | [`run_stock_quote_batch`](../src/app/app.rs) | Calls **`get_ticker_data`** from Polygon only. |
+| Models | [`src/models/`](../src/models/) | **`TickerResponse`**, **`HistoricalResponse`**, **`SymbolSearchResponse`**, **`NewsResponse`** are **app-internal contracts**; adapters **construct** these types (they need not `Deserialize` Yahoo JSON directly into them — prefer **wire structs + mapping fns**). |
+
+---
+
+### 9.2 Acceptance criteria (closure checklist)
+
+- [x] **`Config`** exposes **`provider: MarketProviderKind`** (or equivalent) with serde **`"yahoo"` \| `"polygon"`**, **`Default`** = **`Yahoo`**. Missing JSON field → Yahoo.
+- [x] **Single shared `reqwest::Client`** (timeouts + User-Agent). **No** `reqwest::get` in provider code paths.
+- [x] **`ProviderError`** enum + **`Display`**; HTTP non-2xx, JSON parse failures, and empty/invalid Yahoo payloads surfaced clearly on **`App.error_message`**.
+- [x] **Yahoo** implements **quote**, **historical (daily)**, **symbol search**, **news** (see §9.10–9.13); maps into **existing** model types without breaking UI.
+- [x] **Polygon** path preserved: same models, refactored to shared client + **`ProviderError`**; **`api_key`** required only when **`provider == Polygon`**.
+- [x] **`provider_ready()`** replaces **`polygon_key_configured()`**: returns **`true`** for Yahoo always; for Polygon requires **`effective_api_key()`** non-empty.
+- [x] **`cargo build --release`**, **`cargo clippy -- -D warnings`**, **`cargo test`** pass; unit tests for Yahoo mapping fixtures + error classification per §9.18.
+- [x] **`docs/QA_PLAN.md`** Issue #31 manual verification (see sign-off in QA Plan).
+
+---
+
+### 9.3 Configuration (`src/config/config.rs`)
+
+**New type (recommended):**
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MarketProviderKind {
+    Yahoo,
+    Polygon,
+}
+
+impl Default for MarketProviderKind {
+    fn default() -> Self {
+        Self::Yahoo
+    }
+}
+```
+
+**On `Config`:**
+
+- Add **`#[serde(default)] pub provider: MarketProviderKind`**.
+- Keep **`api_key: String`** as today; document that **`effective_api_key()`** is used **only for Polygon** network calls.
+- Optional doc comment: **`STOCKTERM_API_KEY`** env still overrides empty file key for Polygon users (existing behavior).
+
+**Migration:** Users with old JSON **without** `provider` get **Yahoo** — may change behavior vs former Polygon-only workflow; acceptable per product decision above.
+
+---
+
+### 9.4 Dependencies (`Cargo.toml`)
+
+- **`async-trait = "0.1"`** — if using **`dyn MarketDataProvider`** + trait objects (**recommended** for clarity and testing with mock providers later).
+- **No** extra HTTP crate required; reuse **`reqwest`** with shared **`Client`**.
+- Optional: **`once_cell`** only if **`std::sync::OnceLock`** is avoided for MSRV/readability — otherwise prefer **`OnceLock`** (Rust 1.70+) for the global client.
+
+---
+
+### 9.5 Module layout & exports
+
+| Path | Responsibility |
+|------|----------------|
+| [`src/api/mod.rs`](../src/api/mod.rs) | `pub mod error; pub mod http; pub mod provider; pub mod yahoo; pub mod polygon;` + re-export **`ProviderError`**, **`market_provider_for(config)`** (name flexible). |
+| `src/api/http.rs` | **`fn shared_client() -> &'static reqwest::Client`** built with **`OnceLock`**, timeouts, User-Agent. |
+| `src/api/error.rs` | **`ProviderError`** + **`type ProviderResult<T>`**. |
+| `src/api/provider.rs` | **`#[async_trait::async_trait] pub trait MarketDataProvider`** with four methods below; **`pub fn market_provider_for(kind: MarketProviderKind) -> Arc<dyn MarketDataProvider + Send + Sync>`** (or **`Box`** — prefer **`Arc`** if sharing across spawned tasks without cloning config-heavy state). |
+| `src/api/yahoo.rs` | Wire **`Deserialize`** structs (private), **`pub async fn`** impl methods, **pure** `map_*` into `models::*`. |
+| `src/api/polygon.rs` | Refactor existing URLs to use **`shared_client()`**, return **`ProviderError`**, implement **`MarketDataProvider`**. |
+
+**Trait surface (exact signatures):**
+
+```rust
+async fn get_quote(&self, symbol: &str, config: &Config) -> ProviderResult<TickerResponse>;
+async fn get_historical(&self, symbol: &str, from: &str, to: &str, timespan: &str, config: &Config) -> ProviderResult<HistoricalResponse>;
+async fn search_symbols(&self, query: &str, config: &Config) -> ProviderResult<SymbolSearchResponse>;
+async fn get_news(&self, symbol: &str, config: &Config) -> ProviderResult<NewsResponse>;
+```
+
+**Note:** `config` may be ignored for Yahoo (`get_quote` does not need a key) but keep the parameter for a uniform trait and future provider options.
+
+---
+
+### 9.6 `ProviderError` design (`src/api/error.rs`)
+
+Define variants sufficient for debugging **and** user-visible strings:
+
+| Variant | When |
+|---------|------|
+| **`Timeout`** | `reqwest::Error::is_timeout()` or equivalent |
+| **`Http { status: u16, url: String }`** | `status()` after **`error_for_status()`** or manual check — **do not** dump full body in UI; optional **`body_preview: Option<String>`** truncated ≤120 chars for logs/tests only |
+| **`Json`** | `serde_json::Error` / wrong schema |
+| **`ApiMessage(String)`** | HTTP 200 but Yahoo/Polygon logical error, empty quote list, or `chart.error` in Yahoo payload |
+| **`Transport(String)`** | Other **`reqwest::Error`** (DNS, connection reset) — **`Display`** = short message |
+
+Implement **`impl Display for ProviderError`** with stable, copy-pastable English phrases (the TUI shows **`error_message`**).
+
+**`From` impls:** `reqwest::Error`, `serde_json::Error` where convenient.
+
+---
+
+### 9.7 Shared HTTP client (`src/api/http.rs`)
+
+**Constants (starting point):**
+
+- **Connect timeout:** `Duration::from_secs(10)`
+- **Pool idle / overall request:** use **`reqwest::ClientBuilder::timeout(Duration::from_secs(30))`** as **total per request** (covers connect + transfer).
+
+**User-Agent (required):** set a non-empty string, e.g. **`stockterm/<crate_version> (+https://github.com/FelipeMorandini/stockterm)`** — reduces anonymous blocking.
+
+**TLS:** keep **`rustls-tls`** feature on **`reqwest`** as today.
+
+**Pattern:**
+
+```rust
+static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+pub fn shared_client() -> &'static reqwest::Client {
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(10))
+            .user_agent(format!("stockterm/{} (...)", env!("CARGO_PKG_VERSION")))
+            .build()
+            .expect("reqwest Client builder")
+    })
+}
+```
+
+Every provider **`get`** / **`post`** uses **`shared_client()`**.
+
+---
+
+### 9.8 Yahoo Finance — general rules
+
+**Hosts:** Primary **`https://query1.finance.yahoo.com`**. Some secondary routes use **`query2.finance.yahoo.com`** (e.g. news). **Verify URLs with `curl` during implementation** — unofficial endpoints change.
+
+**Symbol encoding:** Path segments must be **URL-encoded** (e.g. **`BRK-B`** → **`BRK%2FB`** depending on Yahoo symbol format — use Yahoo’s convention: often **`BRK-B`** in path; **test two tickers with `-` and `.`**).
+
+**Timestamps:** Yahoo **chart** endpoints use Unix seconds in **`timestamp`** arrays. Internal **`TickerResult.t`** / **`HistoricalData.t`** are **`u64`** and used with **`latest_result()`** by **max timestamp** — Polygon uses **milliseconds**. **Standardize on milliseconds** in mapped output: **`t_yahoo_secs * 1000`**.
+
+**Null bars:** Chart arrays may contain **`null`** in OHLCV — **skip** indices where **`close`** is null or pair-wise invalid.
+
+---
+
+### 9.9 Yahoo — quotes / watchlist (`get_quote` → `TickerResponse`)
+
+**Endpoint:**
+
+`GET https://query1.finance.yahoo.com/v7/finance/quote?symbols={SYMBOL}`
+
+For multiple symbols in one HTTP request (optimization): comma-separated, URL-encoded list — see §9.16.
+
+**Wire JSON (conceptual):** root **`quoteResponse.result`** = array of quote objects; **`quoteResponse.error`** may exist.
+
+**Mapping into [`TickerResponse`](../src/models/ticker.rs) / [`TickerResult`](../src/models/ticker.rs):**
+
+Build **`results: vec![TickerResult { ... }]`** with **one row** representing the **latest regular session snapshot** (sufficient for Stock View “Last” and **`latest_result()`**):
+
+| `TickerResult` field | Yahoo source (typical field names) | Notes |
+|----------------------|-----------------------------------|--------|
+| **`o`** | `regularMarketOpen` | If missing, fallback **`regularMarketPreviousClose`** or **`postMarketPrice`** — document chosen precedence in code comment |
+| **`h`** | `regularMarketDayHigh` | |
+| **`l`** | `regularMarketDayLow` | |
+| **`c`** | `regularMarketPrice` | Primary “last” |
+| **`v`** | `regularMarketVolume` | Default **`0.0`** if null |
+| **`t`** | `regularMarketTime` | Unix **seconds** → **multiply by 1000** |
+
+Set **`TickerResponse.ticker`** from Yahoo **`symbol`** string (fallback: requested symbol uppercase). **`status`** = **`"OK"`**; **`error`** = **`None`** on success.
+
+**Empty result:** If **`result`** empty or symbol unknown → **`ProviderError::ApiMessage`** with text like **`Unknown symbol: AAPL`** (use requested symbol in message).
+
+---
+
+### 9.10 Yahoo — historical / Charts (`get_historical` → `HistoricalResponse`)
+
+**Endpoint:**
+
+`GET https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}?period1={START_UNIX}&period2={END_UNIX}&interval={INTERVAL}`
+
+**Parameters:**
+
+- **`period1` / `period2`**: Unix **seconds** (inclusive/exclusive semantics per Yahoo — align **period2** to **end-of-day** for daily range).
+- **`interval`**: For **`timespan == "day"`** (only case required for parity with current app): **`1d`**.
+
+**Date inputs:** Call sites today pass **`from_date`**, **`to_date`** as **`YYYY-MM-DD`** strings ([`App::fetch_historical_data`](../src/app/app.rs), **`try_spawn_historical_fetch`**). Parse with **`chrono::NaiveDate`**, convert to UTC midnight timestamps **consistently** (document: use **UTC** boundary **or** US market calendar — pick **UTC midnight** for simplicity; note intraday drift in comments).
+
+**Wire JSON (conceptual):** **`chart.result[0]`** contains **`timestamp`** (Vec of seconds), **`indicators.quote[0]`** with parallel arrays **`open`**, **`high`**, **`low`**, **`close`**, **`volume`**. Handle **`chart.error`**.
+
+**Mapping into [`HistoricalResponse`](../src/models/historical.rs) / [`HistoricalData`](../src/models/historical.rs):**
+
+| Field | Source |
+|-------|--------|
+| **`HistoricalResponse.ticker`** | `chart.result[0].meta.symbol` or requested symbol |
+| **`HistoricalResponse.status`** | **`"OK"`** if successful |
+| **`HistoricalResponse.request_id`** | **`""`** |
+| **`HistoricalResponse.count`** | number of valid bars |
+| **`HistoricalData.o/h/l/c/v`** | aligned arrays index **`i`** |
+| **`HistoricalData.t`** | **`timestamp[i] * 1000`** |
+| **`HistoricalData.vw`** | use **`close`** as VWAP proxy **or** **`(o+h+l+c)/4`** — document (Polygon supplies VWAP; Yahoo chart includes separate adjclose — optional improvement) |
+| **`HistoricalData.n`** | **`None`** |
+
+**Order:** Preserve **chronological order** ascending (charts may assume order — match existing Polygon ordering if any code depends on it).
+
+---
+
+### 9.11 Yahoo — symbol search (`search_symbols` → `SymbolSearchResponse`)
+
+**Endpoint:**
+
+`GET https://query1.finance.yahoo.com/v1/finance/search?q={QUERY}&quotesCount=10`
+
+**Wire:** **`quotes`** array (and optionally **`news`**, **`mutualfunds`** — ignore for MVP).
+
+**Mapping into [`SymbolSearchResponse`](../src/models/search.rs):**
+
+- **`status`**: **`"OK"`**
+- **`count`**: **`quotes.len()` as u32**
+- For each Yahoo quote row, build **`SymbolResult`**:
+
+| `SymbolResult` | Yahoo / fallback |
+|----------------|------------------|
+| **`ticker`** | `symbol` |
+| **`name`** | `shortname` **or** `longname` |
+| **`market`** | `exchDisp` **or** `exchange` **or** `""` |
+| **`locale`** | **`"us"`** if absent |
+| **`primary_exchange`** | `exchDisp` **or** `""` |
+| **`type_`** | `quoteType` **or** `typeDisp` **or** **`"EQUITY"`** |
+| **`active`** | **`true`** |
+| **`currency_name`** | `currency` **or** **`"USD"`** |
+| **`cik`**, **`composite_figi`**, **`share_class_figi`** | **`None`** |
+| **`last_updated_utc`** | **`""`** |
+
+---
+
+### 9.12 Yahoo — news (`get_news` → `NewsResponse`)
+
+**Goal:** Populate [`NewsResponse`](../src/models/news.rs) / [`NewsItem`](../src/models/news.rs) without Polygon.
+
+**Approach:** Implement against a Yahoo JSON feed that returns **title**, **URL**, **publisher**, **published time** per item. Common pattern (verify live during dev):
+
+`GET https://query2.finance.yahoo.com/v2/finance/news?symbols={SYMBOL}`
+
+If the endpoint shape shifts:
+
+1. Prefer fixing parsers + fixtures.
+2. If temporarily unavailable: return **`NewsResponse { status: "OK".into(), count: 0, results: vec![] }`** **without** treating as fatal **`ProviderError`** **only** when HTTP succeeded but content empty — **do** surface **`ProviderError`** on HTTP/parse failure.
+
+**Mapping highlights:**
+
+- **`NewsItem.id`**: hash URL or use Yahoo id if present.
+- **`publisher`**: map nested **`name`**, **`homepage_url`**, **`logo_url`**, **`favicon_url`** — use **`""`** for unknown URLs.
+- **`published_utc`**: RFC3339 string from Yahoo field **`providerPublishTime`** / **`pubDate`** / equivalent — normalize to **ISO-8601** string as today’s UI expects.
+
+---
+
+### 9.13 Polygon adapter refactor (`src/api/polygon.rs`)
+
+- Replace **`reqwest::get`** with **`shared_client().get(url)`** + **`.send().await`** + **`error_for_status()`**.
+- Map **`reqwest::Error`** → **`ProviderError`**.
+- Deserialize JSON as today, then if **`TickerResponse.api_error_message()`** returns **`Some`**, convert to **`ProviderError::ApiMessage`** **or** keep legacy behavior by letting **`App`** layers handle **`TickerResponse`** errors — **preferred:** return **`Ok(TickerResponse)`** only when logically OK; otherwise **`Err(ApiMessage(...))`** for consistency.
+- Implement **`MarketDataProvider`** for **`struct PolygonProvider`** (zero-sized or holds nothing).
+
+---
+
+### 9.14 Application wiring (`src/app/app.rs`) — mechanical checklist
+
+**Imports:** Remove direct **`crate::api::polygon::*`**. Import **`market_provider_for`** (or equivalent) + **`MarketProviderKind`**.
+
+**`run_stock_quote_batch`:**
+
+- Accept **`MarketProviderKind`** or **`Arc<dyn MarketDataProvider>`** — simplest: **`clone `** `config` already has **`provider`**; inside batch, **`let p = market_provider_for(cfg.provider);`** then **`p.get_quote(&sym, &cfg).await`**.
+- Map **`Err(e)`** → **`errors.push(format!("{sym}: {e}"))`** (same as today).
+
+**`spawn_stock_fetch_task` (~L259):**
+
+- Replace **`if !self.polygon_key_configured()`** with **`if !self.provider_ready()`** where **`provider_ready`** is **`false`** only for **Polygon + empty key**.
+- For **Yahoo**, **never** short-circuit with “missing API key”.
+
+**`try_spawn_historical_fetch`**, **`try_spawn_news_fetch`**, **`fetch_historical_data`**, **`search_symbols`**, **`fetch_news`:**
+
+- Same gating: **`provider_ready()`** instead of Polygon-only.
+- Replace **`get_historical_data` / `get_news` / `search_symbols`** calls with **`market_provider_for(self.config.provider)`** trait methods.
+- Spawns already pass **`Config`** — ensure **`provider`** is included in **`clone`**.
+
+**Constants / messages:**
+
+- Rename **`MISSING_POLYGON_KEY_MSG`** → e.g. **`MISSING_API_KEY_FOR_POLYGON_MSG`** and show **only** when **`provider == Polygon`** and key missing.
+
+**`lib.rs`:** Re-export nothing new unless tests need it.
+
+---
+
+### 9.15 Optional performance — batched Yahoo quotes
+
+Yahoo **`v7/finance/quote`** accepts **comma-separated `symbols`**. Current **`JoinSet`** issues **N** requests — acceptable for MVP.
+
+**Follow-up (not blocking #31):** If **`provider == Yahoo`**, collapse **`collect_symbols_for_quote_fetch()`** into **one** HTTP call, parse multiple quotes, fill **`HashMap`**. Keep **`JoinSet`** path for Polygon or mixed future providers.
+
+---
+
+### 9.16 Edge cases & QA hints
+
+- **International tickers:** Yahoo suffix conventions (**`7203.T`**, **`SAP.DE`**) — user types symbol as today; **do not** second-guess beyond encoding.
+- **`TickerResponse.latest_result()`** assumes **`t`** comparable — ms timestamps required.
+- **Charts empty:** If no bars (delisted window) → **`ApiMessage`** or **`Ok`** with empty **`results`** — pick one and ensure **`draw_charts`** doesn’t panic (existing code paths).
+- **Rate limits:** Yahoo may throttle abusive IPs; respectful **`refresh_rate`** still matters.
+
+---
+
+### 9.17 Implementation phases (recommended order)
+
+1. **`http.rs` + `error.rs`** — shared client + **`ProviderError`**.
+2. **`Config` + `MarketProviderKind`** — default Yahoo; **`serde`** round-trip test / manual JSON sample.
+3. **`provider` trait + `PolygonProvider`** wrapping old logic — prove parity with **`cargo test`** / manual Polygon still works.
+4. **`yahoo.rs`** — **`get_quote`** + fixtures → **`TickerResponse`**; wire **`run_stock_quote_batch`** + **`spawn_stock_fetch_task`** gating.
+5. **`get_historical`** (chart) + Charts tab smoke.
+6. **`search_symbols`** + Search tab.
+7. **`get_news`** + News tab.
+8. Cleanup strings, clippy, **`docs/QA_PLAN.md`** run.
+
+---
+
+### 9.18 Automated testing expectations
+
+- **Fixture tests** (stored `&str` JSON snippets in `yahoo.rs` **`#[cfg(test)]`**): quote mapping, chart mapping (include **null** volume row), search mapping.
+- **`ProviderError::Display`** smoke test.
+- **Optional:** **`wiremock`** integration test — out of scope for #31 unless quick — prefer fixtures first.
+
+---
+
+### 9.19 Out of scope
+
+- Exponential backoff / 429 ([#18](https://github.com/FelipeMorandini/stockterm/issues/18)).
+- Settings UI for provider.
+- New providers beyond Yahoo + Polygon.
+- Intraday intervals (`timespan` other than **`day`**) — future **time-range** milestone.
+
+---
+
+### 9.20 Shipment record
+
+- **Status:** Implemented in tree — pending manual QA ([`docs/QA_PLAN.md`](QA_PLAN.md) Issue #31) and PR.
+- **Issue:** https://github.com/FelipeMorandini/stockterm/issues/31
+- **Dependencies:** `async-trait` **0.1.89** (see `Cargo.lock`).
+- **Code:** `src/api/{http,error,provider,yahoo}.rs`, refactored [`src/api/polygon.rs`](../src/api/polygon.rs); [`src/config/config.rs`](../src/config/config.rs) `MarketProviderKind`; [`src/app/app.rs`](../src/app/app.rs) `provider_ready` / `market_provider_for`; fixtures under [`tests/fixtures/`](../tests/fixtures/).
+- **PR:** _(add on merge)_

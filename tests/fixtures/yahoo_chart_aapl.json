@@ -1,0 +1,32 @@
+{
+  "chart": {
+    "result": [
+      {
+        "meta": {
+          "currency": "USD",
+          "symbol": "AAPL",
+          "regularMarketPrice": 293.32,
+          "regularMarketOpen": 290.0,
+          "regularMarketDayHigh": 294.76,
+          "regularMarketDayLow": 290.0,
+          "regularMarketVolume": 45708423,
+          "regularMarketTime": 1778270402,
+          "chartPreviousClose": 187.44
+        },
+        "timestamp": [1699972200, 1700058600],
+        "indicators": {
+          "quote": [
+            {
+              "open": [187.7, 188.0],
+              "high": [188.5, 189.0],
+              "low": [186.3, 187.0],
+              "close": [187.5, 188.2],
+              "volume": [1000000.0, 1100000.0]
+            }
+          ]
+        }
+      }
+    ],
+    "error": null
+  }
+}

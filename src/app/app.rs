@@ -1,8 +1,8 @@
-use crate::api::polygon::{get_historical_data, get_news, get_ticker_data, search_symbols};
+use crate::api::market_provider_for;
 use crate::app::event::{spawn_event_thread, Event};
 use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
-use crate::config::Config;
+use crate::config::{Config, MarketProviderKind};
 use crate::models::alerts::Alert;
 use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
@@ -79,7 +79,7 @@ pub struct App {
     news_refresh_inflight: bool,
 }
 
-const MISSING_POLYGON_KEY_MSG: &str = "Missing Polygon API key. Set non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY. (401 with an empty apiKey= query means no key was configured.)";
+const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
 
 const MAX_CONCURRENT_QUOTES: usize = 2;
 
@@ -97,14 +97,16 @@ async fn run_stock_quote_batch(
     symbols: Vec<String>,
     config: Config,
 ) -> FetchDone {
+    let provider = market_provider_for(config.provider);
     let sem = std::sync::Arc::new(Semaphore::new(MAX_CONCURRENT_QUOTES));
     let mut set = JoinSet::new();
     for sym in symbols {
         let sem = sem.clone();
         let cfg = config.clone();
+        let provider = provider.clone();
         set.spawn(async move {
             let _permit = sem.acquire().await.ok();
-            let res = get_ticker_data(&sym, &cfg).await;
+            let res = provider.get_quote(&sym, &cfg).await;
             (sym, res)
         });
     }
@@ -205,8 +207,11 @@ impl App {
         app
     }
 
-    fn polygon_key_configured(&self) -> bool {
-        !self.config.effective_api_key().is_empty()
+    fn provider_ready(&self) -> bool {
+        match self.config.provider {
+            MarketProviderKind::Yahoo => true,
+            MarketProviderKind::Polygon => !self.config.effective_api_key().is_empty(),
+        }
     }
 
     fn data_poll_interval(&self) -> Duration {
@@ -266,8 +271,8 @@ impl App {
             return;
         }
 
-        if !self.polygon_key_configured() {
-            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+        if !self.provider_ready() {
+            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
             self.ticker_data = None;
             return;
         }
@@ -336,8 +341,8 @@ impl App {
             return;
         }
 
-        if !self.polygon_key_configured() {
-            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+        if !self.provider_ready() {
+            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
             self.historical_data = None;
             return;
         }
@@ -354,7 +359,9 @@ impl App {
             let from_date = (chrono::Local::now() - chrono::Duration::days(30))
                 .format("%Y-%m-%d")
                 .to_string();
-            let result = get_historical_data(&sym, &from_date, &to_date, "day", &cfg)
+            let provider = market_provider_for(cfg.provider);
+            let result = provider
+                .get_historical(&sym, &from_date, &to_date, "day", &cfg)
                 .await
                 .map_err(|e| e.to_string());
             let _ = tx.send(FetchDone::Historical {
@@ -379,8 +386,8 @@ impl App {
             return;
         }
 
-        if !self.polygon_key_configured() {
-            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+        if !self.provider_ready() {
+            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
             self.news_data = None;
             return;
         }
@@ -393,7 +400,8 @@ impl App {
         let sym = self.symbol.clone();
         let cfg = self.config.clone();
         tokio::spawn(async move {
-            let result = get_news(&sym, &cfg).await.map_err(|e| e.to_string());
+            let provider = market_provider_for(cfg.provider);
+            let result = provider.get_news(&sym, &cfg).await.map_err(|e| e.to_string());
             let _ = tx.send(FetchDone::News {
                 symbol: sym,
                 result,
@@ -593,8 +601,8 @@ impl App {
             return;
         }
 
-        if !self.polygon_key_configured() {
-            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+        if !self.provider_ready() {
+            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
             self.historical_data = None;
             return;
         }
@@ -604,7 +612,17 @@ impl App {
             .format("%Y-%m-%d")
             .to_string();
 
-        match get_historical_data(&self.symbol, &from_date, &to_date, "day", &self.config).await {
+        let provider = market_provider_for(self.config.provider);
+        match provider
+            .get_historical(
+                &self.symbol,
+                &from_date,
+                &to_date,
+                "day",
+                &self.config,
+            )
+            .await
+        {
             Ok(data) => {
                 self.historical_data = Some(data);
                 self.error_message = None;
@@ -621,13 +639,17 @@ impl App {
             return;
         }
 
-        if !self.polygon_key_configured() {
-            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+        if !self.provider_ready() {
+            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
             self.search_results = None;
             return;
         }
 
-        match search_symbols(&self.search_query, &self.config).await {
+        let provider = market_provider_for(self.config.provider);
+        match provider
+            .search_symbols(&self.search_query, &self.config)
+            .await
+        {
             Ok(data) => {
                 self.search_results = Some(data);
                 self.error_message = None;
@@ -644,13 +666,14 @@ impl App {
             return;
         }
 
-        if !self.polygon_key_configured() {
-            self.error_message = Some(MISSING_POLYGON_KEY_MSG.to_string());
+        if !self.provider_ready() {
+            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
             self.news_data = None;
             return;
         }
 
-        match get_news(&self.symbol, &self.config).await {
+        let provider = market_provider_for(self.config.provider);
+        match provider.get_news(&self.symbol, &self.config).await {
             Ok(data) => {
                 self.news_data = Some(data);
                 self.error_message = None;

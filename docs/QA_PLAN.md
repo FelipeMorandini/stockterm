@@ -1,6 +1,100 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior.
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior. **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors.
+
+---
+
+## Issue #31 — Yahoo default provider, Polygon fallback & structured errors
+
+**Scope:** [GitHub Issue #31](https://github.com/FelipeMorandini/stockterm/issues/31) — **`provider`** defaults to **`yahoo`**; shared HTTP client with timeouts; **`ProviderError`** surfaced via **`App.error_message`**; Polygon remains opt-in with **`api_key`**.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §9 (migration playbook).
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+2. **Unit tests:** Yahoo fixture JSON → **`TickerResponse`** / **`HistoricalResponse`** / **`SymbolSearchResponse`** (per SPEC §9.18); **`ProviderError`** / **`Display`** where implemented.
+
+### Manual — Config migration & default provider
+
+1. Backup **`~/.stockterm.json`**.
+
+2. **Missing `provider` field:** Remove the **`provider`** key from JSON (if present), save. Launch app.  
+   **Pass:** App behaves as **`yahoo`** (no Polygon key required); quotes attempted against Yahoo. If implementation writes config back, **`provider`** may reappear as **`yahoo`** — acceptable.
+
+3. **Explicit Yahoo:** Set **`"provider": "yahoo"`**, empty **`api_key`**, unset **`STOCKTERM_API_KEY`**.  
+   **Pass:** Same as above — no “missing Polygon API key” on Stock View.
+
+### Manual — Yahoo — Stock View & watchlist
+
+1. **`cargo run --release`**, **Stock View**. Type **`AAPL`**, confirm fetch (**Enter** as per current UX).
+
+2. **Pass:** Table/detail shows plausible **Last** / OHLCV **or** a **single-line** error that is **not** about Polygon keys. Typing nonsense symbol **`ZZZZQQ`** → clear failure (**unknown symbol** / API message), **no panic**.
+
+3. Add **`MSFT`** to watchlist (**`w`**), **`j`/`k`** between rows.  
+   **Pass:** Rows refresh; **`symbol`** tracks selection; portfolio price back-fill still works if holdings overlap (regression vs Issue #3).
+
+### Manual — Yahoo — Charts
+
+1. Select a liquid symbol (**`AAPL`**). Switch to **Charts**. Wait for fetch (or trigger refresh per UX).
+
+2. **Pass:** Chart or historical UI shows data **or** a clear error string; **no** stall of input loop; **no** Polygon-key message.
+
+### Manual — Yahoo — Search
+
+1. **Search** tab, enter a query (**`Apple`**, **`micro`**). Trigger search (keybinding per app).
+
+2. **Pass:** Results list populates **or** empty/error message is understandable; **no** Polygon-key gate.
+
+### Manual — Yahoo — News
+
+1. **News** tab with symbol **`AAPL`** (or selected watchlist row).
+
+2. **Pass:** Headlines render **or** empty state without crash; on HTTP failure, **`error_message`** explains failure (not a silent blank). If SPEC allowed empty success on partial outages, document observed behavior in sign-off notes.
+
+### Manual — Polygon regression
+
+1. Set **`"provider": "polygon"`**, restore valid **`api_key`** in file **or** **`STOCKTERM_API_KEY`**.
+
+2. **Stock View:** **`GOOGL`** — quotes load.
+
+3. **Charts / Search / News:** smoke-test same tabs.
+
+4. **Pass:** Functionally equivalent to pre–#31 Polygon behavior; errors use **`ProviderError`** strings where implemented (may differ slightly from raw **`reqwest`** text).
+
+### Manual — Polygon without key (negative)
+
+1. **`provider`: `polygon`**, **empty** key, unset env.
+
+2. **Pass:** User sees message requiring Polygon credentials (**SPEC §9.14**); **no** silent fallback to Yahoo unless explicitly implemented (not in SPEC).
+
+### Manual — Errors & responsiveness
+
+1. **Bad symbol / airplane mode:** Induce failure (invalid ticker or disconnect Wi‑Fi briefly).  
+   **Pass:** **`error_message`** updates; UI keeps accepting input during background fetch (Issue #17 behavior preserved).
+
+2. **Code review spot-check:** [`docs/SPEC.md`](SPEC.md) §9.7 — **`shared_client()`** uses non-zero **`timeout`** / **`connect_timeout`**.
+
+### Sign-off — Issue #31
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | | | |
+| Default / missing `provider` → Yahoo | | | |
+| Yahoo Stock View + watchlist | | | |
+| Yahoo Charts / Search / News smoke | | | |
+| Polygon happy path | | | |
+| Polygon missing key negative | | | |
+| Errors readable; UI responsive | | | |
 
 ---
 

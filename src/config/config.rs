@@ -9,6 +9,15 @@ use crate::models::alerts::Alert;
 use crate::models::portfolio::PortfolioItem;
 use thiserror::Error;
 
+/// Market data backend. Yahoo is the default (no API key). Polygon requires `api_key` / `STOCKTERM_API_KEY`.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MarketProviderKind {
+    #[default]
+    Yahoo,
+    Polygon,
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
@@ -20,6 +29,9 @@ pub struct Config {
     pub alerts: Vec<Alert>,
     pub default_symbol: String,
     pub theme: Option<Theme>,
+    /// When `Polygon`, [`effective_api_key`](Config::effective_api_key) must be non-empty for API calls.
+    #[serde(default)]
+    pub provider: MarketProviderKind,
 }
 
 #[derive(Debug, Error)]
@@ -33,10 +45,10 @@ pub enum ConfigError {
 }
 
 impl Config {
-    /// Polygon API key resolution:
+    /// API key resolution (used for **Polygon** only):
     /// 1. Non-empty `api_key` from config file (`~/.stockterm.json`).
     /// 2. Else non-empty `STOCKTERM_API_KEY` environment variable.
-    /// 3. Else empty string (API calls may fail until configured).
+    /// 3. Else empty string (Polygon calls fail until configured).
     pub fn effective_api_key(&self) -> Cow<'_, str> {
         if !self.api_key.is_empty() {
             return Cow::Borrowed(self.api_key.as_str());
@@ -94,9 +106,24 @@ mod tests {
 
     #[test]
     fn effective_api_key_prefers_config_file_value() {
-        let mut c = Config::default();
-        c.api_key = "from-config".to_string();
+        let c = Config {
+            api_key: "from-config".to_string(),
+            ..Default::default()
+        };
         assert_eq!(c.effective_api_key().as_ref(), "from-config");
+    }
+
+    #[test]
+    fn default_provider_is_yahoo() {
+        let c = Config::default();
+        assert_eq!(c.provider, MarketProviderKind::Yahoo);
+    }
+
+    #[test]
+    fn serde_provider_lowercase() {
+        let j = r#"{"portfolio":[],"watchlist":[],"refresh_rate":0,"api_key":"","alerts":[],"default_symbol":"","provider":"polygon"}"#;
+        let c: Config = serde_json::from_str(j).expect("parse");
+        assert_eq!(c.provider, MarketProviderKind::Polygon);
     }
 
 }
