@@ -6,6 +6,7 @@ use serde::Deserialize;
 use urlencoding::encode;
 
 use crate::api::error::{map_reqwest, ProviderError, ProviderResult};
+use crate::api::historical_query::HistoricalQuery;
 use crate::api::http::shared_client;
 use crate::api::provider::MarketDataProvider;
 use crate::config::Config;
@@ -29,18 +30,15 @@ impl MarketDataProvider for YahooProvider {
     async fn get_historical(
         &self,
         symbol: &str,
-        from_date: &str,
-        to_date: &str,
-        timespan: &str,
+        query: &HistoricalQuery<'_>,
         config: &Config,
     ) -> ProviderResult<HistoricalResponse> {
         let _ = config;
-        if timespan != "day" {
-            return Err(ProviderError::ApiMessage(
-                "Yahoo provider: only daily (timespan \"day\") history is supported".to_string(),
-            ));
+        if let Some(range) = query.yahoo_range {
+            yahoo_historical_range(symbol, range, query.bar_interval).await
+        } else {
+            yahoo_historical(symbol, query.from, query.to, query.bar_interval).await
         }
-        yahoo_historical(symbol, from_date, to_date).await
     }
 
     async fn search_symbols(&self, query: &str, config: &Config) -> ProviderResult<SymbolSearchResponse> {
@@ -154,7 +152,29 @@ fn last_close_from_bars(series: &ChartSeries) -> Option<f64> {
     best.map(|(_, c)| c)
 }
 
-async fn yahoo_historical(symbol: &str, from_date: &str, to_date: &str) -> ProviderResult<HistoricalResponse> {
+/// Yahoo v8 chart using `range=` + `interval=` (intraday and rolling windows).
+async fn yahoo_historical_range(
+    symbol: &str,
+    range: &str,
+    interval: &str,
+) -> ProviderResult<HistoricalResponse> {
+    let enc_sym = encode(symbol);
+    let url = format!(
+        "{}/v8/finance/chart/{}?range={}&interval={}",
+        QUERY1, enc_sym, range, interval
+    );
+    let text = fetch_text(&url).await?;
+    let env: ChartEnvelope = serde_json::from_str(&text)?;
+    chart_to_historical(&env, symbol)
+}
+
+/// Calendar-bounded chart using `period1` / `period2` (Unix seconds) + `interval=`.
+async fn yahoo_historical(
+    symbol: &str,
+    from_date: &str,
+    to_date: &str,
+    interval: &str,
+) -> ProviderResult<HistoricalResponse> {
     let from = NaiveDate::parse_from_str(from_date, "%Y-%m-%d").map_err(|_| {
         ProviderError::ApiMessage(format!("Invalid from_date: {from_date}"))
     })?;
@@ -174,8 +194,8 @@ async fn yahoo_historical(symbol: &str, from_date: &str, to_date: &str) -> Provi
 
     let enc_sym = encode(symbol);
     let url = format!(
-        "{}/v8/finance/chart/{}?period1={}&period2={}&interval=1d",
-        QUERY1, enc_sym, period1, period2
+        "{}/v8/finance/chart/{}?period1={}&period2={}&interval={}",
+        QUERY1, enc_sym, period1, period2, interval
     );
     let text = fetch_text(&url).await?;
     let env: ChartEnvelope = serde_json::from_str(&text)?;

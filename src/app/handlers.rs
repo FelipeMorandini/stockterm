@@ -2,6 +2,7 @@ use crate::app::alerts::handle_alerts_events;
 use crate::app::keyboard::letter_key_plain;
 use crate::app::portfolio::handle_portfolio_events;
 use crate::app::{App, SettingsEdit, Tab};
+use crate::models::time_range::TimeRange;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub fn handle_event(app: &mut App, key: KeyEvent) {
@@ -44,8 +45,91 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             Tab::Settings => {
                 handle_settings_events(app, key);
             }
-            Tab::Charts => {}
+            Tab::Charts => {
+                handle_charts_events(app, key);
+            }
         },
+    }
+}
+
+fn charts_zoom_modifiers_ok(m: KeyModifiers) -> bool {
+    !m.intersects(
+        KeyModifiers::CONTROL
+            | KeyModifiers::ALT
+            | KeyModifiers::META
+            | KeyModifiers::SUPER
+            | KeyModifiers::HYPER,
+    )
+}
+
+fn handle_charts_events(app: &mut App, key: KeyEvent) {
+    match key {
+        KeyEvent {
+            code: KeyCode::Char('1'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => app.set_charts_time_range(TimeRange::D1),
+        KeyEvent {
+            code: KeyCode::Char('2'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => app.set_charts_time_range(TimeRange::W1),
+        KeyEvent {
+            code: KeyCode::Char('3'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => app.set_charts_time_range(TimeRange::M1),
+        KeyEvent {
+            code: KeyCode::Char('4'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => app.set_charts_time_range(TimeRange::Y1),
+        KeyEvent {
+            code: KeyCode::Char('0'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => app.charts_reset_viewport(),
+        KeyEvent {
+            code: KeyCode::Char('+'),
+            modifiers,
+            ..
+        } if charts_zoom_modifiers_ok(modifiers) => app.charts_zoom_in(),
+        KeyEvent {
+            code: KeyCode::Char('='),
+            modifiers,
+            ..
+        } if modifiers.contains(KeyModifiers::SHIFT) && charts_zoom_modifiers_ok(modifiers) => {
+            app.charts_zoom_in();
+        }
+        KeyEvent {
+            code: KeyCode::Char('-'),
+            modifiers,
+            ..
+        } if charts_zoom_modifiers_ok(modifiers) => app.charts_zoom_out(),
+        KeyEvent {
+            code: KeyCode::Char('h'),
+            modifiers,
+            ..
+        } if letter_key_plain(modifiers) => app.charts_pan_left(),
+        KeyEvent {
+            code: KeyCode::Char('l'),
+            modifiers,
+            ..
+        } if letter_key_plain(modifiers) => app.charts_pan_right(),
+        KeyEvent {
+            code: KeyCode::Left,
+            ..
+        } => app.charts_pan_left(),
+        KeyEvent {
+            code: KeyCode::Right,
+            ..
+        } => app.charts_pan_right(),
+        KeyEvent {
+            code: KeyCode::Char('c'),
+            modifiers,
+            ..
+        } if letter_key_plain(modifiers) => app.charts_toggle_mode(),
+        _ => {}
     }
 }
 

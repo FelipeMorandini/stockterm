@@ -12,6 +12,7 @@ use crate::models::search::SymbolSearchResponse;
 use crate::models::ticker::TickerResponse;
 
 use crate::api::error::ProviderResult;
+use crate::api::historical_query::HistoricalQuery;
 use crate::api::polygon::PolygonProvider;
 use crate::api::yahoo::YahooProvider;
 
@@ -22,9 +23,7 @@ pub trait MarketDataProvider: Send + Sync {
     async fn get_historical(
         &self,
         symbol: &str,
-        from_date: &str,
-        to_date: &str,
-        timespan: &str,
+        query: &HistoricalQuery<'_>,
         config: &Config,
     ) -> ProviderResult<HistoricalResponse>;
 

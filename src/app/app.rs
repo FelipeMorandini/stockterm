@@ -1,4 +1,6 @@
 use crate::api::market_provider_for;
+use crate::api::HistoricalQuery;
+use crate::app::charts::{viewport_zoom_in, viewport_zoom_out, ChartDisplayMode, ChartViewport};
 use crate::app::event::{spawn_event_thread, Event};
 use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
@@ -9,6 +11,7 @@ use crate::models::news::NewsResponse;
 use crate::models::portfolio::PortfolioItem;
 use crate::models::search::SymbolSearchResponse;
 use crate::models::ticker::TickerResponse;
+use crate::models::time_range::TimeRange;
 use ratatui::backend::Backend;
 use ratatui::widgets::{ListState, TableState};
 use ratatui::Terminal;
@@ -45,6 +48,7 @@ pub enum FetchDone {
     },
     Historical {
         symbol: String,
+        time_range: TimeRange,
         result: Result<HistoricalResponse, String>,
     },
     News {
@@ -99,6 +103,12 @@ pub struct App {
     stock_refresh_pending: bool,
     hist_refresh_inflight: bool,
     pub news_refresh_inflight: bool,
+    /// Charts tab: selected window (Issue #9).
+    pub time_range: TimeRange,
+    /// Charts tab: pan/zoom indices into `historical_data.results` (Issue #8).
+    pub chart_viewport: ChartViewport,
+    /// Line vs candlestick rendering (Issue #7).
+    pub chart_mode: ChartDisplayMode,
 }
 
 const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
@@ -233,6 +243,9 @@ impl App {
             stock_refresh_pending: false,
             hist_refresh_inflight: false,
             news_refresh_inflight: false,
+            time_range: TimeRange::default(),
+            chart_viewport: ChartViewport::default(),
+            chart_mode: ChartDisplayMode::default(),
         };
 
         if !app.portfolio.is_empty() {
@@ -392,18 +405,27 @@ impl App {
         self.hist_refresh_inflight = true;
         let sym = self.symbol.clone();
         let cfg = self.config.clone();
+        let tr = self.time_range;
         tokio::spawn(async move {
-            let to_date = chrono::Local::now().format("%Y-%m-%d").to_string();
-            let from_date = (chrono::Local::now() - chrono::Duration::days(30))
-                .format("%Y-%m-%d")
-                .to_string();
+            let params = tr.historical_params(chrono::Local::now());
+            let from = params.from.clone();
+            let to = params.to.clone();
+            let hq = HistoricalQuery {
+                from: &from,
+                to: &to,
+                bar_interval: params.bar_interval,
+                yahoo_range: params.yahoo_range,
+                polygon_multiplier: params.polygon_multiplier,
+                polygon_timespan: params.polygon_timespan,
+            };
             let provider = market_provider_for(cfg.provider);
             let result = provider
-                .get_historical(&sym, &from_date, &to_date, "day", &cfg)
+                .get_historical(&sym, &hq, &cfg)
                 .await
                 .map_err(|e| e.to_string());
             let _ = tx.send(FetchDone::Historical {
                 symbol: sym,
+                time_range: tr,
                 result,
             });
         });
@@ -739,20 +761,32 @@ impl App {
                 quotes,
                 errors,
             } => self.apply_stock_fetch_done(generation, quotes, errors),
-            FetchDone::Historical { symbol, result } => {
+            FetchDone::Historical {
+                symbol,
+                time_range,
+                result,
+            } => {
                 self.hist_refresh_inflight = false;
-                self.last_charts_network_poll = Some(Instant::now());
-                if symbol != self.symbol {
+                if symbol != self.symbol || time_range != self.time_range {
+                    self.last_charts_network_poll = None;
                     return;
                 }
+                self.last_charts_network_poll = Some(Instant::now());
                 match result {
                     Ok(data) => {
+                        let prev = self.historical_data.as_ref();
+                        self.chart_viewport = crate::app::charts::chart_viewport_after_refresh(
+                            prev,
+                            self.chart_viewport,
+                            &data,
+                        );
                         self.historical_data = Some(data);
                         self.error_message = None;
                     }
                     Err(err) => {
                         self.error_message = Some(format!("Error fetching historical data: {err}"));
                         self.historical_data = None;
+                        self.chart_viewport = ChartViewport::default();
                     }
                 }
             }
@@ -984,31 +1018,101 @@ impl App {
             return;
         }
 
-        let to_date = chrono::Local::now().format("%Y-%m-%d").to_string();
-        let from_date = (chrono::Local::now() - chrono::Duration::days(30))
-            .format("%Y-%m-%d")
-            .to_string();
+        let params = self
+            .time_range
+            .historical_params(chrono::Local::now());
+        let from = params.from.clone();
+        let to = params.to.clone();
+        let hq = HistoricalQuery {
+            from: &from,
+            to: &to,
+            bar_interval: params.bar_interval,
+            yahoo_range: params.yahoo_range,
+            polygon_multiplier: params.polygon_multiplier,
+            polygon_timespan: params.polygon_timespan,
+        };
 
         let provider = market_provider_for(self.config.provider);
-        match provider
-            .get_historical(
-                &self.symbol,
-                &from_date,
-                &to_date,
-                "day",
-                &self.config,
-            )
-            .await
+        match provider.get_historical(&self.symbol, &hq, &self.config).await
         {
             Ok(data) => {
+                let prev = self.historical_data.as_ref();
+                self.chart_viewport = crate::app::charts::chart_viewport_after_refresh(
+                    prev,
+                    self.chart_viewport,
+                    &data,
+                );
                 self.historical_data = Some(data);
                 self.error_message = None;
             }
             Err(err) => {
                 self.error_message = Some(format!("Error fetching historical data: {err}"));
                 self.historical_data = None;
+                self.chart_viewport = ChartViewport::default();
             }
         }
+    }
+
+    /// Charts tab: switch time range and refetch (keys `1`–`4`).
+    ///
+    /// Selecting the **same** range again still bypasses the charts throttle and resets the
+    /// viewport so e.g. **`3` on default 1M** forces a refresh (auditor: no early-return no-op).
+    pub fn set_charts_time_range(&mut self, tr: TimeRange) {
+        let changed = self.time_range != tr;
+        if changed {
+            self.time_range = tr;
+            self.historical_data = None;
+            self.chart_viewport = ChartViewport::default();
+            self.error_message = None;
+        }
+        self.request_immediate_charts_poll();
+        if !changed {
+            self.charts_reset_viewport();
+        }
+    }
+
+    /// Bypass charts throttle (e.g. after changing `time_range`).
+    pub fn request_immediate_charts_poll(&mut self) {
+        self.last_charts_network_poll = None;
+    }
+
+    pub fn charts_zoom_in(&mut self) {
+        let Some(h) = self.historical_data.as_ref() else {
+            return;
+        };
+        viewport_zoom_in(&mut self.chart_viewport, h.results.len());
+    }
+
+    pub fn charts_zoom_out(&mut self) {
+        let Some(h) = self.historical_data.as_ref() else {
+            return;
+        };
+        viewport_zoom_out(&mut self.chart_viewport, h.results.len());
+    }
+
+    pub fn charts_pan_left(&mut self) {
+        let Some(h) = self.historical_data.as_ref() else {
+            return;
+        };
+        crate::app::charts::viewport_pan_left(&mut self.chart_viewport, h.results.len());
+    }
+
+    pub fn charts_pan_right(&mut self) {
+        let Some(h) = self.historical_data.as_ref() else {
+            return;
+        };
+        crate::app::charts::viewport_pan_right(&mut self.chart_viewport, h.results.len());
+    }
+
+    pub fn charts_reset_viewport(&mut self) {
+        let Some(h) = self.historical_data.as_ref() else {
+            return;
+        };
+        self.chart_viewport = ChartViewport::full(h.results.len());
+    }
+
+    pub fn charts_toggle_mode(&mut self) {
+        self.chart_mode = self.chart_mode.toggle();
     }
 
     pub fn next_tab(&mut self) {
