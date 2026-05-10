@@ -1,4 +1,5 @@
 use crate::app::alerts::handle_alerts_events;
+use crate::app::keyboard::letter_key_plain;
 use crate::app::portfolio::handle_portfolio_events;
 use crate::app::{App, Tab};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -43,31 +44,36 @@ fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
     match key {
         KeyEvent {
             code: KeyCode::Char('w'),
-            modifiers: KeyModifiers::NONE,
+            modifiers,
             ..
-        } => {
+        } if letter_key_plain(modifiers) => {
             app.add_current_to_watchlist();
         }
         KeyEvent {
             code: KeyCode::Char('x'),
-            modifiers: KeyModifiers::NONE,
+            modifiers,
             ..
-        } => {
+        } if letter_key_plain(modifiers) => {
             app.remove_selected_watchlist_row();
         }
         KeyEvent {
-            code: KeyCode::Char('d'),
-            modifiers: KeyModifiers::SHIFT,
+            code: KeyCode::Char(c),
+            modifiers,
             ..
-        } => {
+        } if c.eq_ignore_ascii_case(&'d')
+            && modifiers.contains(KeyModifiers::SHIFT)
+            && letter_key_plain(modifiers) =>
+        {
             app.remove_selected_watchlist_row();
         }
         KeyEvent {
             code: KeyCode::Char('j'),
-            modifiers: KeyModifiers::NONE,
+            modifiers,
             ..
+        } if letter_key_plain(modifiers) => {
+            app.watchlist_select_next();
         }
-        | KeyEvent {
+        KeyEvent {
             code: KeyCode::Down,
             ..
         } => {
@@ -75,10 +81,12 @@ fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
         }
         KeyEvent {
             code: KeyCode::Char('k'),
-            modifiers: KeyModifiers::NONE,
+            modifiers,
             ..
+        } if letter_key_plain(modifiers) => {
+            app.watchlist_select_prev();
         }
-        | KeyEvent {
+        KeyEvent {
             code: KeyCode::Up,
             ..
         } => {
@@ -86,10 +94,10 @@ fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
         }
         KeyEvent {
             code: KeyCode::Char(c),
-            modifiers: KeyModifiers::NONE,
+            modifiers,
             ..
-        } if c.is_ascii_uppercase() => {
-            app.symbol.push(c);
+        } if c.is_ascii_alphabetic() && letter_key_plain(modifiers) => {
+            app.symbol.push(c.to_ascii_uppercase());
         }
         KeyEvent {
             code: KeyCode::Backspace,
