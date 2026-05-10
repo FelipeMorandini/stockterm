@@ -101,5 +101,5 @@ After maintainer approval of this SPEC, implementation may proceed per `.cursor/
 
 - **Status:** Implemented; closes [Issue #30](https://github.com/FelipeMorandini/stockterm/issues/30), [#37](https://github.com/FelipeMorandini/stockterm/issues/37), [#38](https://github.com/FelipeMorandini/stockterm/issues/38). Manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (with known limits: symbol entry, hard-coded alert add).
 - **Also in branch:** Polygon aggregate `v` (volume) deserialized as `f64` (`TickerResult`, `HistoricalData`) after live API returned fractional volume; display uses rounded whole numbers.
-- **Deferred:** New GitHub issues filed at ship from scratchpad (Status vs `triggered`, block titles, keyboard modifiers). Non-blocking UI remains [Issue #17](https://github.com/FelipeMorandini/stockterm/issues/17); alert dialog / UX remains [Issue #10](https://github.com/FelipeMorandini/stockterm/issues/10).
-- **PR:** _(link added when the pull request is opened)_
+- **Deferred:** [#42](https://github.com/FelipeMorandini/stockterm/issues/42) (Status vs `triggered`), [#43](https://github.com/FelipeMorandini/stockterm/issues/43) (block titles), [#44](https://github.com/FelipeMorandini/stockterm/issues/44) (Shift/symbol keys). Non-blocking UI: [#17](https://github.com/FelipeMorandini/stockterm/issues/17); alert dialog / UX: [#10](https://github.com/FelipeMorandini/stockterm/issues/10).
+- **PR:** https://github.com/FelipeMorandini/stockterm/pull/45
