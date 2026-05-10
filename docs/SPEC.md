@@ -906,7 +906,7 @@ After maintainer approval of §11, implementation may proceed per `.cursor/rules
 ### 11.10 Shipment record
 
 - **Status:** Shipped — manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (M4 / Issues #7, #8, #9); closes [#7](https://github.com/FelipeMorandini/stockterm/issues/7), [#8](https://github.com/FelipeMorandini/stockterm/issues/8), [#9](https://github.com/FelipeMorandini/stockterm/issues/9).
-- **PR:** _TBD_ (filled at ship)
+- **PR:** https://github.com/FelipeMorandini/stockterm/pull/66
 - **Code:** `src/models/time_range.rs`, `src/api/historical_query.rs`, `src/api/{yahoo,polygon,provider}.rs`, `src/app/{app,charts,handlers}.rs`.
 - **Follow-ups:** [#62](https://github.com/FelipeMorandini/stockterm/issues/62) (stale chart vs symbol), [#63](https://github.com/FelipeMorandini/stockterm/issues/63) (Yahoo W1 empty fallback), [#64](https://github.com/FelipeMorandini/stockterm/issues/64) (fetch resilience), [#65](https://github.com/FelipeMorandini/stockterm/issues/65) (Polygon limits / payload size).
 - **Behavior note (post-audit):** Periodic historical refresh preserves zoom/pan via `chart_viewport_after_refresh` unless the view was full-range or the ticker changed; see `src/app/charts.rs`.
