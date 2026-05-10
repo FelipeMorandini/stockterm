@@ -8,6 +8,8 @@ Use the sections below per milestone. **Issue #3** remains the regression baseli
 
 **Scope:** [GitHub Issue #44](https://github.com/FelipeMorandini/stockterm/issues/44) — Shift/lowercase acceptance for symbol typing and for `a`/`d` on Alerts; no accidental triggers with Ctrl/Alt/Meta chords.
 
+**Shipment:** Manual validation passed before merge; link the closing PR in `docs/SPEC.md` §8.8 when opened.
+
 ### Automated (local)
 
 1. From the repo root:
