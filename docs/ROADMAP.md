@@ -285,6 +285,7 @@ Open gaps worth tracking:
 _Recent follow-ups from ship:_ [Issue #39](https://github.com/FelipeMorandini/stockterm/issues/39)
 (portfolio `try_save` parity), [Issue #40](https://github.com/FelipeMorandini/stockterm/issues/40)
 (non-blocking config I/O). Issues [#30](https://github.com/FelipeMorandini/stockterm/issues/30)/[#37](https://github.com/FelipeMorandini/stockterm/issues/37)/[#38](https://github.com/FelipeMorandini/stockterm/issues/38) (alerts loop + table) shipped in the PR linked from `docs/SPEC.md` §7.
+[Issue #44](https://github.com/FelipeMorandini/stockterm/issues/44) (keyboard modifiers for Stock View / Alerts) shipped in [PR #52](https://github.com/FelipeMorandini/stockterm/pull/52); deferred polish → [#48](https://github.com/FelipeMorandini/stockterm/issues/48)–[#51](https://github.com/FelipeMorandini/stockterm/issues/51).
 
 ---
 
