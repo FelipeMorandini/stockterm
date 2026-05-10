@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 pub mod app;
 pub mod ui;
 pub mod event;
@@ -6,4 +7,4 @@ pub mod charts;
 pub mod portfolio;
 pub mod alerts;
 
-pub use self::app::App;
+pub use self::app::{App, Tab};

@@ -1,16 +1,12 @@
 use crate::app::App;
 use crate::models::alerts::{Alert, AlertCondition};
 use ratatui::{
-    backend::Backend,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Rect},
     style::{Color, Modifier, Style},
     text::{Span, Line},
     widgets::{Block, Borders, Cell, Row, Table},
     Frame,
 };
-use std::format;
-use std::vec;
-
 
 pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
     let block = Block::default()
@@ -38,7 +34,7 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
         .style(Style::default().add_modifier(Modifier::BOLD))
         .height(1);
 
-    let rows = app.alerts.iter().enumerate().map(|(i, alert)| {
+    let rows = app.alerts.iter().map(|alert| {
         // Get current price for the alert symbol
         let current_price = app.get_current_price(&alert.symbol).unwrap_or(0.0);
 
@@ -70,14 +66,12 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
     let table = Table::new(
         rows,
         [
-            Constraint::Length(8),    // Symbol
-            Constraint::Length(8),    // Shares
-            Constraint::Length(10),   // Avg Price
-            Constraint::Length(10),   // Current
-            Constraint::Length(10),   // Value
-            Constraint::Length(10),   // P/L
-            Constraint::Length(10),   // P/L %
-        ]
+            Constraint::Min(6),       // Symbol
+            Constraint::Length(10),   // Condition (Above / Below)
+            Constraint::Length(11),   // Price
+            Constraint::Length(11),   // Current
+            Constraint::Min(10),      // Status (Waiting / TRIGGERED)
+        ],
     )
         .header(header)
         .block(Block::default().borders(Borders::ALL).title("Alerts"))
@@ -85,7 +79,10 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
         .highlight_symbol("> ");
 
     f.render_stateful_widget(table, area, &mut app.alerts_state);
-}pub fn handle_alerts_events(app: &mut App, key: crossterm::event::KeyEvent) {    use crossterm::event::{KeyCode, KeyModifiers};
+}
+
+pub fn handle_alerts_events(app: &mut App, key: crossterm::event::KeyEvent) {
+    use crossterm::event::{KeyCode, KeyModifiers};
 
     match key {
         crossterm::event::KeyEvent {
@@ -109,24 +106,32 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
         }
         crossterm::event::KeyEvent {
             code: KeyCode::Up,
-            modifiers: KeyModifiers::NONE,
             ..
         } => {
-            // Move selection up
-            let current = app.alerts_state.selected().unwrap_or(0);
-            if current > 0 {
-                app.alerts_state.select(Some(current - 1));
+            if app.alerts.is_empty() {
+                return;
+            }
+            match app.alerts_state.selected() {
+                None => app
+                    .alerts_state
+                    .select(Some(app.alerts.len().saturating_sub(1))),
+                Some(i) if i > 0 => app.alerts_state.select(Some(i - 1)),
+                _ => {}
             }
         }
         crossterm::event::KeyEvent {
             code: KeyCode::Down,
-            modifiers: KeyModifiers::NONE,
             ..
         } => {
-            // Move selection down
-            let current = app.alerts_state.selected().unwrap_or(0);
-            if current < app.alerts.len().saturating_sub(1) {
-                app.alerts_state.select(Some(current + 1));
+            if app.alerts.is_empty() {
+                return;
+            }
+            match app.alerts_state.selected() {
+                None => app.alerts_state.select(Some(0)),
+                Some(i) if i < app.alerts.len().saturating_sub(1) => {
+                    app.alerts_state.select(Some(i + 1));
+                }
+                _ => {}
             }
         }
         _ => {}
@@ -143,16 +148,30 @@ impl App {
             triggered: false,
         });
 
-        // Save to config
         self.save_alerts();
+
+        if !self.alerts.is_empty() && self.alerts_state.selected().is_none() {
+            self.alerts_state.select(Some(self.alerts.len() - 1));
+        }
     }
 
     pub fn remove_alert(&mut self, index: usize) {
-        if index < self.alerts.len() {
-            self.alerts.remove(index);
+        if index >= self.alerts.len() {
+            return;
+        }
 
-            // Save to config
-            self.save_alerts();
+        self.alerts.remove(index);
+        self.save_alerts();
+
+        if self.alerts.is_empty() {
+            self.alerts_state.select(None);
+        } else if let Some(mut sel) = self.alerts_state.selected() {
+            if index < sel {
+                sel -= 1;
+            } else if index == sel {
+                sel = sel.min(self.alerts.len() - 1);
+            }
+            self.alerts_state.select(Some(sel));
         }
     }
 
@@ -183,23 +202,26 @@ impl App {
         }
 
         if updated {
-            // Save to config
-            self.config.alerts = self.alerts.clone();
-            self.config.save();
+            self.save_alerts();
         }
     }
 
-    fn save_alerts(&self) {
-        // In a real implementation, you'd save to config
-        // self.config.alerts = self.alerts.clone();
-        // self.config.save();
+    fn save_alerts(&mut self) {
+        self.config.alerts = self.alerts.clone();
+        if let Err(e) = self.config.try_save() {
+            self.error_message = Some(format!("Failed to save alerts: {e}"));
+        }
     }
 
     pub fn get_current_price(&self, symbol: &str) -> Option<f64> {
         // If the symbol matches the current ticker data, use that
         if let Some(ticker_data) = &self.ticker_data {
-            if ticker_data.ticker == symbol && !ticker_data.results.is_empty() {
-                return Some(ticker_data.results[0].c);
+            let matches_symbol = ticker_data.ticker.is_empty()
+                || ticker_data.ticker.eq_ignore_ascii_case(symbol);
+            if matches_symbol {
+                if let Some(bar) = ticker_data.latest_result() {
+                    return Some(bar.c);
+                }
             }
         }
 

@@ -1,7 +1,6 @@
 use crate::app::App;
-use crate::models::historical::HistoricalData;
+use chrono::{DateTime, Utc};
 use ratatui::{
-    backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     symbols,
@@ -9,9 +8,6 @@ use ratatui::{
     widgets::{Axis, Block, Borders, Chart, Dataset, GraphType},
     Frame,
 };
-use std::format;
-use std::vec;
-
 
 pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
     let block = Block::default()
@@ -67,7 +63,7 @@ pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
 
         // Format timestamps for x-axis
         let format_time = |time: &f64| {
-            let dt = chrono::NaiveDateTime::from_timestamp_opt(*time as i64, 0).unwrap();
+            let dt = DateTime::<Utc>::from_timestamp(*time as i64, 0).expect("timestamp");
             format!("{}", dt.format("%m/%d"))
         };
 
@@ -166,7 +162,7 @@ pub fn draw_candlestick(f: &mut Frame, app: &App, area: Rect) {
         // Render data rows
         let mut rows = Vec::new();
         for data in historical_data.results.iter().take(10) { // Limit to 10 rows for simplicity
-            let dt = chrono::NaiveDateTime::from_timestamp_opt((data.t / 1000) as i64, 0).unwrap();
+            let dt = DateTime::<Utc>::from_timestamp((data.t / 1000) as i64, 0).expect("timestamp");
             let date = dt.format("%Y-%m-%d").to_string();
 
             // Determine if price went up or down
@@ -183,7 +179,7 @@ pub fn draw_candlestick(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(" | ", Style::default().fg(Color::White)),
                 Span::styled(format!("{:.2}", data.c), Style::default().fg(color)),
                 Span::styled(" | ", Style::default().fg(Color::White)),
-                Span::styled(format!("{}", data.v), Style::default().fg(Color::White)),
+                Span::styled(format!("{:.0}", data.v), Style::default().fg(Color::White)),
             ];
 
             rows.push(Line::from(row));
