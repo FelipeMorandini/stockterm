@@ -82,24 +82,22 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 pub fn handle_alerts_events(app: &mut App, key: crossterm::event::KeyEvent) {
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use crate::app::keyboard::letter_key_plain;
+    use crossterm::event::KeyCode;
 
     match key {
         crossterm::event::KeyEvent {
-            code: KeyCode::Char('a'),
-            modifiers: KeyModifiers::NONE,
+            code: KeyCode::Char(c),
+            modifiers,
             ..
-        } => {
-            // Add new alert for current symbol
-            // In a real app, you'd show a dialog to enter price and condition
+        } if c.eq_ignore_ascii_case(&'a') && letter_key_plain(modifiers) => {
             app.add_alert(app.symbol.clone(), AlertCondition::Above, 100.0);
         }
         crossterm::event::KeyEvent {
-            code: KeyCode::Char('d'),
-            modifiers: KeyModifiers::NONE,
+            code: KeyCode::Char(c),
+            modifiers,
             ..
-        } => {
-            // Remove selected alert
+        } if c.eq_ignore_ascii_case(&'d') && letter_key_plain(modifiers) => {
             if let Some(selected) = app.alerts_state.selected() {
                 app.remove_alert(selected);
             }
