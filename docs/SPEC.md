@@ -77,4 +77,4 @@ After maintainer approval of this SPEC, implementation may proceed per `.cursor/
 
 - **Status:** Implemented; manual QA passed per `docs/QA_PLAN.md` (Issue #27).
 - **Deferred:** Scratchpad items filed as GitHub Issues [#37](https://github.com/FelipeMorandini/stockterm/issues/37), [#38](https://github.com/FelipeMorandini/stockterm/issues/38), [#39](https://github.com/FelipeMorandini/stockterm/issues/39), [#40](https://github.com/FelipeMorandini/stockterm/issues/40).
-- **PR:** _Link added when the merge PR is opened._
+- **PR:** https://github.com/FelipeMorandini/stockterm/pull/41
