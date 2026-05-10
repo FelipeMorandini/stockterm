@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-10 (M3 Search/News/Settings + Yahoo news fallbacks)
+Last updated: 2026-05-10 (M4 Charts #7/#8/#9; ROADMAP §4.4–4.5)
 
 ---
 
@@ -121,21 +121,12 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 ### 4.4 Core — Historical charts in terminal
 
-- **Partial — line chart**
-  - Evidence: `draw_charts` in `src/app/charts.rs` builds a `ratatui::Chart`
-    with `GraphType::Line` over `historical_data.results`.
-- **Partial — "candlestick"**
-  - Evidence: `draw_candlestick` in `src/app/charts.rs` renders only an OHLC
-    text table colored green/red — not a real candlestick widget.
-  - `draw_candlestick` is imported by `ui.rs` but never called from any tab.
-- **Missing — interactivity (zoom/pan)** — no key bindings, no viewport state.
+- **Implemented (Issues #7 / #8 / #9, M4)** — line + candlestick widget, viewport zoom/pan, `TimeRange` keys; see `docs/SPEC.md` §11.
+- **Partial — further polish** — dense candle layout vs web charts, Yahoo W1 empty fallback ([#63](https://github.com/FelipeMorandini/stockterm/issues/63)), symbol/history sync ([#62](https://github.com/FelipeMorandini/stockterm/issues/62)).
 
 ### 4.5 Core — Time ranges (1D/1W/1M/1Y)
 
-- **Missing**
-  - Evidence: `App::fetch_historical_data` hard-codes `from_date = now − 30
-    days`, `timespan = "day"`. There is no `TimeRange` enum, no key binding,
-    no UI selector.
+- **Implemented (Issue #9 / M4)** — `TimeRange`, provider mapping, Charts keys `1`–`4`; see `docs/SPEC.md` §11.
 
 ### 4.6 Core — Price alerts and notifications
 

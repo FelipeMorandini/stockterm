@@ -1,200 +1,597 @@
+//! Charts tab: line chart, candlesticks, viewport (Issues #7 / #8 / #9).
+
 use crate::app::App;
+use crate::models::historical::{HistoricalData, HistoricalResponse};
+use crate::models::time_range::TimeRange;
 use chrono::{DateTime, Utc};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Style},
     symbols,
-    text::{Span, Line},
-    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType},
+    text::{Line, Span},
+    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Widget},
     Frame,
 };
 
-pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
-    let block = Block::default()
-        .title(format!("Price Chart: {}", app.symbol))
-        .borders(Borders::ALL);
+/// Pan/zoom window over sorted `HistoricalResponse::results` (half-open `start..end`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ChartViewport {
+    pub start: usize,
+    pub end: usize,
+}
 
-    if let Some(historical_data) = &app.historical_data {
-        if historical_data.results.is_empty() {
-            let no_data_text = Line::from(vec![
-                Span::styled("No historical data available", Style::default().fg(Color::Red))
-            ]);
-            let paragraph = ratatui::widgets::Paragraph::new(no_data_text)
-                .block(block);
-            f.render_widget(paragraph, area);
+impl ChartViewport {
+    pub fn full(len: usize) -> Self {
+        if len == 0 {
+            Self { start: 0, end: 0 }
+        } else {
+            Self { start: 0, end: len }
+        }
+    }
+
+    fn width(self) -> usize {
+        self.end.saturating_sub(self.start)
+    }
+
+    fn normalize(&mut self, len: usize) {
+        if len == 0 {
+            self.start = 0;
+            self.end = 0;
             return;
         }
-
-        // Prepare data for chart
-        let data: Vec<(f64, f64)> = historical_data.results.iter()
-            .map(|data| {
-                // Convert timestamp to x-axis value (days from first data point)
-                let timestamp = data.t as f64 / 1000.0; // Convert from milliseconds to seconds
-                let price = data.c;
-                (timestamp, price)
-            })
-            .collect();
-
-        // Find min/max values for scaling
-        let (min_time, max_time) = data.iter()
-            .fold((f64::MAX, f64::MIN), |(min, max), &(time, _)| {
-                (min.min(time), max.max(time))
-            });
-
-        let (min_price, max_price) = data.iter()
-            .fold((f64::MAX, f64::MIN), |(min, max), &(_, price)| {
-                (min.min(price), max.max(price))
-            });
-
-        // Add some padding to the price range
-        let price_padding = (max_price - min_price) * 0.1;
-        let price_min = min_price - price_padding;
-        let price_max = max_price + price_padding;
-
-        // Create datasets
-        let datasets = vec![
-            Dataset::default()
-                .name("Price")
-                .marker(symbols::Marker::Braille)
-                .graph_type(GraphType::Line)
-                .style(Style::default().fg(Color::Cyan))
-                .data(&data)
-        ];
-
-        // Format timestamps for x-axis
-        let format_time = |time: &f64| {
-            let dt = DateTime::<Utc>::from_timestamp(*time as i64, 0).expect("timestamp");
-            format!("{}", dt.format("%m/%d"))
-        };
-
-        // Format prices for y-axis
-        let format_price = |price: &f64| {
-            format!("${:.2}", price)
-        };
-
-        // Create the chart
-        let chart = Chart::new(datasets)
-            .block(block)
-            .x_axis(
-                Axis::default()
-                    .title(Line::from(vec![Span::styled("Date", Style::default().fg(Color::White))]))
-                    .style(Style::default().fg(Color::White))
-                    .bounds([min_time, max_time])
-                    .labels(vec![
-                        Span::styled(format_time(&min_time), Style::default().fg(Color::White)),
-                        Span::styled(format_time(&((min_time + max_time) / 2.0)), Style::default().fg(Color::White)),
-                        Span::styled(format_time(&max_time), Style::default().fg(Color::White)),
-                    ])
-            )
-            .y_axis(
-                Axis::default()
-                    .title(Line::from(vec![Span::styled("Price", Style::default().fg(Color::White))]))
-                    .style(Style::default().fg(Color::White))
-                    .bounds([price_min, price_max])
-                    .labels(vec![
-                        Span::styled(format_price(&price_min), Style::default().fg(Color::White)),
-                        Span::styled(format_price(&((price_min + price_max) / 2.0)), Style::default().fg(Color::White)),
-                        Span::styled(format_price(&price_max), Style::default().fg(Color::White)),
-                    ])
-            );
-
-        f.render_widget(chart, area);
-    } else {
-        // Show loading or no data message
-        let loading_text = Line::from(vec![
-            Span::styled("Loading historical data...", Style::default().fg(Color::Yellow))
-        ]);
-        let paragraph = ratatui::widgets::Paragraph::new(loading_text)
-            .block(block);
-        f.render_widget(paragraph, area);
+        self.end = self.end.clamp(1, len);
+        self.start = self.start.min(self.end - 1);
     }
 }
 
-pub fn draw_candlestick(f: &mut Frame, app: &App, area: Rect) {
-    let block = Block::default()
-        .title(format!("OHLC Chart: {}", app.symbol))
-        .borders(Borders::ALL);
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ChartDisplayMode {
+    #[default]
+    Line,
+    Candlestick,
+}
 
-    if let Some(historical_data) = &app.historical_data {
-        if historical_data.results.is_empty() {
-            let no_data_text = Line::from(vec![
-                Span::styled("No historical data available", Style::default().fg(Color::Red))
-            ]);
-            let paragraph = ratatui::widgets::Paragraph::new(no_data_text)
-                .block(block);
-            f.render_widget(paragraph, area);
+impl ChartDisplayMode {
+    pub fn toggle(self) -> Self {
+        match self {
+            ChartDisplayMode::Line => ChartDisplayMode::Candlestick,
+            ChartDisplayMode::Candlestick => ChartDisplayMode::Line,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            ChartDisplayMode::Line => "line",
+            ChartDisplayMode::Candlestick => "candles",
+        }
+    }
+}
+
+/// Visible bars for rendering; empty if there is no data.
+pub fn visible_slice<'a>(results: &'a [HistoricalData], vp: &ChartViewport) -> &'a [HistoricalData] {
+    let len = results.len();
+    if len == 0 {
+        return &[];
+    }
+    let end = if vp.end == 0 {
+        len
+    } else {
+        vp.end.min(len).max(1)
+    };
+    let start = vp.start.min(end - 1);
+    &results[start..end]
+}
+
+/// Whether the viewport shows the entire series (same rule as “full” in [`visible_slice`]).
+fn viewport_covers_full_series(vp: ChartViewport, series_len: usize) -> bool {
+    if series_len == 0 {
+        return true;
+    }
+    if vp.end == 0 {
+        return vp.start == 0;
+    }
+    vp.start == 0 && vp.end >= series_len
+}
+
+/// Clamp pan/zoom indices when bar count changes (e.g. one new daily bar).
+pub fn clamp_viewport_to_len(vp: ChartViewport, len: usize) -> ChartViewport {
+    if len == 0 {
+        return ChartViewport::default();
+    }
+    let end = if vp.end == 0 {
+        len
+    } else {
+        vp.end.min(len).max(1)
+    };
+    let start = vp.start.min(end.saturating_sub(1));
+    ChartViewport { start, end }
+}
+
+/// Preserve zoom/pan across periodic historical refetch; reset on first load, ticker change, or full-range view.
+pub fn chart_viewport_after_refresh(
+    previous_series: Option<&HistoricalResponse>,
+    current_vp: ChartViewport,
+    new_data: &HistoricalResponse,
+) -> ChartViewport {
+    let new_len = new_data.results.len();
+    if new_len == 0 {
+        return ChartViewport::default();
+    }
+    let Some(prev) = previous_series else {
+        return ChartViewport::full(new_len);
+    };
+    if !prev
+        .ticker
+        .eq_ignore_ascii_case(new_data.ticker.as_str())
+    {
+        return ChartViewport::full(new_len);
+    }
+    let old_len = prev.results.len();
+    if viewport_covers_full_series(current_vp, old_len) {
+        return ChartViewport::full(new_len);
+    }
+    clamp_viewport_to_len(current_vp, new_len)
+}
+
+pub fn viewport_zoom_in(vp: &mut ChartViewport, len: usize) {
+    if len < 2 {
+        return;
+    }
+    vp.normalize(len);
+    let w = vp.width();
+    if w <= 2 {
+        return;
+    }
+    let new_w = (w / 2).max(2);
+    let center = (vp.start + vp.end) / 2;
+    let mut new_start = center.saturating_sub(new_w / 2);
+    let mut new_end = new_start + new_w;
+    if new_end > len {
+        new_end = len;
+        new_start = new_end.saturating_sub(new_w);
+    }
+    vp.start = new_start;
+    vp.end = new_end;
+    vp.normalize(len);
+}
+
+pub fn viewport_zoom_out(vp: &mut ChartViewport, len: usize) {
+    if len == 0 {
+        return;
+    }
+    vp.normalize(len);
+    let w = vp.width();
+    let center = (vp.start + vp.end) / 2;
+    let new_w = (w.saturating_mul(2)).min(len).max(2);
+    let mut new_start = center.saturating_sub(new_w / 2);
+    let mut new_end = new_start + new_w;
+    if new_end > len {
+        new_end = len;
+        new_start = 0;
+    }
+    vp.start = new_start;
+    vp.end = new_end;
+    vp.normalize(len);
+}
+
+pub fn viewport_pan_left(vp: &mut ChartViewport, len: usize) {
+    if len < 2 || vp.start == 0 {
+        return;
+    }
+    vp.normalize(len);
+    vp.start = vp.start.saturating_sub(1);
+    vp.end = vp.end.saturating_sub(1);
+    vp.normalize(len);
+}
+
+pub fn viewport_pan_right(vp: &mut ChartViewport, len: usize) {
+    if len < 2 || vp.end >= len {
+        return;
+    }
+    vp.normalize(len);
+    vp.start += 1;
+    vp.end += 1;
+    vp.normalize(len);
+}
+
+fn price_bounds(slice: &[HistoricalData]) -> Option<(f64, f64)> {
+    if slice.is_empty() {
+        return None;
+    }
+    let mut lo = f64::MAX;
+    let mut hi = f64::MIN;
+    for b in slice {
+        lo = lo.min(b.l).min(b.o).min(b.c);
+        hi = hi.max(b.h).max(b.o).max(b.c);
+    }
+    if !lo.is_finite() || !hi.is_finite() {
+        return None;
+    }
+    if (hi - lo).abs() < f64::EPSILON {
+        let pad = lo.abs() * 0.05 + 0.01;
+        Some((lo - pad, hi + pad))
+    } else {
+        let pad = (hi - lo) * 0.1;
+        Some((lo - pad, hi + pad))
+    }
+}
+
+fn format_time_axis(ts_ms: f64, intraday: bool) -> String {
+    let Some(dt) = DateTime::<Utc>::from_timestamp((ts_ms / 1000.0) as i64, 0) else {
+        return "?".into();
+    };
+    if intraday {
+        dt.format("%m/%d %H:%MZ").to_string()
+    } else {
+        dt.format("%m/%d").to_string()
+    }
+}
+
+pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
+    let title = format!(
+        "{} · {} · {} │ 1-4 range │ +/- zoom │ h l pan │ 0 reset │ c mode",
+        app.symbol,
+        app.time_range.label(),
+        app.chart_mode.label()
+    );
+    let block = Block::default().title(title).borders(Borders::ALL);
+
+    let Some(historical_data) = &app.historical_data else {
+        let loading_text = Line::from(vec![Span::styled(
+            "Loading historical data...",
+            Style::default().fg(Color::Yellow),
+        )]);
+        let paragraph = ratatui::widgets::Paragraph::new(loading_text).block(block);
+        f.render_widget(paragraph, area);
+        return;
+    };
+
+    if historical_data.results.is_empty() {
+        let no_data_text = Line::from(vec![Span::styled(
+            "No historical data available",
+            Style::default().fg(Color::Red),
+        )]);
+        let paragraph = ratatui::widgets::Paragraph::new(no_data_text).block(block);
+        f.render_widget(paragraph, area);
+        return;
+    }
+
+    let slice = visible_slice(&historical_data.results, &app.chart_viewport);
+    if slice.is_empty() {
+        let no_data_text = Line::from(vec![Span::styled(
+            "No data in current view",
+            Style::default().fg(Color::Red),
+        )]);
+        let paragraph = ratatui::widgets::Paragraph::new(no_data_text).block(block);
+        f.render_widget(paragraph, area);
+        return;
+    }
+
+    let Some((price_min, price_max)) = price_bounds(slice) else {
+        let no_data_text = Line::from(vec![Span::styled(
+            "Invalid price data",
+            Style::default().fg(Color::Red),
+        )]);
+        let paragraph = ratatui::widgets::Paragraph::new(no_data_text).block(block);
+        f.render_widget(paragraph, area);
+        return;
+    };
+
+    let data: Vec<(f64, f64)> = slice
+        .iter()
+        .map(|b| (b.t as f64 / 1000.0, b.c))
+        .collect();
+
+    let (min_time, max_time) = data.iter().fold((f64::MAX, f64::MIN), |(a, b), &(t, _)| {
+        (a.min(t), b.max(t))
+    });
+    let span_sec = max_time - min_time;
+    let intraday = matches!(app.time_range, TimeRange::D1 | TimeRange::W1) || span_sec < 86400.0 * 3.0;
+
+    let first_ts = slice.first().map(|b| b.t as f64).unwrap_or(0.0);
+    let last_ts = slice.last().map(|b| b.t as f64).unwrap_or(0.0);
+    let vis_from = format_time_axis(first_ts, intraday);
+    let vis_to = format_time_axis(last_ts, intraday);
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    if matches!(app.chart_mode, ChartDisplayMode::Candlestick) {
+        if slice.len() < 2 {
+            let msg = Line::from(vec![Span::styled(
+                format!(
+                    "Candles need 2+ bars (visible {}–{}, {} bar(s)). Press `c` for line.",
+                    vis_from, vis_to, slice.len()
+                ),
+                Style::default().fg(Color::Yellow),
+            )]);
+            let paragraph = ratatui::widgets::Paragraph::new(msg);
+            f.render_widget(paragraph, inner);
             return;
         }
+        let chart = CandlestickChart {
+            data: slice,
+            min_y: price_min,
+            max_y: price_max,
+        };
+        f.render_widget(chart, inner);
+        return;
+    }
 
-        // For a real candlestick chart, we'd need a more complex rendering approach
-        // This is a simplified version using text representation
+    let datasets = vec![Dataset::default()
+        .name("Close")
+        .marker(symbols::Marker::Braille)
+        .graph_type(GraphType::Line)
+        .style(Style::default().fg(Color::Cyan))
+        .data(&data)];
 
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(1),  // Header
-                Constraint::Min(3),     // Data
-            ].as_ref())
-            .split(area);
+    let format_time = |time: &f64| format_time_axis(*time * 1000.0, intraday);
+    let format_price = |price: &f64| format!("${:.2}", price);
 
-        // Render block around the whole area
-        f.render_widget(block, area);
+    let chart = Chart::new(datasets)
+        .x_axis(
+            Axis::default()
+                .title(Line::from(vec![Span::styled(
+                    format!("UTC  {vis_from} → {vis_to}"),
+                    Style::default().fg(Color::White),
+                )]))
+                .style(Style::default().fg(Color::White))
+                .bounds([min_time, max_time])
+                .labels(vec![
+                    Span::styled(format_time(&min_time), Style::default().fg(Color::White)),
+                    Span::styled(
+                        format_time(&((min_time + max_time) / 2.0)),
+                        Style::default().fg(Color::White),
+                    ),
+                    Span::styled(format_time(&max_time), Style::default().fg(Color::White)),
+                ]),
+        )
+        .y_axis(
+            Axis::default()
+                .title(Line::from(vec![Span::styled(
+                    "Price",
+                    Style::default().fg(Color::White),
+                )]))
+                .style(Style::default().fg(Color::White))
+                .bounds([price_min, price_max])
+                .labels(vec![
+                    Span::styled(format_price(&price_min), Style::default().fg(Color::White)),
+                    Span::styled(
+                        format_price(&((price_min + price_max) / 2.0)),
+                        Style::default().fg(Color::White),
+                    ),
+                    Span::styled(format_price(&price_max), Style::default().fg(Color::White)),
+                ]),
+        );
 
-        // Render header
-        let header = vec![
-            Span::styled("Date", Style::default().fg(Color::White)),
-            Span::styled(" | ", Style::default().fg(Color::White)),
-            Span::styled("Open", Style::default().fg(Color::White)),
-            Span::styled(" | ", Style::default().fg(Color::White)),
-            Span::styled("High", Style::default().fg(Color::White)),
-            Span::styled(" | ", Style::default().fg(Color::White)),
-            Span::styled("Low", Style::default().fg(Color::White)),
-            Span::styled(" | ", Style::default().fg(Color::White)),
-            Span::styled("Close", Style::default().fg(Color::White)),
-            Span::styled(" | ", Style::default().fg(Color::White)),
-            Span::styled("Volume", Style::default().fg(Color::White)),
-        ];
+    f.render_widget(chart, inner);
+}
 
-        let header_text = ratatui::widgets::Paragraph::new(Line::from(header))
-            .style(Style::default().add_modifier(Modifier::BOLD));
-        f.render_widget(header_text, chunks[0]);
+/// Candlesticks in equal-width slots so bars sit closer than edge-to-edge indexing (Issue #7).
+struct CandlestickChart<'a> {
+    data: &'a [HistoricalData],
+    min_y: f64,
+    max_y: f64,
+}
 
-        // Render data rows
-        let mut rows = Vec::new();
-        for data in historical_data.results.iter().take(10) { // Limit to 10 rows for simplicity
-            let dt = DateTime::<Utc>::from_timestamp((data.t / 1000) as i64, 0).expect("timestamp");
-            let date = dt.format("%Y-%m-%d").to_string();
+impl CandlestickChart<'_> {
+    /// Center of bar `i` in slot `i` of `n` equal columns (tighter than edge-to-edge `i/(n-1)`).
+    fn slot_center_x(&self, area: Rect, i: usize, n: usize) -> u16 {
+        let w = area.width.max(1);
+        if n == 0 {
+            return area.left();
+        }
+        if n == 1 {
+            return area.left() + w / 2;
+        }
+        let slot = f64::from(w) / n as f64;
+        let cx = f64::from(area.left()) + slot * (i as f64 + 0.5);
+        cx.round().clamp(f64::from(area.left()), f64::from(area.right().saturating_sub(1))) as u16
+    }
 
-            // Determine if price went up or down
-            let color = if data.c >= data.o { Color::Green } else { Color::Red };
+    fn body_width_cells(&self, area: Rect, n: usize) -> u16 {
+        if n == 0 {
+            return 1;
+        }
+        let slot = f64::from(area.width.max(1)) / n as f64;
+        if slot >= 4.0 {
+            2
+        } else {
+            1
+        }
+    }
 
-            let row = vec![
-                Span::styled(date, Style::default().fg(Color::White)),
-                Span::styled(" | ", Style::default().fg(Color::White)),
-                Span::styled(format!("{:.2}", data.o), Style::default().fg(color)),
-                Span::styled(" | ", Style::default().fg(Color::White)),
-                Span::styled(format!("{:.2}", data.h), Style::default().fg(color)),
-                Span::styled(" | ", Style::default().fg(Color::White)),
-                Span::styled(format!("{:.2}", data.l), Style::default().fg(color)),
-                Span::styled(" | ", Style::default().fg(Color::White)),
-                Span::styled(format!("{:.2}", data.c), Style::default().fg(color)),
-                Span::styled(" | ", Style::default().fg(Color::White)),
-                Span::styled(format!("{:.0}", data.v), Style::default().fg(Color::White)),
-            ];
+    fn price_to_row(&self, area: Rect, price: f64) -> Option<u16> {
+        let h = area.height;
+        if h < 2 {
+            return None;
+        }
+        let span = self.max_y - self.min_y;
+        if span.abs() < f64::EPSILON {
+            return Some(area.top() + h / 2);
+        }
+        let frac = (price - self.min_y) / span;
+        let row = area.bottom().saturating_sub(1) as f64 - frac * f64::from(h.saturating_sub(1));
+        let r = row.round() as i32;
+        let top = i32::from(area.top());
+        let bottom = i32::from(area.bottom().saturating_sub(1));
+        Some(r.clamp(top, bottom) as u16)
+    }
+}
 
-            rows.push(Line::from(row));
+impl Widget for CandlestickChart<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        if self.data.is_empty() || area.width < 2 || area.height < 2 {
+            return;
+        }
+        let n = self.data.len();
+
+        for (i, bar) in self.data.iter().enumerate() {
+            let cx = self.slot_center_x(area, i, n);
+            let bw = self.body_width_cells(area, n);
+            let x0 = cx.saturating_sub(bw / 2);
+            let Some(y_high) = self.price_to_row(area, bar.h) else {
+                continue;
+            };
+            let Some(y_low) = self.price_to_row(area, bar.l) else {
+                continue;
+            };
+            let Some(y_open) = self.price_to_row(area, bar.o) else {
+                continue;
+            };
+            let Some(y_close) = self.price_to_row(area, bar.c) else {
+                continue;
+            };
+
+            let up = bar.c >= bar.o;
+            let color = if up { Color::Green } else { Color::Red };
+
+            let y_wick_top = y_high.min(y_low);
+            let y_wick_bot = y_high.max(y_low);
+            for y in y_wick_top..=y_wick_bot {
+                let cell = buf.get_mut(cx, y);
+                cell.set_symbol(symbols::line::VERTICAL);
+                cell.set_fg(color);
+            }
+
+            let body_top = y_open.min(y_close);
+            let mut body_bot = y_open.max(y_close);
+            if body_top == body_bot {
+                body_bot = (body_bot + 1).min(area.bottom().saturating_sub(1));
+            }
+            for y in body_top..=body_bot {
+                for dx in 0..bw {
+                    let xx = x0.saturating_add(dx).min(area.right().saturating_sub(1));
+                    let cell = buf.get_mut(xx, y);
+                    cell.set_symbol("█");
+                    cell.set_fg(color);
+                }
+            }
         }
 
-        let data_text = ratatui::widgets::Paragraph::new(rows)
-            .scroll((0, 0));
-        f.render_widget(data_text, chunks[1]);
-    } else {
-        // Show loading or no data message
-        let loading_text = Line::from(vec![
-            Span::styled("Loading historical data...", Style::default().fg(Color::Yellow))
-        ]);
-        let paragraph = ratatui::widgets::Paragraph::new(loading_text)
-            .block(block);
-        f.render_widget(paragraph, area);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bar(t: u64, o: f64, h: f64, l: f64, c: f64) -> HistoricalData {
+        HistoricalData {
+            o,
+            h,
+            l,
+            c,
+            v: 1.0,
+            t,
+            vw: c,
+            n: None,
+        }
+    }
+
+    #[test]
+    fn visible_slice_full_when_end_zero() {
+        let v = vec![bar(1, 1.0, 2.0, 0.5, 1.5), bar(2, 1.5, 2.5, 1.0, 2.0)];
+        let vp = ChartViewport::default();
+        let s = visible_slice(&v, &vp);
+        assert_eq!(s.len(), 2);
+    }
+
+    #[test]
+    fn visible_slice_window() {
+        let v: Vec<_> = (0..10)
+            .map(|i| bar(i * 1000, 1.0, 2.0, 0.5, 1.0))
+            .collect();
+        let vp = ChartViewport { start: 2, end: 6 };
+        let s = visible_slice(&v, &vp);
+        assert_eq!(s.len(), 4);
+    }
+
+    #[test]
+    fn zoom_in_shrinks_width() {
+        let mut vp = ChartViewport::full(20);
+        viewport_zoom_in(&mut vp, 20);
+        assert!(vp.width() < 20);
+        assert!(vp.width() >= 2);
+    }
+
+    #[test]
+    fn pan_left_moves_window() {
+        let mut vp = ChartViewport { start: 5, end: 15 };
+        viewport_pan_left(&mut vp, 20);
+        assert_eq!(vp.start, 4);
+        assert_eq!(vp.end, 14);
+    }
+
+    #[test]
+    fn pan_right_at_end_noop() {
+        let mut vp = ChartViewport { start: 10, end: 20 };
+        viewport_pan_right(&mut vp, 20);
+        assert_eq!(vp.start, 10);
+        assert_eq!(vp.end, 20);
+    }
+
+    fn hist(ticker: &str, bars: usize) -> HistoricalResponse {
+        HistoricalResponse {
+            ticker: ticker.to_string(),
+            results: (0..bars)
+                .map(|i| bar(i as u64 * 1000, 1.0, 2.0, 0.5, 1.0))
+                .collect(),
+            status: "OK".into(),
+            request_id: String::new(),
+            count: bars as u32,
+        }
+    }
+
+    #[test]
+    fn refresh_no_previous_is_full() {
+        let new = hist("AAPL", 5);
+        let vp = chart_viewport_after_refresh(None, ChartViewport::default(), &new);
+        assert_eq!(vp, ChartViewport::full(5));
+    }
+
+    #[test]
+    fn refresh_ticker_change_resets_full() {
+        let prev = hist("AAPL", 10);
+        let new = hist("MSFT", 10);
+        let vp = chart_viewport_after_refresh(
+            Some(&prev),
+            ChartViewport {
+                start: 2,
+                end: 8,
+            },
+            &new,
+        );
+        assert_eq!(vp, ChartViewport::full(10));
+    }
+
+    #[test]
+    fn refresh_preserves_zoomed_viewport() {
+        let prev = hist("AAPL", 20);
+        let new = hist("AAPL", 20);
+        let vp = chart_viewport_after_refresh(
+            Some(&prev),
+            ChartViewport { start: 5, end: 15 },
+            &new,
+        );
+        assert_eq!(vp.start, 5);
+        assert_eq!(vp.end, 15);
+    }
+
+    #[test]
+    fn refresh_full_series_grows_with_new_bars() {
+        let prev = hist("AAPL", 30);
+        let new = hist("AAPL", 31);
+        let vp = chart_viewport_after_refresh(Some(&prev), ChartViewport::full(30), &new);
+        assert_eq!(vp, ChartViewport::full(31));
+    }
+
+    #[test]
+    fn clamp_viewport_when_series_shortens() {
+        let vp = ChartViewport { start: 8, end: 20 };
+        let out = clamp_viewport_to_len(vp, 15);
+        assert_eq!(out.end, 15);
+        assert!(out.start < out.end);
     }
 }

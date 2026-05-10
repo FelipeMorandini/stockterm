@@ -1,6 +1,101 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior. **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior. **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11).
+
+---
+
+## Issues #7, #8, #9 — M4: Charts (candlesticks, viewport, time ranges)
+
+**Scope:**
+
+- [Issue #9](https://github.com/FelipeMorandini/stockterm/issues/9) — `TimeRange` **D1/W1/M1/Y1**, keys **`1`–`4`**, provider windows + intraday/daily bars, title reflects range, viewport resets on range change.
+- [Issue #8](https://github.com/FelipeMorandini/stockterm/issues/8) — Zoom **`+`/`-`**, pan **`h`/`l`** (and/or arrows), reset **`0`**, y-axis from visible window, visible dates in UI, clamped at data edges.
+- [Issue #7](https://github.com/FelipeMorandini/stockterm/issues/7) — Real candlestick **`Widget`**, green/red bodies + wicks, **`c`** toggles line vs candles, graceful empty/single-point handling.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §11.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+### Manual — Time ranges (#9)
+
+1. **`cargo run --release`**, select a liquid symbol (**`AAPL`**), open **Charts**.
+
+2. Press **`3`** (or the key bound to **M1** per SPEC).  
+   **Pass:** Chart loads ~1 month of **daily** (or documented) bars; title/status shows **M1** (or equivalent label).
+
+3. Press **`1`** (**D1**).  
+   **Pass:** Chart switches to **intraday** bars (multiple bars for one session window); no crash; label shows **D1**.
+
+4. Press **`2`**, **`4`** in turn.  
+   **Pass:** **W1** and **Y1** views load or show a clear **empty/error** message; symbol unchanged (no re-type).
+
+5. **Yahoo (default):** Repeat smoke on **`provider`: `yahoo`**.  
+   **Pass:** Same behaviors; no “only daily supported” error.
+
+6. **Polygon:** Set **`provider`: `polygon`** with valid key; repeat **`1`–`4`**.  
+   **Pass:** Data or readable error; no panic.
+
+### Manual — Viewport / zoom / pan (#8)
+
+1. On **M1** or **Y1** with enough bars, press **`+`** several times.  
+   **Pass:** Visible window **narrows** around the center; prices rescale (y-axis fits visible highs/lows).
+
+2. Press **`-`**.  
+   **Pass:** Window **widens** toward full range.
+
+3. Press **`h`** / **`l`** (or arrows if implemented).  
+   **Pass:** Chart **pans**; at first/last bar, no crash and no garbage off-screen.
+
+4. Press **`0`**.  
+   **Pass:** Full series visible again.
+
+5. Change range with **`1`** then **`3`**.  
+   **Pass:** Viewport **resets** to full new series (per SPEC §11.4).
+
+### Manual — Candlesticks (#7)
+
+1. Press **`c`** to switch to **candlestick** mode.  
+   **Pass:** Bodies and wicks visible; **up** vs **down** color distinction clear.
+
+2. Press **`c`** again.  
+   **Pass:** Returns to **line** chart without restart.
+
+3. Zoom/pan in candlestick mode.  
+   **Pass:** Same viewport keys affect candles; y-bounds still track visible window.
+
+4. **Edge cases:** Symbol with **no** history, or **one** bar — **Pass:** Explanatory message; **no panic**.
+
+### Manual — Regression
+
+1. **Stock View / watchlist** after Charts session — **Pass:** Unchanged.
+
+2. **Chord safety:** On Charts, **`Ctrl+h`** does not pan (if SPEC requires plain keys only).  
+   **Pass:** Matches handler rules.
+
+### Sign-off — M4 (#7 / #8 / #9)
+
+_Manual validation passed 2026-05-10 (pre-merge). Viewport preserved across background chart refresh; `3` on default M1 forces refresh._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-10 | Pass |
+| Time range keys + labels (#9) | maintainer | 2026-05-10 | Pass |
+| D1 intraday bars (#9) | maintainer | 2026-05-10 | Pass |
+| Yahoo + Polygon smoke (#9) | maintainer | 2026-05-10 | Pass |
+| Zoom / pan / reset (#8) | maintainer | 2026-05-10 | Pass |
+| Viewport + range change (#8/#9) | maintainer | 2026-05-10 | Pass |
+| Candlestick toggle (#7) | maintainer | 2026-05-10 | Pass |
+| Empty / single-point (#7/#9) | maintainer | 2026-05-10 | Pass |
 
 ---
 

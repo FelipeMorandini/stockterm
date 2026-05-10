@@ -5,6 +5,7 @@ use chrono::{Duration, Local};
 use urlencoding::encode;
 
 use crate::api::error::{map_reqwest, ProviderError, ProviderResult};
+use crate::api::historical_query::HistoricalQuery;
 use crate::api::http::shared_client;
 use crate::api::provider::MarketDataProvider;
 use crate::config::Config;
@@ -72,19 +73,18 @@ impl MarketDataProvider for PolygonProvider {
     async fn get_historical(
         &self,
         symbol: &str,
-        from_date: &str,
-        to_date: &str,
-        timespan: &str,
+        query: &HistoricalQuery<'_>,
         config: &Config,
     ) -> ProviderResult<HistoricalResponse> {
         let key = polygon_key(config)?;
         let url = format!(
-            "{}/v2/aggs/ticker/{}/range/1/{}/{}/{}?apiKey={}",
+            "{}/v2/aggs/ticker/{}/range/{}/{}/{}/{}?adjusted=true&sort=asc&limit=50000&apiKey={}",
             BASE_URL,
             enc(symbol),
-            enc(timespan),
-            enc(from_date),
-            enc(to_date),
+            query.polygon_multiplier,
+            enc(query.polygon_timespan),
+            enc(query.from),
+            enc(query.to),
             enc(&key)
         );
         fetch_json(&url).await
