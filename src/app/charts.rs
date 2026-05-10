@@ -179,7 +179,7 @@ pub fn draw_candlestick(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(" | ", Style::default().fg(Color::White)),
                 Span::styled(format!("{:.2}", data.c), Style::default().fg(color)),
                 Span::styled(" | ", Style::default().fg(Color::White)),
-                Span::styled(format!("{}", data.v), Style::default().fg(Color::White)),
+                Span::styled(format!("{:.0}", data.v), Style::default().fg(Color::White)),
             ];
 
             rows.push(Line::from(row));

@@ -116,7 +116,7 @@ impl App {
                     let interval = self.data_poll_interval();
                     let now = Instant::now();
                     match self.active_tab {
-                        Tab::StockView
+                        Tab::StockView | Tab::Alerts
                             if self.last_stock_network_poll.is_none_or(|t| {
                                 now.duration_since(t) >= interval
                             }) =>
@@ -196,6 +196,7 @@ impl App {
                         }
                     }
                 }
+                self.check_alerts();
             }
             Err(err) => {
                 self.error_message = Some(format!("Error fetching ticker data: {}", err));

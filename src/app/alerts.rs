@@ -66,14 +66,12 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
     let table = Table::new(
         rows,
         [
-            Constraint::Length(8),    // Symbol
-            Constraint::Length(8),    // Shares
-            Constraint::Length(10),   // Avg Price
-            Constraint::Length(10),   // Current
-            Constraint::Length(10),   // Value
-            Constraint::Length(10),   // P/L
-            Constraint::Length(10),   // P/L %
-        ]
+            Constraint::Min(6),       // Symbol
+            Constraint::Length(10),   // Condition (Above / Below)
+            Constraint::Length(11),   // Price
+            Constraint::Length(11),   // Current
+            Constraint::Min(10),      // Status (Waiting / TRIGGERED)
+        ],
     )
         .header(header)
         .block(Block::default().borders(Borders::ALL).title("Alerts"))

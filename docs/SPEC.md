@@ -1,71 +1,93 @@
-# SPEC — Issue #27: Persist alerts to config (`save_alerts`)
+# SPEC — Issues #30, #37, #38: Alerts loop + table layout
 
-**Source:** [GitHub Issue #27](https://github.com/FelipeMorandini/stockterm/issues/27).  
-**Goal:** `add_alert` and `remove_alert` must mirror the in-memory `App.alerts` vector into `Config.alerts` and persist `~/.stockterm.json` so alerts survive process restart. Replace the `save_alerts` no-op with real I/O.
+**Sources:**
 
-**Prerequisite:** Issue #1 work is assumed shipped (Alerts tab, `App::new` already hydrates `alerts` from `Config::load()` — see `src/app/app.rs`).
+- [GitHub Issue #30](https://github.com/FelipeMorandini/stockterm/issues/30) — wire `check_alerts` into main loop / tick path without blocking the UI.
+- [GitHub Issue #37](https://github.com/FelipeMorandini/stockterm/issues/37) — fix `draw_alerts` table: header/row column count vs `Constraint` count mismatch.
+- [GitHub Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38) — invoke `check_alerts` from `App::run` at a sensible cadence; document in SPEC/QA.
+
+**Overlap:** #30 and #38 describe the same functional gap (`App::check_alerts` never called from `App::run`). This SPEC treats them as **one implementation** with both issues closed by the same change set.
+
+**Prerequisite:** [Issue #27](https://github.com/FelipeMorandini/stockterm/issues/27) — `save_alerts` → `Config::try_save` and `check_alerts` persistence on `triggered` transitions are already implemented in `src/app/alerts.rs`.
 
 ---
 
 ## 1. Current gaps (verified in tree)
 
-| Location | Problem |
-|----------|---------|
-| `src/app/alerts.rs` — `save_alerts` | Empty body; commented-out intended logic. |
-| `add_alert` / `remove_alert` | Already invoke `save_alerts()` after mutating `self.alerts`, but persistence never runs. |
-| `check_alerts` | On `triggered` transition, duplicates persistence with `self.config.alerts = self.alerts.clone(); self.config.save();` — silent `save()`, divergent from a unified alerts persistence path. |
+| ID | Location | Problem |
+|----|----------|---------|
+| #37 | `src/app/alerts.rs` — `draw_alerts` | Header and rows expose **five** columns (`Symbol`, `Condition`, `Price`, `Current`, `Status`), but `Table::new` passes **seven** `Constraint::Length` entries with portfolio-style comments (Shares, Avg, Value, P/L, etc.). Ratatui may mis-layout or panic depending on version; layout is wrong regardless. |
+| #30 / #38 | `src/app/app.rs` — `App::run` / `fetch_ticker_data` | `check_alerts` is never called, so `Alert.triggered` never flips from `false` → `true` in the running app and `save_alerts` never runs for that transition. |
+| #30 / #38 | `App::run` — `Event::Tick` | Throttled `fetch_ticker_data` runs only when `active_tab == Tab::StockView`. If the user sits on **Alerts**, quotes (and thus prices used by `get_current_price`) may go stale unless they switch back to Stock View. |
 
-**Non-goals for #27:** Wiring `check_alerts` into the main loop (ROADMAP follow-up), portfolio persistence behavior, or changing alert editor UX (still hard-coded demo price in handler).
+**Non-goals for this milestone:** OS notifications / terminal bell, alert creation dialog, multi-symbol batch quotes for arbitrary alert symbols, changing `get_current_price` semantics beyond documenting them.
 
 ---
 
 ## 2. Crate & module layout
 
 - **Single package:** `stockterm` (no new crates).
-- **Touch points:** `src/app/alerts.rs` (`impl App` block for `save_alerts`, optional dedup in `check_alerts`). No new modules unless a tiny helper is needed (prefer keeping logic in `alerts.rs`).
-- **Config:** Reuse existing `Config::try_save` / `ConfigError` in `src/config/config.rs`. `Alert` is already `Serialize`/`Deserialize` (`src/models/alerts.rs`).
+- **`src/app/alerts.rs`:** `draw_alerts` constraint fix; no signature change to `check_alerts` unless needed.
+- **`src/app/app.rs`:** Call `check_alerts` from the quote-update path; adjust tick routing so Alerts tab keeps receiving throttled quote updates (shared throttle with Stock View).
 
 ---
 
 ## 3. Implementation plan (Rust)
 
-### 3.1 Implement `save_alerts`
+### 3.1 Issue #37 — `draw_alerts` column constraints
 
-- Change `fn save_alerts(&self)` to **`fn save_alerts(&mut self)`** — assignment to `self.config.alerts` requires mutable access.
-- Body:
-  1. `self.config.alerts = self.alerts.clone();` (same shape as portfolio updates in `src/app/app.rs`).
-  2. Call **`self.config.try_save()`** (not `save()`), map `Err(e)` to **`self.error_message = Some(...)`** with a short prefix, e.g. `Failed to save config: {e}` or `Failed to save alerts: {e}`, using `ConfigError`’s `Display` via `.to_string()`.
-  3. On `Ok(())`, do **not** blindly clear `error_message` (other subsystems may have set it); optionally clear only if the message is known to be save-related — **SPEC preference:** only set on failure; leave success path a no-op for `error_message` to avoid surprising wipes.
+- Replace the seven `Constraint::Length(...)` entries with **exactly five**, aligned to the header/row order:
+  - Symbol — moderate width (e.g. `Length(8)` or `Min(6)`).
+  - Condition — short (`Length(8)` or `Length(10)` for `"Above"`/`"Below"`).
+  - Price / Current — numeric (`Length(10)`–`Length(12)`).
+  - Status — `"TRIGGERED"` / `"Waiting"` (`Length(12)`–`Length(14)` or `Min(10)`).
+- Prefer **mixed constraints** if readability on narrow terminals matters: e.g. `Min` for Symbol/Status and `Length` for numeric columns, matching patterns used elsewhere (e.g. portfolio table).
+- **Acceptance:** constraint slice length equals **5**; table renders without layout glitches on a typical 80-column terminal.
 
-### 3.2 Call sites
+### 3.2 Issues #30 & #38 — When to call `check_alerts`
 
-- `add_alert` / `remove_alert` already call `save_alerts()` — no signature changes beyond `save_alerts` taking `&mut self` (callers already have `&mut App`).
-- Refactor **`check_alerts`**: replace the `if updated { self.config.alerts = ...; self.config.save(); }` block with **`self.save_alerts()`** so triggered-state updates and add/remove share one path and consistent error surfacing.
+**Semantics (existing code, do not break):**
 
-### 3.3 Async / threading
+- `check_alerts` uses `get_current_price(symbol)`, which returns a price only when:
+  - `ticker_data` matches that symbol (usually the **active** `App.symbol` after a successful fetch), or
+  - a **portfolio** row for that symbol has `current_price` set (back-filled when that symbol was last fetched).
+- Alerts for symbols with **no** cached price are skipped until a price exists — document in QA.
 
-- No change: persistence remains synchronous on the main async task, same as portfolio `config.save()` today.
+**Call sites:**
 
-### 3.4 Serialization compatibility
+1. **`fetch_ticker_data` — success path**  
+   After updating `self.ticker_data` and after the existing portfolio back-fill for the active symbol (see `src/app/app.rs` today), call **`self.check_alerts()`**.  
+   - Ensures every successful quote refresh re-evaluates conditions.  
+   - Covers explicit refetch (`should_fetch_ticker`), initial `run()` fetch, and tick-driven fetches.
 
-- `Alert` includes `triggered: bool`; persisting the full vector preserves fired state across restarts (already implied by `check_alerts` writing `config.alerts`). No schema migration.
+2. **`App::run` — `Event::Tick` throttled fetch**  
+   Extend the condition that triggers `fetch_ticker_data` so it runs when `active_tab` is **`Tab::StockView` OR `Tab::Alerts`**, still gated by `last_stock_network_poll` and `data_poll_interval()`.  
+   - Reuse **`last_stock_network_poll`** (same clock as Stock View) so we do not double API traffic when switching tabs.  
+   - Rationale: users on Alerts should see `triggered` / persisted state update without forcing a tab switch.
+
+**Async / blocking:**
+
+- `check_alerts` remains **synchronous**, O(n) in alert count, no I/O except `save_alerts` on transition (already acceptable per #27).  
+- No new `await` inside `check_alerts`; “without blocking UI” means we do **not** add extra network calls here — only hook into the existing fetch cadence.
+
+### 3.3 Edge cases
+
+- **Empty symbol / missing API key:** `fetch_ticker_data` returns early; `check_alerts` is not required on those paths (no new price).  
+- **Fetch error:** Do not call `check_alerts` on failure if prices are cleared; optional conservative call is unnecessary — **SPEC:** invoke only on the successful branch where `ticker_data` and portfolio back-fill have been updated.  
+- **Selection / table state:** `check_alerts` does not mutate `alerts_state`; no change expected.
 
 ---
 
-## 4. Verification targets
+## 4. Verification targets (automated)
 
 - `cargo build --release` and `cargo clippy -- -D warnings` — clean.
-- After add/remove alert, `~/.stockterm.json` contains an `alerts` array consistent with the UI.
-- Restart binary: alerts list matches previous session (count, symbol, condition, price, `triggered` if applicable).
-- Induce a save failure (optional dev test): e.g. read-only home or invalid path — `error_message` reflects failure (manual or scripted).
 
 ---
 
-## 5. Out of scope (Issue #27)
+## 5. Out of scope
 
-- Calling `check_alerts` from `App::run` tick path.
-- Improving alert creation UX (price/condition input).
-- Changing portfolio to `try_save` + surfaced errors.
+- [Issue #39](https://github.com/FelipeMorandini/stockterm/issues/39) / [Issue #40](https://github.com/FelipeMorandini/stockterm/issues/40) — portfolio `try_save`, async config I/O.  
+- Deduping GitHub #30 vs #38 as separate PRs — one PR may close both.
 
 ---
 
@@ -73,8 +95,11 @@
 
 After maintainer approval of this SPEC, implementation may proceed per `.cursor/rules/sdd_workflow.mdc` and `docs/QA_PLAN.md`.
 
+---
+
 ## 7. Shipment
 
-- **Status:** Implemented; manual QA passed per `docs/QA_PLAN.md` (Issue #27).
-- **Deferred:** Scratchpad items filed as GitHub Issues [#37](https://github.com/FelipeMorandini/stockterm/issues/37), [#38](https://github.com/FelipeMorandini/stockterm/issues/38), [#39](https://github.com/FelipeMorandini/stockterm/issues/39), [#40](https://github.com/FelipeMorandini/stockterm/issues/40).
-- **PR:** https://github.com/FelipeMorandini/stockterm/pull/41
+- **Status:** Implemented; closes [Issue #30](https://github.com/FelipeMorandini/stockterm/issues/30), [#37](https://github.com/FelipeMorandini/stockterm/issues/37), [#38](https://github.com/FelipeMorandini/stockterm/issues/38). Manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (with known limits: symbol entry, hard-coded alert add).
+- **Also in branch:** Polygon aggregate `v` (volume) deserialized as `f64` (`TickerResult`, `HistoricalData`) after live API returned fractional volume; display uses rounded whole numbers.
+- **Deferred:** New GitHub issues filed at ship from scratchpad (Status vs `triggered`, block titles, keyboard modifiers). Non-blocking UI remains [Issue #17](https://github.com/FelipeMorandini/stockterm/issues/17); alert dialog / UX remains [Issue #10](https://github.com/FelipeMorandini/stockterm/issues/10).
+- **PR:** _(link added when the pull request is opened)_

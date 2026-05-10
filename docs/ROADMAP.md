@@ -155,8 +155,9 @@ incomplete, broken, or unwired; **Missing** = no code path.
     - **Resolved (Issue #27):** `save_alerts` persists `alerts` to
       `~/.stockterm.json` via `Config::try_save`, with errors in
       `App.error_message`.
-    - `App::check_alerts` is **never called** from the main loop — follow-up
-      [Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38).
+    - **Resolved (Issues #30 / #38):** `check_alerts` runs after each successful
+      `fetch_ticker_data`; throttled quote fetch also runs on `Tab::Alerts`
+      (shared `last_stock_network_poll`).
     - `handle_alerts_events` is dispatched from `handlers.rs` on `Tab::Alerts`.
     - No OS-level notification (no `notify-rust` / bell / toast); only an
       in-pane "TRIGGERED" label.
@@ -260,9 +261,9 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 - **Partial**
   - Portfolio persists via `Config.save` after add/remove.
-  - Alerts persist on add/remove via `save_alerts` → `Config::try_save` (Issue
-    #27); `triggered` transitions still require `check_alerts` to be driven from
-    the loop ([Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38)).
+    - Alerts persist on add/remove via `save_alerts` → `Config::try_save` (Issue
+      #27); `triggered` transitions run via `check_alerts` after quote refresh
+      (Issues #30 / #38).
   - Watchlist, last-selected tab, last symbol, and theme do not persist.
 
 ### 4.19 Advanced / optional
@@ -281,15 +282,13 @@ Alert persistence landed in Issue #27._
 
 Open gaps worth tracking:
 
-1. `App::check_alerts` is not invoked from `App::run` — [Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38).
-2. `draw_search`, `draw_news`, `draw_settings` remain minimal or stub UIs.
-3. Test coverage is thin (a few unit tests only); expand per milestone M7.
-4. Main loop still awaits network I/O inline (UI can stall on slow API) — see §4.13.
+1. `draw_search`, `draw_news`, `draw_settings` remain minimal or stub UIs.
+2. Test coverage is thin (a few unit tests only); expand per milestone M7.
+3. Main loop still awaits network I/O inline (UI can stall on slow API) — see §4.13; [Issue #17](https://github.com/FelipeMorandini/stockterm/issues/17).
 
-_Recent follow-ups from ship:_ [Issue #37](https://github.com/FelipeMorandini/stockterm/issues/37)
-(alerts table layout), [Issue #39](https://github.com/FelipeMorandini/stockterm/issues/39)
+_Recent follow-ups from ship:_ [Issue #39](https://github.com/FelipeMorandini/stockterm/issues/39)
 (portfolio `try_save` parity), [Issue #40](https://github.com/FelipeMorandini/stockterm/issues/40)
-(non-blocking config I/O).
+(non-blocking config I/O). Issues [#30](https://github.com/FelipeMorandini/stockterm/issues/30)/[#37](https://github.com/FelipeMorandini/stockterm/issues/37)/[#38](https://github.com/FelipeMorandini/stockterm/issues/38) (alerts loop + table) shipped in the PR linked from `docs/SPEC.md` §7.
 
 ---
 
@@ -327,7 +326,7 @@ issue before code):
      (custom `ratatui::Widget` impl).
 6. **M5 — Alerts polish**
    - Persist alerts — **done** (Issue #27: `save_alerts` → `Config::try_save`).
-   - Drive `check_alerts` from the tick handler ([Issue #38](https://github.com/FelipeMorandini/stockterm/issues/38)).
+   - Drive `check_alerts` after quote refresh — **done** (Issues #30 / #38); table constraints — **done** (#37).
    - Add OS notification (e.g. `notify-rust`) and terminal bell.
    - Add input dialog for symbol/condition/price.
 7. **M6 — Filters, customizable shortcuts, themes**

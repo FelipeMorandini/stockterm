@@ -20,8 +20,9 @@ pub struct TickerResult {
     pub h: f64,
     pub l: f64,
     pub c: f64,
+    /// Polygon may return fractional volume on some aggregates.
     #[serde(default)]
-    pub v: u64,
+    pub v: f64,
     pub t: u64,
 }
 
@@ -70,5 +71,12 @@ mod tests {
         let r: TickerResponse = serde_json::from_str(json).expect("parse");
         assert!(r.ticker.is_empty());
         assert_eq!(r.latest_result().map(|b| b.c), Some(1.5));
+    }
+
+    #[test]
+    fn deserialize_fractional_volume() {
+        let json = r#"{"results":[{"o":1.0,"h":2.0,"l":0.5,"c":1.5,"v":52692761.275784,"t":1700000000000}]}"#;
+        let r: TickerResponse = serde_json::from_str(json).expect("parse");
+        assert!((r.results[0].v - 52692761.275784).abs() < 1e-6);
     }
 }

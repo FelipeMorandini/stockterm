@@ -152,7 +152,7 @@ fn draw_stock_view(f: &mut Frame, app: &App, area: Rect) {
                 Line::from(vec![
                     Span::raw("Volume: "),
                     Span::styled(
-                        format!("{}", result.v),
+                        format!("{:.0}", result.v),
                         Style::default().fg(Color::White),
                     ),
                 ]),
