@@ -593,8 +593,8 @@ Yahoo **`v7/finance/quote`** accepts **comma-separated `symbols`**. Current **`J
 
 ### 9.20 Shipment record
 
-- **Status:** Implemented in tree — pending manual QA ([`docs/QA_PLAN.md`](QA_PLAN.md) Issue #31) and PR.
+- **Status:** Shipped — manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #31; PR [#57](https://github.com/FelipeMorandini/stockterm/pull/57).
 - **Issue:** https://github.com/FelipeMorandini/stockterm/issues/31
 - **Dependencies:** `async-trait` **0.1.89** (see `Cargo.lock`).
 - **Code:** `src/api/{http,error,provider,yahoo}.rs`, refactored [`src/api/polygon.rs`](../src/api/polygon.rs); [`src/config/config.rs`](../src/config/config.rs) `MarketProviderKind`; [`src/app/app.rs`](../src/app/app.rs) `provider_ready` / `market_provider_for`; fixtures under [`tests/fixtures/`](../tests/fixtures/).
-- **PR:** _(add on merge)_
+- **PR:** https://github.com/FelipeMorandini/stockterm/pull/57
