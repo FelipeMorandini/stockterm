@@ -1,6 +1,6 @@
 use crate::app::alerts::handle_alerts_events;
 use crate::app::keyboard::letter_key_plain;
-use crate::app::portfolio::handle_portfolio_events;
+use crate::app::portfolio::{cycle_portfolio_dialog_focus, handle_portfolio_events};
 use crate::app::{App, SettingsEdit, Tab};
 use crate::models::time_range::TimeRange;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -18,13 +18,21 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             code: KeyCode::Tab,
             ..
         } => {
-            app.next_tab();
+            if app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some() {
+                cycle_portfolio_dialog_focus(app, true);
+            } else {
+                app.next_tab();
+            }
         }
         KeyEvent {
             code: KeyCode::BackTab,
             ..
         } => {
-            app.prev_tab();
+            if app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some() {
+                cycle_portfolio_dialog_focus(app, false);
+            } else {
+                app.prev_tab();
+            }
         }
         key => match app.active_tab {
             Tab::Portfolio => {

@@ -14,9 +14,10 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
         .borders(Borders::ALL);
 
     if app.alerts.is_empty() {
-        let no_data_text = Line::from(vec![
-            Span::styled("No alerts configured. Add alerts with the 'a' key.", Style::default().fg(Color::Yellow))
-        ]);
+        let no_data_text = Line::from(vec![Span::styled(
+            "No alerts configured. Add with a or A (Shift+a works).",
+            Style::default().fg(Color::Yellow),
+        )]);
         let paragraph = ratatui::widgets::Paragraph::new(no_data_text)
             .block(block);
         f.render_widget(paragraph, area);
@@ -74,7 +75,12 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
         ],
     )
         .header(header)
-        .block(Block::default().borders(Borders::ALL).title("Alerts"))
+        // Same pane title as empty state (#43 / SPEC §15.1).
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Price Alerts"),
+        )
         .highlight_style(selected_style)
         .highlight_symbol("> ");
 
