@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-11 (M4 Charts polish #62/#63/#64 — ROADMAP §4.4)
+Last updated: 2026-05-11 (M4 §11.12 shipped — #71–#74; polish [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79))
 
 ---
 
@@ -118,7 +118,8 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 - **Implemented (Issues #7 / #8 / #9, M4)** — line + candlestick widget, viewport zoom/pan, `TimeRange` keys; see `docs/SPEC.md` §11.
 - **Implemented (Issues [#62](https://github.com/FelipeMorandini/stockterm/issues/62) / [#63](https://github.com/FelipeMorandini/stockterm/issues/63) / [#64](https://github.com/FelipeMorandini/stockterm/issues/64), §11.11)** — symbol change clears stale `historical_data`; Yahoo W1 intraday empty → daily retry; transient historical errors keep last-good series; viewport ticker uses requested symbol when response `ticker` is empty; see `docs/SPEC.md` §11.11.7.
-- **Partial — further polish** — dense candle layout vs web charts; follow-ups [#71](https://github.com/FelipeMorandini/stockterm/issues/71)–[#74](https://github.com/FelipeMorandini/stockterm/issues/74) (channel/inflight, dead sync fetch, W1 unit tests, watchlist chart flicker).
+- **Implemented (Issues [#71](https://github.com/FelipeMorandini/stockterm/issues/71)–[#74](https://github.com/FelipeMorandini/stockterm/issues/74), §11.12)** — `InflightRecovery` + second channel when `FetchDone` send fails; removed dead **`fetch_historical_data`**; **`yahoo_w1_daily_fallback_interval`** + tests; watchlist add skips chart clear on case-only normalization — see [`docs/SPEC.md`](SPEC.md) §11.12.8.
+- **Partial — further polish** — dense candle layout vs web charts; optional follow-ups [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79) (tracing, pending-flag edge case, recovery hardening, Unicode tickers).
 
 ### 4.5 Core — Time ranges (1D/1W/1M/1Y)
 

@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12).
 
 ---
 
@@ -169,6 +169,62 @@ _Manual validation passed 2026-05-11._
 | #63 W1 fallback (Yahoo) | maintainer | 2026-05-11 | Pass |
 | #64 transient error + last-good | maintainer | 2026-05-11 | Pass |
 | #64 first-load failure | maintainer | 2026-05-11 | Pass |
+
+---
+
+## Issues #71, #72, #73, #74 — M4 Charts / async follow-ups
+
+**Scope:**
+
+- [Issue #71](https://github.com/FelipeMorandini/stockterm/issues/71) — If a background fetch cannot **`send`** its `FetchDone` (or stock batch) result, the UI must not leave **`hist_refresh_inflight`** / **`stock_refresh_inflight`** / **`news_refresh_inflight`** / **`search_refresh_inflight`** stuck; logging is consistent (see [`docs/SPEC.md`](SPEC.md) §11.12.1).
+- [Issue #72](https://github.com/FelipeMorandini/stockterm/issues/72) — No unused duplicate historical loader in production; charts use only the async `FetchDone` path (§11.12.2).
+- [Issue #73](https://github.com/FelipeMorandini/stockterm/issues/73) — `cargo test` covers Yahoo W1 empty intraday → daily fallback decision (§11.12.3).
+- [Issue #74](https://github.com/FelipeMorandini/stockterm/issues/74) — Adding the current symbol to the watchlist when normalization only fixes **case** does not clear the Charts series (§11.12.4).
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §11.12.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0; tests include **#73** scenarios (Yahoo W1 fallback table).
+
+### Manual — Issue #71 (inflight / channel behavior)
+
+_Normal failure of the `FetchDone` channel is abnormal during a normal run (receiver should stay alive). Validation is mostly regression + code review; optional stress._
+
+1. **Regression — Charts refresh:** Open **Charts**, load **AAPL**, switch ranges, wait for periodic refresh. **Pass:** Chart continues to update across multiple poll cycles; no permanent “stuck loading” where historical never refetches.
+2. **Regression — Search / News / Stock batch:** Typeahead on **Search**, **News** list load, **Stock View** quote refresh after tab switches. **Pass:** No tab remains permanently blocked by a spinner / inflight state after errors or slow network (same as pre–#71, but confirm no new stalls).
+3. **Optional (maintainer):** If a debug hook exists to drop the fetch receiver, confirm **#71** recovery clears inflight and the app remains usable — **N/A** if no hook.
+
+### Manual — Issue #72 (single historical pipeline)
+
+1. **Smoke:** **Charts** time ranges, zoom/pan, and **#64** last-good behavior still work after removing **`fetch_historical_data`**. **Pass:** No behavior regression vs §11.11 QA.
+
+### Manual — Issue #74 (watchlist add / case normalization)
+
+1. Open **Stock View**. Type **`aapl`** (lowercase) so the buffer shows **`AAPL`** or mixed case per UX; ensure the symbol is **not** yet on the watchlist.
+2. Press **`w`** to add to the watchlist. **Pass:** Row is added and symbol normalizes to **`AAPL`**; **Charts** (if you had a loaded **AAPL** chart) does **not** flash empty / full reload solely because of case normalization — series should remain unless the implementation intentionally refetches in place.
+3. Add a **different** symbol via **`w`** (e.g. after switching to **MSFT**). **Pass:** **#62** still applies — chart clears stale series when the **effective** ticker changes.
+
+### Sign-off — Issues #71 / #72 / #73 / #74
+
+_Manual validation passed 2026-05-11._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-11 | Pass |
+| #71 Charts / Search / News / Stock inflight regression | maintainer | 2026-05-11 | Pass |
+| #72 Charts smoke (historical path only) | maintainer | 2026-05-11 | Pass |
+| #73 unit tests present in `cargo test` | maintainer | 2026-05-11 | Pass |
+| #74 watchlist add case-only (`aapl` → `AAPL`) | maintainer | 2026-05-11 | Pass |
+| #74 real symbol change still clears chart | maintainer | 2026-05-11 | Pass |
 
 ---
 
