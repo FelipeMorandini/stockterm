@@ -108,11 +108,23 @@ pub fn clamp_viewport_to_len(vp: ChartViewport, len: usize) -> ChartViewport {
     ChartViewport { start, end }
 }
 
+fn effective_series_ticker<'a>(series: &'a HistoricalResponse, requested_symbol: &'a str) -> &'a str {
+    let t = series.ticker.trim();
+    if t.is_empty() {
+        requested_symbol
+    } else {
+        t
+    }
+}
+
 /// Preserve zoom/pan across periodic historical refetch; reset on first load, ticker change, or full-range view.
+///
+/// `requested_symbol` is the ticker passed to the provider (Issues #64 — Yahoo may omit `series.ticker`).
 pub fn chart_viewport_after_refresh(
     previous_series: Option<&HistoricalResponse>,
     current_vp: ChartViewport,
     new_data: &HistoricalResponse,
+    requested_symbol: &str,
 ) -> ChartViewport {
     let new_len = new_data.results.len();
     if new_len == 0 {
@@ -121,9 +133,8 @@ pub fn chart_viewport_after_refresh(
     let Some(prev) = previous_series else {
         return ChartViewport::full(new_len);
     };
-    if !prev
-        .ticker
-        .eq_ignore_ascii_case(new_data.ticker.as_str())
+    if !effective_series_ticker(prev, requested_symbol)
+        .eq_ignore_ascii_case(effective_series_ticker(new_data, requested_symbol))
     {
         return ChartViewport::full(new_len);
     }
@@ -547,7 +558,7 @@ mod tests {
     #[test]
     fn refresh_no_previous_is_full() {
         let new = hist("AAPL", 5);
-        let vp = chart_viewport_after_refresh(None, ChartViewport::default(), &new);
+        let vp = chart_viewport_after_refresh(None, ChartViewport::default(), &new, "AAPL");
         assert_eq!(vp, ChartViewport::full(5));
     }
 
@@ -562,6 +573,7 @@ mod tests {
                 end: 8,
             },
             &new,
+            "MSFT",
         );
         assert_eq!(vp, ChartViewport::full(10));
     }
@@ -574,6 +586,21 @@ mod tests {
             Some(&prev),
             ChartViewport { start: 5, end: 15 },
             &new,
+            "AAPL",
+        );
+        assert_eq!(vp.start, 5);
+        assert_eq!(vp.end, 15);
+    }
+
+    #[test]
+    fn refresh_empty_response_ticker_matches_requested() {
+        let prev = hist("AAPL", 20);
+        let new = hist("", 20);
+        let vp = chart_viewport_after_refresh(
+            Some(&prev),
+            ChartViewport { start: 5, end: 15 },
+            &new,
+            "AAPL",
         );
         assert_eq!(vp.start, 5);
         assert_eq!(vp.end, 15);
@@ -583,7 +610,7 @@ mod tests {
     fn refresh_full_series_grows_with_new_bars() {
         let prev = hist("AAPL", 30);
         let new = hist("AAPL", 31);
-        let vp = chart_viewport_after_refresh(Some(&prev), ChartViewport::full(30), &new);
+        let vp = chart_viewport_after_refresh(Some(&prev), ChartViewport::full(30), &new, "AAPL");
         assert_eq!(vp, ChartViewport::full(31));
     }
 

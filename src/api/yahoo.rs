@@ -35,7 +35,12 @@ impl MarketDataProvider for YahooProvider {
     ) -> ProviderResult<HistoricalResponse> {
         let _ = config;
         if let Some(range) = query.yahoo_range {
-            yahoo_historical_range(symbol, range, query.bar_interval).await
+            let mut res = yahoo_historical_range(symbol, range, query.bar_interval).await?;
+            // Issue #63 / SPEC §11.11.2 — W1 intraday empty → retry same window with daily bars.
+            if res.results.is_empty() && range == "5d" && query.bar_interval == "30m" {
+                res = yahoo_historical_range(symbol, "5d", "1d").await?;
+            }
+            Ok(res)
         } else {
             yahoo_historical(symbol, query.from, query.to, query.bar_interval).await
         }
