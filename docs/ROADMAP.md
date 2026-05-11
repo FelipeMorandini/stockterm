@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-11 (§15 shipped — #43, #49, #50, #67, #69; follow-ups [#81](https://github.com/FelipeMorandini/stockterm/issues/81)–[#83](https://github.com/FelipeMorandini/stockterm/issues/83); charts polish [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79))
+Last updated: 2026-05-11 (§16 ship: [PR #88](https://github.com/FelipeMorandini/stockterm/pull/88) — [#17](https://github.com/FelipeMorandini/stockterm/issues/17) / [#46](https://github.com/FelipeMorandini/stockterm/issues/46) / [#77](https://github.com/FelipeMorandini/stockterm/issues/77); audit follow-ups [#85](https://github.com/FelipeMorandini/stockterm/issues/85)–[#87](https://github.com/FelipeMorandini/stockterm/issues/87); §15 shipped — #43, #49, #50, #67, #69; [#81](https://github.com/FelipeMorandini/stockterm/issues/81)–[#83](https://github.com/FelipeMorandini/stockterm/issues/83); charts [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79))
 
 ---
 
@@ -189,12 +189,9 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 ### 4.13 Technical — Async fetching, non-blocking UI
 
-- **Partial**
-  - Evidence: `App::run` uses `tokio::select!` over async event + `FetchDone`
-    channels; stock / historical / news HTTP runs in `tokio::spawn` (Issue #3).
-  - Gap: [Issue #17](https://github.com/FelipeMorandini/stockterm/issues/17)
-    remains for cancellation semantics, `search_symbols` when Search tab ships,
-    and full acceptance criteria (smoke test with artificial delay).
+- **Partial — §16 slice shipped (Issues [#17](https://github.com/FelipeMorandini/stockterm/issues/17) / [#46](https://github.com/FelipeMorandini/stockterm/issues/46) / [#77](https://github.com/FelipeMorandini/stockterm/issues/77); [`docs/SPEC.md`](SPEC.md) §16.8); optional cancel token remains**
+  - Evidence: `App::run` uses `tokio::select!` over async event + `FetchDone` + `InflightRecovery`; `event.rs` bridges crossterm from a std thread; stock / historical / news / search HTTP runs in `tokio::spawn` (Issue #3, §11.12).
+  - **Shipped (2026-05-11):** **`STOCKTERM_DEBUG_HTTP_DELAY_MS`** before quote fan-out; stock batch **`catch_unwind`** + synthetic `FetchDone::Stock` on panic; **`apply_inflight_recovery(Stock)`** drains **`stock_refresh_pending`**; recovery **`send`** failures logged. **Optional follow-up:** **`CancellationToken`** if overlapping batches are introduced; clippy lock hygiene on future refactors.
 
 ### 4.14 Technical — Stock API integration with rate limits & errors
 
@@ -260,7 +257,7 @@ Open gaps worth tracking:
 1. Charts / candlestick / time-range UX remain partial; Search/News/Settings
    are implemented (M3).
 2. Test coverage is thin (a few unit tests only); expand per milestone M7.
-3. Main loop still awaits network I/O inline (UI can stall on slow API) — see §4.13; [Issue #17](https://github.com/FelipeMorandini/stockterm/issues/17).
+3. **Optional:** **`CancellationToken`** for quote overlap — [`docs/SPEC.md`](SPEC.md) §16.1 item 2 (if product adds overlapping batches).
 
 _Recent follow-ups from ship:_ [Issue #39](https://github.com/FelipeMorandini/stockterm/issues/39)
 (portfolio `try_save` parity), [Issue #40](https://github.com/FelipeMorandini/stockterm/issues/40)
@@ -287,7 +284,7 @@ issue before code):
    - Add request timeout, non-2xx handling, structured errors.
 3. **M2 — Real-time-ish quotes & multi-symbol watchlist**
    - **Partial — delivered:** [Issue #3](https://github.com/FelipeMorandini/stockterm/issues/3) — `Watchlist` in `Config`, multi-row table on Stock View, bounded concurrent Polygon quotes, `refresh_rate` throttle, background fetch via `tokio::select!` (see `docs/SPEC.md`).
-   - **Remaining:** intraday / "latest quote" feel (likely **M1** Yahoo `quote` or `chart?range=1d&interval=1m`), full #17 cancellation smoke test.
+   - **Remaining:** intraday / "latest quote" feel (likely **M1** Yahoo `quote` or `chart?range=1d&interval=1m`); **#17** artificial-delay smoke + optional cancel semantics — [`docs/SPEC.md`](SPEC.md) §16.1.
 4. **M3 — Search typeahead + News + Settings UI**
    - Implement `draw_search` with debounced typeahead suggestions.
    - Implement `draw_news` listing headlines (publisher, title, date, link).

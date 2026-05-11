@@ -1,3 +1,4 @@
+use crate::api::http::maybe_debug_http_delay;
 use crate::api::market_provider_for;
 use crate::api::HistoricalQuery;
 use crate::app::charts::{viewport_zoom_in, viewport_zoom_out, ChartDisplayMode, ChartViewport};
@@ -15,8 +16,10 @@ use crate::models::time_range::TimeRange;
 use ratatui::backend::Backend;
 use ratatui::widgets::{ListState, TableState};
 use ratatui::Terminal;
+use futures_util::future::FutureExt;
 use std::collections::{HashMap, HashSet};
 use std::io;
+use std::panic::AssertUnwindSafe;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc::{error::SendError, UnboundedSender};
 use tokio::sync::Semaphore;
@@ -102,6 +105,10 @@ fn warn_fetch_channel_closed(context: &str, err: &SendError<FetchDone>) {
     eprintln!("stockterm: dropped {context} (channel closed): {err}");
 }
 
+fn warn_inflight_recovery_send_failed(kind: &str, err: SendError<InflightRecovery>) {
+    eprintln!("stockterm: failed inflight recovery send ({kind}): {err}");
+}
+
 pub struct App {
     pub config: Config,
     pub ticker_data: Option<TickerResponse>,
@@ -181,6 +188,8 @@ async fn run_stock_quote_batch(
     symbols: Vec<String>,
     config: Config,
 ) -> FetchDone {
+    maybe_debug_http_delay().await;
+
     let provider = market_provider_for(config.provider);
     let sem = std::sync::Arc::new(Semaphore::new(MAX_CONCURRENT_QUOTES));
     let mut set = JoinSet::new();
@@ -395,17 +404,31 @@ impl App {
         let recovery_tx = self.inflight_recovery_tx.clone();
 
         tokio::spawn(async move {
-            let done = run_stock_quote_batch(generation, symbols, cfg).await;
+            let done = match AssertUnwindSafe(run_stock_quote_batch(generation, symbols, cfg))
+                .catch_unwind()
+                .await
+            {
+                Ok(done) => done,
+                Err(_) => FetchDone::Stock {
+                    generation,
+                    quotes: HashMap::new(),
+                    errors: vec!["quote batch task panicked".to_string()],
+                },
+            };
             if let Err(e) = tx.send(done) {
                 warn_fetch_channel_closed("stock quote batch result", &e);
                 if let Some(rtx) = recovery_tx {
-                    let _ = rtx.send(InflightRecovery::Stock);
+                    if let Err(re) = rtx.send(InflightRecovery::Stock) {
+                        warn_inflight_recovery_send_failed("stock", re);
+                    }
                 }
             }
         });
     }
 
     fn apply_stock_fetch_done(&mut self, generation: u64, quotes: HashMap<String, TickerResponse>, errors: Vec<String>) {
+        // Stale batch: a newer `stock_fetch_generation` means another batch is authoritative; keep
+        // `stock_refresh_inflight` unchanged (still true if a newer batch is in flight). SPEC §16.2.1.
         if generation != self.stock_fetch_generation {
             return;
         }
@@ -497,7 +520,9 @@ impl App {
             }) {
                 warn_fetch_channel_closed("historical fetch result", &e);
                 if let Some(rtx) = recovery_tx {
-                    let _ = rtx.send(InflightRecovery::Historical);
+                    if let Err(re) = rtx.send(InflightRecovery::Historical) {
+                        warn_inflight_recovery_send_failed("historical", re);
+                    }
                 }
             }
         });
@@ -541,7 +566,9 @@ impl App {
             }) {
                 warn_fetch_channel_closed("news fetch result", &e);
                 if let Some(rtx) = recovery_tx {
-                    let _ = rtx.send(InflightRecovery::News);
+                    if let Err(re) = rtx.send(InflightRecovery::News) {
+                        warn_inflight_recovery_send_failed("news", re);
+                    }
                 }
             }
         });
@@ -622,7 +649,9 @@ impl App {
             }) {
                 warn_fetch_channel_closed("search fetch result", &e);
                 if let Some(rtx) = recovery_tx {
-                    let _ = rtx.send(InflightRecovery::Search);
+                    if let Err(re) = rtx.send(InflightRecovery::Search) {
+                        warn_inflight_recovery_send_failed("search", re);
+                    }
                 }
             }
         });
@@ -851,7 +880,13 @@ impl App {
             InflightRecovery::Historical => self.hist_refresh_inflight = false,
             InflightRecovery::News => self.news_refresh_inflight = false,
             InflightRecovery::Search => self.search_refresh_inflight = false,
-            InflightRecovery::Stock => self.stock_refresh_inflight = false,
+            InflightRecovery::Stock => {
+                self.stock_refresh_inflight = false;
+                // Issue #77 / SPEC §16.3: coalesced refresh must not stick pending when FetchDone send failed.
+                if std::mem::take(&mut self.stock_refresh_pending) {
+                    self.spawn_stock_fetch_task();
+                }
+            }
         }
     }
 
