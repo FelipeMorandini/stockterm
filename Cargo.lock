@@ -414,6 +414,7 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "pin-utils",
+ "slab",
 ]
 
 [[package]]
@@ -1389,6 +1390,7 @@ dependencies = [
  "clap",
  "crossterm",
  "dirs",
+ "futures-util",
  "ratatui",
  "reqwest",
  "serde",

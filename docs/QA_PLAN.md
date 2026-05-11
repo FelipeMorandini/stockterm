@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16).
 
 ---
 
@@ -225,6 +225,59 @@ _Manual validation passed 2026-05-11._
 | #73 unit tests present in `cargo test` | maintainer | 2026-05-11 | Pass |
 | #74 watchlist add case-only (`aapl` → `AAPL`) | maintainer | 2026-05-11 | Pass |
 | #74 real symbol change still clears chart | maintainer | 2026-05-11 | Pass |
+
+---
+
+## Issues #17, #46, #77 — Async main loop polish
+
+**Scope:**
+
+- [Issue #17](https://github.com/FelipeMorandini/stockterm/issues/17) — Confirm non-blocking architecture and **5 s+ artificial delay** smoke (see [`docs/SPEC.md`](SPEC.md) §16.1).
+- [Issue #46](https://github.com/FelipeMorandini/stockterm/issues/46) — Quote batch remains usable after panics / join errors; **`stock_refresh_inflight`** never stuck; stale-generation path documented (§16.2).
+- [Issue #77](https://github.com/FelipeMorandini/stockterm/issues/77) — **`InflightRecovery::Stock`** reconciles **`stock_refresh_pending`** per SPEC §16.3 (recommended: drain pending into **`request_immediate_stock_poll`**).
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §16.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+2. If §16.2 adds unit tests for panic-safe completion, **Pass:** those tests are present and green.
+
+### Manual — Issue #17 (responsive UI under slow quotes)
+
+1. Build/run with **`STOCKTERM_DEBUG_HTTP_DELAY_MS`** set to **≥ 5000** (milliseconds), e.g. `STOCKTERM_DEBUG_HTTP_DELAY_MS=5000 cargo run --release` (see [`docs/SPEC.md`](SPEC.md) §16.1). Unset or **0** for normal runs.
+2. On **Stock View**, trigger a quote refresh (**Enter** or wait for throttle). While the table shows loading / stale data, rapidly press **Tab** (other tabs), **`j`/`k`** on the watchlist, type letters into the symbol buffer, and **Backspace**.
+3. **Pass:** Keystrokes keep changing tabs / selection / buffer; UI keeps redrawing (tick-driven updates); the app does **not** freeze for the full delay on the main thread.
+4. **Symbol supersede:** With delay on, start a refresh for symbol **A**, then switch symbol / watchlist row to **B** before the first batch completes. **Pass:** When results land, **B**’s row / detail reflects **B** (or a clear error for **B**); **A**’s stale batch does **not** overwrite **B**’s cache (**generation** / SPEC §16.1).
+5. **Code review (maintainer):** Confirm no provider **`await`** sits between **`draw`** and the next **`tokio::select!`** input arm in **`App::run`**.
+
+### Manual — Issue #46 (inflight + panic regression)
+
+1. **Normal run:** Watchlist with ≥2 symbols, Yahoo default, **Stock View** for ~2 minutes. **Pass:** Quotes keep updating on throttle; **`stock_refresh_inflight`** never stays stuck after errors (status bar / table recover).
+2. **Maintainer-only (optional):** If a test hook forces a panic inside the quote batch, **Pass:** after the hook, the next **`Enter`** or tick-driven poll still runs (inflight cleared via synthetic result or recovery — per §16.2). **N/A** if no hook.
+
+### Manual — Issue #77 (`stock_refresh_pending` + recovery)
+
+1. **Documented product choice:** Read §16.3 in SPEC (option **A** vs **B**) and note which shipped.
+2. **Regression proxy (no channel drop in normal use):** Trigger **`request_immediate_stock_poll`** twice quickly while a batch is in flight (e.g. double **Enter** or **Enter** after an action that calls **`request_immediate_stock_poll`**). **Pass:** When the first batch completes, a **second** batch runs if coalescing promised one; quotes eventually match latest symbol set; **`stock_refresh_pending`** is **false** after the sequence settles (no permanent “pending” with **`stock_refresh_inflight` false** and no further polls).
+3. **If a maintainer debug path drops only the fetch receiver** (same class of failure as #71): **Pass:** after recovery, pending coalesced refresh is handled per §16.3 — **N/A** if no hook.
+
+### Sign-off — Issues #17 / #46 / #77
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | | | |
+| #17 slow-network smoke (≥5 s delay) | | | |
+| #17 supersede / stale generation | | | |
+| #46 inflight never stuck (normal + optional panic hook) | | | |
+| #77 pending vs `InflightRecovery::Stock` (per §16.3) | | | |
 
 ---
 
@@ -750,12 +803,12 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 
 ## Manual — Non-blocking input (#17)
 
-**Applies only if #17 is included in the same delivery; otherwise mark N/A and file follow-up.**
+**Primary:** Use **[Issues #17, #46, #77](#issues-17-46-77--async-main-loop-polish)** after §16 ships — it replaces the informal checklist below.
 
-1. With an artificial delay or very slow network (per developer test harness or #17 smoke test), hold a key that navigates tabs or watchlist rows.  
+1. With an artificial delay or very slow network (per §16.1 harness), hold a key that navigates tabs or watchlist rows.  
    **Pass:** Input continues to be processed; screen keeps redrawing; a multi-second HTTP wait does not freeze the TUI.
 
-2. **Pass:** No `await` of HTTP on the path between redraw and input handling (verified by code review / #17 acceptance).
+2. **Pass:** No `await` of HTTP on the path between redraw and **`tokio::select!`** input handling (code review / §16.1).
 
 ---
 
