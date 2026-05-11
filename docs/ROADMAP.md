@@ -61,14 +61,11 @@ Workspace rule `.cursor/rules/sdd_workflow.mdc` requires Spec-Driven Development
 
 Current state:
 
-- `docs/SPEC.md` — **missing**.
-- `docs/QA_PLAN.md` — **missing**.
-- `docs/ROADMAP.md` — created by this pass.
+- `docs/SPEC.md` — maintained (SDD baseline + milestones; latest shipped slice §11.12 / [#71](https://github.com/FelipeMorandini/stockterm/issues/71)–[#74](https://github.com/FelipeMorandini/stockterm/issues/74)).
+- `docs/QA_PLAN.md` — maintained (manual steps per milestone).
+- `docs/ROADMAP.md` — this file (gap analysis vs product goals).
 
-**Action**: before any further feature code is merged, the architect must
-produce a finalized `docs/SPEC.md` (and matching `docs/QA_PLAN.md`) for at
-least the next milestone. This roadmap does not invent SPEC content; it only
-identifies the gap and frames the work that the SPEC must cover.
+**Process:** new feature code follows `.cursor/rules/sdd_workflow.mdc` — update SPEC first, then implement, then verify against QA_PLAN.
 
 ---
 
