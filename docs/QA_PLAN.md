@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15).
 
 ---
 
@@ -600,6 +600,85 @@ _Manual validation passed 2026-05-10._
 | Remove two-step + cancel | maintainer | 2026-05-10 | Pass |
 | Portfolio-only symbol quoted | maintainer | 2026-05-10 | Pass |
 | JSON persistence + try_save | maintainer | 2026-05-10 | Pass |
+
+---
+
+## Issues #43, #49, #50, #67, #69 — Alerts polish, Stock View hint, Portfolio dialog Tab & validation
+
+**Scope:**
+
+- [Issue #43](https://github.com/FelipeMorandini/stockterm/issues/43) — consistent **Alerts** pane title in empty vs table states.
+- [Issue #49](https://github.com/FelipeMorandini/stockterm/issues/49) — **Stock View** status bar: **A–Z** symbol entry + **w/x/j/k** watchlist keys + §8.4 edge case (leading `w`/`x`/`j`/`k` tickers — **Shift** first letter).
+- [Issue #50](https://github.com/FelipeMorandini/stockterm/issues/50) — **Alerts** empty-state copy mentions **`a` / `A`** (Shift-friendly add).
+- [Issue #67](https://github.com/FelipeMorandini/stockterm/issues/67) — **Portfolio** add dialog: **Tab** / **Shift+Tab** cycle **Shares** / **Price**; with dialog **closed**, **Tab** still switches app tabs.
+- [Issue #69](https://github.com/FelipeMorandini/stockterm/issues/69) — failed **commit** (non–`try_save`) sets **`inline_error`**; optional **max shares / max price** reject with **`inline_error`**.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §15.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+### Manual — Issue #43 (Alerts titles)
+
+1. Open **Alerts** with **no** alerts configured.  
+   **Pass:** Outer block title matches the titled table state (e.g. both **"Price Alerts"** or one documented hierarchy — no **"Price Alerts"** vs **"Alerts"** mismatch per §15.1).
+
+2. Add at least one alert (`a`), confirm the **table** view title matches the empty-state convention.
+
+### Manual — Issue #50 (Alerts copy)
+
+1. Remove all alerts so the empty state shows.  
+   **Pass:** Helper text reflects **`a`** and **`A`** / Shift-friendly wording (Issue #50).
+
+### Manual — Issue #49 (Stock View status)
+
+1. Switch to **Stock View** with an empty or non-empty watchlist. Read the **status bar**.  
+   **Pass:** Mentions **A–Z** (or equivalent) for ticker entry alongside **w** / **x** / **D** / **j**/**k**; includes the **w/x/j/k** leading-letter **Shift** tip (§8.4). Text fits a typical 80-column terminal or degrades gracefully per SPEC.
+
+### Manual — Issue #67 (Tab in Portfolio dialog)
+
+1. **Stock View:** set symbol **MSFT**, open **Portfolio**, press **`a`**.
+
+2. With dialog open, press **Tab** repeatedly, then **Shift+Tab**.  
+   **Pass:** Focus alternates **Shares** ↔ **Price**; **`;`** still cycles if implemented; **app tab** does **not** change.
+
+3. **Esc** to close dialog. Press **Tab**.  
+   **Pass:** App tab advances (same as pre–#67).
+
+### Manual — Issue #69 (inline error + caps)
+
+1. Open add dialog with valid symbol (**MSFT**). Enter valid shares/price, commit.  
+   **Pass:** Still works.
+
+2. **Commit failure without `try_save`:** The rare **`add_to_portfolio` → `false`** path where **`error_message`** is still **`None`** (e.g. **`normalize_symbol(&app.symbol)`** `None` at commit) must set **`portfolio_dialog.inline_error`** — **Pass:** covered by **`cargo test`** added for §15.5 **or** maintainer code review of that branch (opening **`a`** with an empty symbol is blocked earlier by **`error_message`**, so this is not easily reproducible from the TUI alone).
+
+3. **`try_save` failure:** Optional: induce a save error (e.g. read-only config path in a throwaway env).  
+   **Pass:** **`error_message`** surfaces; dialog may stay open per §13; no panic.
+
+4. **Caps (if implemented):** Enter shares or price **above** the documented maximum.  
+   **Pass:** **`inline_error`** explains the bound; portfolio unchanged.
+
+### Sign-off — Issues #43, #49, #50, #67, #69
+
+_Manual validation passed 2026-05-11._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-11 | Pass |
+| #43 titles empty + table | maintainer | 2026-05-11 | Pass |
+| #50 empty copy | maintainer | 2026-05-11 | Pass |
+| #49 Stock View status | maintainer | 2026-05-11 | Pass |
+| #67 Tab / Shift+Tab / global Tab | maintainer | 2026-05-11 | Pass |
+| #69 commit + caps | maintainer | 2026-05-11 | Pass |
 
 ---
 

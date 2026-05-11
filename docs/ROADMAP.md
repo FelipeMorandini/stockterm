@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-11 (M4 §11.12 shipped — #71–#74; polish [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79))
+Last updated: 2026-05-11 (§15 shipped — #43, #49, #50, #67, #69; follow-ups [#81](https://github.com/FelipeMorandini/stockterm/issues/81)–[#83](https://github.com/FelipeMorandini/stockterm/issues/83); charts polish [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79))
 
 ---
 
@@ -61,7 +61,7 @@ Workspace rule `.cursor/rules/sdd_workflow.mdc` requires Spec-Driven Development
 
 Current state:
 
-- `docs/SPEC.md` — maintained (SDD baseline + milestones; latest shipped slice §11.12 / [#71](https://github.com/FelipeMorandini/stockterm/issues/71)–[#74](https://github.com/FelipeMorandini/stockterm/issues/74)).
+- `docs/SPEC.md` — maintained (SDD baseline + milestones; latest shipped slices §11.12 / [#71](https://github.com/FelipeMorandini/stockterm/issues/71)–[#74](https://github.com/FelipeMorandini/stockterm/issues/74) and §15 / [#43](https://github.com/FelipeMorandini/stockterm/issues/43) [#49](https://github.com/FelipeMorandini/stockterm/issues/49) [#50](https://github.com/FelipeMorandini/stockterm/issues/50) [#67](https://github.com/FelipeMorandini/stockterm/issues/67) [#69](https://github.com/FelipeMorandini/stockterm/issues/69)).
 - `docs/QA_PLAN.md` — maintained (manual steps per milestone).
 - `docs/ROADMAP.md` — this file (gap analysis vs product goals).
 
@@ -109,7 +109,8 @@ incomplete, broken, or unwired; **Missing** = no code path.
     `current_price` from `watchlist_quotes`.
   - `handle_portfolio_events` from `handlers.rs` on `Tab::Portfolio`; Enter → Stock
     View + `request_immediate_stock_poll`.
-- **Partial — further polish** — Tab cycles dialog fields ([#67](https://github.com/FelipeMorandini/stockterm/issues/67)); optional decimal money ([#68](https://github.com/FelipeMorandini/stockterm/issues/68)); commit edge cases / input caps ([#69](https://github.com/FelipeMorandini/stockterm/issues/69)); row edit UI not implemented.
+- **Implemented (Issues [#43](https://github.com/FelipeMorandini/stockterm/issues/43) / [#49](https://github.com/FelipeMorandini/stockterm/issues/49) / [#50](https://github.com/FelipeMorandini/stockterm/issues/50) / [#67](https://github.com/FelipeMorandini/stockterm/issues/67) / [#69](https://github.com/FelipeMorandini/stockterm/issues/69), `docs/SPEC.md` §15)** — Alerts **Price Alerts** title parity + empty-state **a/A** copy; Stock View status **A–Z** + **w/x/j/k** Shift hint; portfolio add dialog **Tab**/**Shift+Tab** field focus; **`inline_error`** on commit when `add_to_portfolio` fails without **`try_save`**; **`validate_holding_limits`** (shares/price caps).
+- **Partial — further polish** — optional decimal money ([#68](https://github.com/FelipeMorandini/stockterm/issues/68)); row edit UI not implemented; narrow-terminal status bar ([#81](https://github.com/FelipeMorandini/stockterm/issues/81)); plain-Tab-only dialog cycle ([#82](https://github.com/FelipeMorandini/stockterm/issues/82)); **`add_to_portfolio`** error-path docs ([#83](https://github.com/FelipeMorandini/stockterm/issues/83)).
 
 ### 4.4 Core — Historical charts in terminal
 

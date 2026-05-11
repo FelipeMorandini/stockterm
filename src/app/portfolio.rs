@@ -11,6 +11,11 @@ use ratatui::{
 
 const MAX_HOLDING_INPUT_LEN: usize = 24;
 
+/// Upper sanity bound for shares (paste / typo); SPEC §15.5.
+pub(crate) const MAX_HOLDING_SHARES: f64 = 1_000_000_000.0;
+/// Upper sanity bound for price per share; SPEC §15.5.
+pub(crate) const MAX_HOLDING_PRICE_PER_SHARE: f64 = 1e12;
+
 /// Parse a positive decimal for shares or purchase price (Issue #6 / SPEC §13).
 pub(crate) fn parse_holding_decimal(input: &str) -> Result<f64, &'static str> {
     let t = input.trim();
@@ -25,6 +30,29 @@ pub(crate) fn parse_holding_decimal(input: &str) -> Result<f64, &'static str> {
         return Err("Must be greater than zero");
     }
     Ok(v)
+}
+
+pub(crate) fn validate_holding_limits(shares: f64, price: f64) -> Result<(), &'static str> {
+    if shares > MAX_HOLDING_SHARES {
+        return Err("Shares exceed the allowed maximum");
+    }
+    if price > MAX_HOLDING_PRICE_PER_SHARE {
+        return Err("Price per share exceeds the allowed maximum");
+    }
+    Ok(())
+}
+
+/// Cycle Shares ↔ Price when the add dialog is open (#67 / SPEC §15.4). With only two
+/// fields, forward and backward are the same toggle.
+pub(crate) fn cycle_portfolio_dialog_focus(app: &mut App, _forward: bool) {
+    let Some(d) = app.portfolio_dialog.as_mut() else {
+        return;
+    };
+    d.inline_error = None;
+    d.focused = match d.focused {
+        PortfolioAddField::Shares => PortfolioAddField::Price,
+        PortfolioAddField::Price => PortfolioAddField::Shares,
+    };
 }
 
 fn centered_rect(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
@@ -260,7 +288,9 @@ fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let mut lines: Vec<Line> = vec![
-        Line::from("Add holding (Esc cancel, ; cycles Shares/Price — Tab switches app tab)"),
+        Line::from(
+            "Add holding — Esc cancel · Tab / Shift+Tab or ; cycle field · Enter on Price saves",
+        ),
         Line::from(vec![
             Span::raw("Symbol: "),
             Span::styled(sym_label, Style::default().add_modifier(Modifier::BOLD)),
@@ -290,7 +320,7 @@ fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(p, popup);
 }
 
-fn try_commit_portfolio_dialog(app: &mut App) {
+pub(crate) fn try_commit_portfolio_dialog(app: &mut App) {
     let Some(ref dlg) = app.portfolio_dialog else {
         return;
     };
@@ -299,9 +329,22 @@ fn try_commit_portfolio_dialog(app: &mut App) {
 
     match (shares_r, price_r) {
         (Ok(shares), Ok(price)) => {
+            if let Err(e) = validate_holding_limits(shares, price) {
+                if let Some(d) = app.portfolio_dialog.as_mut() {
+                    d.inline_error = Some(e.to_string());
+                }
+                return;
+            }
             if app.add_to_portfolio(shares, price) {
                 app.portfolio_dialog = None;
                 app.request_immediate_stock_poll();
+            } else if app.error_message.is_none() {
+                if let Some(d) = app.portfolio_dialog.as_mut() {
+                    d.inline_error = Some(
+                        "Cannot add holding: no valid ticker is set. Pick a symbol on Stock View."
+                            .into(),
+                    );
+                }
             }
         }
         (Err(e), _) | (_, Err(e)) => {
@@ -319,15 +362,8 @@ fn handle_portfolio_dialog_keys(app: &mut App, key: KeyEvent) {
         Esc => {
             app.portfolio_dialog = None;
         }
-        // `Tab` is handled globally (app tab switch). Use `;` to cycle fields (SPEC §13.2).
         Char(';') if key.modifiers == KeyModifiers::NONE => {
-            if let Some(d) = app.portfolio_dialog.as_mut() {
-                d.inline_error = None;
-                d.focused = match d.focused {
-                    PortfolioAddField::Shares => PortfolioAddField::Price,
-                    PortfolioAddField::Price => PortfolioAddField::Shares,
-                };
-            }
+            cycle_portfolio_dialog_focus(app, true);
         }
         Backspace if key.modifiers == KeyModifiers::NONE => {
             if let Some(d) = app.portfolio_dialog.as_mut() {
@@ -478,7 +514,10 @@ pub fn handle_portfolio_events(app: &mut App, key: KeyEvent) {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_holding_decimal;
+    use super::{
+        parse_holding_decimal, validate_holding_limits, MAX_HOLDING_PRICE_PER_SHARE,
+        MAX_HOLDING_SHARES,
+    };
 
     #[test]
     fn parse_holding_decimal_accepts_positive() {
@@ -494,5 +533,16 @@ mod tests {
         assert!(parse_holding_decimal("0").is_err());
         assert!(parse_holding_decimal("-1").is_err());
         assert!(parse_holding_decimal("abc").is_err());
+    }
+
+    #[test]
+    fn validate_holding_limits_accepts_at_ceiling() {
+        assert!(validate_holding_limits(MAX_HOLDING_SHARES, MAX_HOLDING_PRICE_PER_SHARE).is_ok());
+    }
+
+    #[test]
+    fn validate_holding_limits_rejects_above_ceiling() {
+        assert!(validate_holding_limits(MAX_HOLDING_SHARES * 2.0, 1.0).is_err());
+        assert!(validate_holding_limits(1.0, MAX_HOLDING_PRICE_PER_SHARE * 2.0).is_err());
     }
 }

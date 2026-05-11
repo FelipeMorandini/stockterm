@@ -1342,6 +1342,31 @@ mod tests {
         assert!(syms.contains(&"AAPL".to_string()));
         assert!(syms.contains(&"IBM".to_string()));
     }
+
+    #[test]
+    fn portfolio_try_commit_sets_inline_error_when_add_fails_without_try_save() {
+        use crate::app::portfolio::try_commit_portfolio_dialog;
+        use crate::app::{PortfolioAddDialog, PortfolioAddField};
+
+        let mut app = App::new();
+        app.symbol.clear();
+        app.error_message = None;
+        app.portfolio_dialog = Some(PortfolioAddDialog {
+            shares_buffer: "1".into(),
+            price_buffer: "1".into(),
+            focused: PortfolioAddField::Price,
+            inline_error: None,
+        });
+        try_commit_portfolio_dialog(&mut app);
+        assert!(app.portfolio_dialog.is_some());
+        let msg = app
+            .portfolio_dialog
+            .as_ref()
+            .and_then(|d| d.inline_error.as_deref())
+            .unwrap_or("");
+        assert!(!msg.is_empty(), "expected inline_error");
+        assert!(app.error_message.is_none());
+    }
 }
 
 /// Stale-guard for `FetchDone::Search` (SPEC §10.2).

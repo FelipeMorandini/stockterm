@@ -600,14 +600,20 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
         match app.active_tab {
             Tab::StockView => Line::from(vec![
                 Span::raw("q quit · Tab tabs · "),
+                Span::styled("A–Z", Style::default().fg(Color::Yellow)),
+                Span::raw(" type · "),
                 Span::styled("w", Style::default().fg(Color::Yellow)),
                 Span::raw(" add · "),
                 Span::styled("x", Style::default().fg(Color::Yellow)),
                 Span::raw("/"),
                 Span::styled("D", Style::default().fg(Color::Yellow)),
-                Span::raw(" remove · "),
+                Span::raw(" rm · "),
                 Span::styled("j/k", Style::default().fg(Color::Yellow)),
-                Span::raw(" move · Enter fetch"),
+                Span::raw(" · Enter · "),
+                Span::styled(
+                    "tickers w/x/j/k: Shift+1st letter if lower",
+                    Style::default().fg(Color::DarkGray),
+                ),
             ]),
             Tab::Search => Line::from(vec![
                 Span::raw("q quit · Tab tabs · type query · "),
