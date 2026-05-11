@@ -39,6 +39,33 @@ pub enum SettingsEdit {
     DefaultSymbol,
 }
 
+/// Add-holding dialog field focus (Issue #6 / SPEC §13).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PortfolioAddField {
+    Shares,
+    Price,
+}
+
+/// In-modal state for adding a portfolio row (Issue #6 / SPEC §13).
+#[derive(Debug, Clone)]
+pub struct PortfolioAddDialog {
+    pub shares_buffer: String,
+    pub price_buffer: String,
+    pub focused: PortfolioAddField,
+    pub inline_error: Option<String>,
+}
+
+impl Default for PortfolioAddDialog {
+    fn default() -> Self {
+        Self {
+            shares_buffer: String::new(),
+            price_buffer: String::new(),
+            focused: PortfolioAddField::Shares,
+            inline_error: None,
+        }
+    }
+}
+
 /// Outcomes from background HTTP tasks (never awaited on the draw/input hot path).
 pub enum FetchDone {
     Stock {
@@ -109,6 +136,10 @@ pub struct App {
     pub chart_viewport: ChartViewport,
     /// Line vs candlestick rendering (Issue #7).
     pub chart_mode: ChartDisplayMode,
+    /// Issue #6 — add holding (shares / price) modal.
+    pub portfolio_dialog: Option<PortfolioAddDialog>,
+    /// Issue #6 — first `d` arms; second `d` or `y` confirms remove.
+    pub portfolio_remove_armed: bool,
 }
 
 const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
@@ -246,6 +277,8 @@ impl App {
             time_range: TimeRange::default(),
             chart_viewport: ChartViewport::default(),
             chart_mode: ChartDisplayMode::default(),
+            portfolio_dialog: None,
+            portfolio_remove_armed: false,
         };
 
         if !app.portfolio.is_empty() {
@@ -273,7 +306,7 @@ impl App {
         Duration::from_secs(secs.max(5))
     }
 
-    fn collect_symbols_for_quote_fetch(&self) -> Vec<String> {
+    pub(crate) fn collect_symbols_for_quote_fetch(&self) -> Vec<String> {
         let mut seen = HashSet::new();
         let mut out = Vec::new();
         for s in &self.watchlist {
@@ -286,7 +319,19 @@ impl App {
                 out.push(sym);
             }
         }
+        for item in &self.portfolio {
+            if let Some(sym) = normalize_symbol(&item.symbol) {
+                if seen.insert(sym.clone()) {
+                    out.push(sym);
+                }
+            }
+        }
         out
+    }
+
+    fn clear_portfolio_tab_transient(&mut self) {
+        self.portfolio_dialog = None;
+        self.portfolio_remove_armed = false;
     }
 
     /// User-driven refresh (Enter, portfolio jump, etc.). Coalesces if a batch is already running.
@@ -1116,6 +1161,7 @@ impl App {
     }
 
     pub fn next_tab(&mut self) {
+        let from = self.active_tab;
         self.active_tab = match self.active_tab {
             Tab::StockView => Tab::Portfolio,
             Tab::Portfolio => Tab::Alerts,
@@ -1125,9 +1171,13 @@ impl App {
             Tab::Charts => Tab::Settings,
             Tab::Settings => Tab::StockView,
         };
+        if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
+            self.clear_portfolio_tab_transient();
+        }
     }
 
     pub fn prev_tab(&mut self) {
+        let from = self.active_tab;
         self.active_tab = match self.active_tab {
             Tab::StockView => Tab::Settings,
             Tab::Portfolio => Tab::StockView,
@@ -1137,53 +1187,80 @@ impl App {
             Tab::Charts => Tab::News,
             Tab::Settings => Tab::Charts,
         };
+        if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
+            self.clear_portfolio_tab_transient();
+        }
     }
 
-    pub fn add_to_portfolio(&mut self, shares: f64, purchase_price: f64) {
-        if self.symbol.is_empty() {
-            return;
-        }
+    /// Returns `false` if validation or `try_save` failed (`error_message` may be set).
+    pub fn add_to_portfolio(&mut self, shares: f64, purchase_price: f64) -> bool {
+        let Some(sym) = normalize_symbol(&self.symbol) else {
+            return false;
+        };
 
-        if let Some(item) = self.portfolio.iter_mut().find(|i| i.symbol == self.symbol) {
+        let backup = self.portfolio.clone();
+
+        if let Some(item) = self
+            .portfolio
+            .iter_mut()
+            .find(|i| normalize_symbol(&i.symbol).as_deref() == Some(sym.as_str()))
+        {
             item.shares += shares;
             let total_shares = item.shares;
             let existing_cost = (total_shares - shares) * item.purchase_price;
             let new_cost = shares * purchase_price;
             item.purchase_price = (existing_cost + new_cost) / total_shares;
         } else {
-            self.portfolio.push(PortfolioItem::new(
-                self.symbol.clone(),
-                shares,
-                purchase_price,
-            ));
+            self.portfolio
+                .push(PortfolioItem::new(sym.clone(), shares, purchase_price));
         }
 
         self.config.portfolio = self.portfolio.clone();
-        self.config.save();
-
-        if !self.portfolio.is_empty() && self.portfolio_state.selected().is_none() {
-            self.portfolio_state.select(Some(self.portfolio.len() - 1));
+        match self.config.try_save() {
+            Ok(()) => {
+                if !self.portfolio.is_empty() && self.portfolio_state.selected().is_none() {
+                    self.portfolio_state.select(Some(self.portfolio.len() - 1));
+                }
+                true
+            }
+            Err(e) => {
+                self.portfolio = backup;
+                self.config.portfolio = self.portfolio.clone();
+                self.error_message = Some(e.to_string());
+                false
+            }
         }
     }
 
-    pub fn remove_from_portfolio(&mut self, index: usize) {
+    /// Returns `false` if index invalid or `try_save` failed.
+    pub fn remove_from_portfolio(&mut self, index: usize) -> bool {
         if index >= self.portfolio.len() {
-            return;
+            return false;
         }
 
+        let backup = self.portfolio.clone();
         self.portfolio.remove(index);
         self.config.portfolio = self.portfolio.clone();
-        self.config.save();
-
-        if self.portfolio.is_empty() {
-            self.portfolio_state.select(None);
-        } else if let Some(mut sel) = self.portfolio_state.selected() {
-            if index < sel {
-                sel -= 1;
-            } else if index == sel {
-                sel = sel.min(self.portfolio.len() - 1);
+        match self.config.try_save() {
+            Ok(()) => {
+                if self.portfolio.is_empty() {
+                    self.portfolio_state.select(None);
+                } else if let Some(mut sel) = self.portfolio_state.selected() {
+                    if index < sel {
+                        sel -= 1;
+                    } else if index == sel {
+                        sel = sel.min(self.portfolio.len() - 1);
+                    }
+                    self.portfolio_state.select(Some(sel));
+                }
+                true
             }
-            self.portfolio_state.select(Some(sel));
+            Err(e) => {
+                self.portfolio = backup;
+                self.config.portfolio = self.portfolio.clone();
+                self.error_message = Some(e.to_string());
+                false
+            }
         }
     }
 
@@ -1205,7 +1282,7 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize_symbol, search_result_matches_current};
+    use super::{normalize_symbol, search_result_matches_current, App};
 
     #[test]
     fn normalize_symbol_trims_and_uppercases() {
@@ -1222,6 +1299,19 @@ mod tests {
         assert!(search_result_matches_current(1, 1, "appl", "appl"));
         assert!(!search_result_matches_current(1, 2, "appl", "appl"));
         assert!(!search_result_matches_current(1, 1, "ap", "appl"));
+    }
+
+    #[test]
+    fn collect_symbols_for_quote_includes_portfolio_only_tickers() {
+        use crate::models::portfolio::PortfolioItem;
+
+        let mut app = App::new();
+        app.watchlist.clear();
+        app.symbol = "AAPL".to_string();
+        app.portfolio = vec![PortfolioItem::new("IBM".to_string(), 1.0, 100.0)];
+        let syms = app.collect_symbols_for_quote_fetch();
+        assert!(syms.contains(&"AAPL".to_string()));
+        assert!(syms.contains(&"IBM".to_string()));
     }
 }
 

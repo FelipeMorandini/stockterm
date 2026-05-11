@@ -9,4 +9,7 @@ pub mod charts;
 pub mod portfolio;
 pub mod alerts;
 
-pub use self::app::{normalize_symbol, App, FetchDone, SettingsEdit, Tab, SETTINGS_ROW_COUNT};
+pub use self::app::{
+    normalize_symbol, App, FetchDone, PortfolioAddDialog, PortfolioAddField, SettingsEdit, Tab,
+    SETTINGS_ROW_COUNT,
+};
