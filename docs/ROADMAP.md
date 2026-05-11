@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-11 (§16 ship: [PR #88](https://github.com/FelipeMorandini/stockterm/pull/88) — [#17](https://github.com/FelipeMorandini/stockterm/issues/17) / [#46](https://github.com/FelipeMorandini/stockterm/issues/46) / [#77](https://github.com/FelipeMorandini/stockterm/issues/77); audit follow-ups [#85](https://github.com/FelipeMorandini/stockterm/issues/85)–[#87](https://github.com/FelipeMorandini/stockterm/issues/87); §15 shipped — #43, #49, #50, #67, #69; [#81](https://github.com/FelipeMorandini/stockterm/issues/81)–[#83](https://github.com/FelipeMorandini/stockterm/issues/83); charts [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79))
+Last updated: 2026-05-11 (Issue #2 / [`docs/SPEC.md`](SPEC.md) §17 — Yahoo **v7** quote + **v8** fallback, Polygon `get_quote` `limit=5`; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md); scratchpad filed [#89](https://github.com/FelipeMorandini/stockterm/issues/89) / [#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91); §16 ship: [PR #88](https://github.com/FelipeMorandini/stockterm/pull/88); audit [#85](https://github.com/FelipeMorandini/stockterm/issues/85)–[#87](https://github.com/FelipeMorandini/stockterm/issues/87); §15 — #43, #49, #50, #67, #69; [#81](https://github.com/FelipeMorandini/stockterm/issues/81)–[#83](https://github.com/FelipeMorandini/stockterm/issues/83); charts [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79))
 
 ---
 
@@ -76,11 +76,9 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 ### 4.1 Core — Real-time quotes
 
-- **Partial — quotes (daily aggregates, not streaming)**
-  - Evidence: `get_ticker_data` (`api/polygon.rs`) uses Polygon daily aggregates
-    over a rolling window; `draw_stock_detail` / watchlist table (`src/app/ui.rs`)
-    show OHLCV from `TickerResult`.
-  - Values remain **EOD-style / daily**, not true streaming real-time.
+- **Implemented — latest-session quotes via REST ([Issue #2](https://github.com/FelipeMorandini/stockterm/issues/2), [`docs/SPEC.md`](SPEC.md) §17)** — not streaming / not Level-2.
+  - Evidence: **`MarketDataProvider::get_quote`** — **Yahoo:** **`v7/finance/quote`** primary, **`v8/finance/chart`** `range=1d&interval=1d` fallback (`yahoo_latest_quote` in `src/api/yahoo.rs`); maps into **`TickerResult`**. **Polygon:** `PolygonProvider::get_quote` — daily aggregates, rolling window, **`sort=desc`** + **`limit=5`** + `latest_result()` (`src/api/polygon.rs`). Batched in **`run_stock_quote_batch`** (`src/app/app.rs`). **`draw_stock_detail`** / watchlist (`src/app/ui.rs`) unchanged at **`TickerResult`**.
+  - **Follow-ups:** [#89](https://github.com/FelipeMorandini/stockterm/issues/89) (integration test v7→v8), [#90](https://github.com/FelipeMorandini/stockterm/issues/90) (fallback observability), [#91](https://github.com/FelipeMorandini/stockterm/issues/91) (v7 row symbol match); batching [#53](https://github.com/FelipeMorandini/stockterm/issues/53); rate limits [#18](https://github.com/FelipeMorandini/stockterm/issues/18).
 - **Implemented — watchlist + multi-row table (Issue #3)**
   - Evidence: `Config.watchlist`, `App.watchlist` / `watchlist_quotes`,
     `run_stock_quote_batch` + bounded concurrency (`src/app/app.rs`); Stock View

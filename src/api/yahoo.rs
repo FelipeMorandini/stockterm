@@ -39,7 +39,7 @@ pub struct YahooProvider;
 impl MarketDataProvider for YahooProvider {
     async fn get_quote(&self, symbol: &str, config: &Config) -> ProviderResult<TickerResponse> {
         let _ = config;
-        yahoo_quote(symbol).await
+        yahoo_latest_quote(symbol).await
     }
 
     async fn get_historical(
@@ -88,7 +88,142 @@ async fn fetch_text(url: &str) -> ProviderResult<String> {
     resp.text().await.map_err(map_reqwest)
 }
 
-/// Latest quote via **v8 chart** `range=1d` (more reliable than v7 quote for programmatic access).
+// --- v7/finance/quote (Issue #2 / SPEC §17) ---
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct V7QuoteEnvelope {
+    quote_response: V7QuoteResponseBody,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct V7QuoteResponseBody {
+    #[serde(default)]
+    result: Option<Vec<V7QuoteItem>>,
+    error: Option<V7QuoteWireError>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct V7QuoteWireError {
+    description: Option<String>,
+    code: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct V7QuoteItem {
+    symbol: Option<String>,
+    regular_market_price: Option<f64>,
+    regular_market_open: Option<f64>,
+    regular_market_day_high: Option<f64>,
+    regular_market_day_low: Option<f64>,
+    #[serde(default)]
+    regular_market_volume: Option<serde_json::Value>,
+    regular_market_time: Option<i64>,
+    regular_market_previous_close: Option<f64>,
+}
+
+fn v7_volume_as_f64(v: Option<&serde_json::Value>) -> f64 {
+    let Some(j) = v else {
+        return 0.0;
+    };
+    j.as_f64()
+        .or_else(|| j.as_i64().map(|i| i as f64))
+        .or_else(|| j.as_u64().map(|u| u as f64))
+        .unwrap_or(0.0)
+}
+
+/// Maps Yahoo **`v7/finance/quote`** payload into [`TickerResponse`] (one synthetic bar).
+///
+/// | Yahoo field | `TickerResult` |
+/// |-------------|----------------|
+/// | `regularMarketOpen` | **`o`** (else `regularMarketPreviousClose`, else **`c`**) |
+/// | `regularMarketDayHigh` | **`h`** (else **`c`**) |
+/// | `regularMarketDayLow` | **`l`** (else **`c`**) |
+/// | `regularMarketPrice` | **`c`** (required for a successful row) |
+/// | `regularMarketVolume` | **`v`** |
+/// | `regularMarketTime` (Unix **seconds**) | **`t`** = ms |
+fn v7_envelope_to_ticker(env: &V7QuoteEnvelope, requested: &str) -> ProviderResult<TickerResponse> {
+    if let Some(err) = &env.quote_response.error {
+        let msg = err
+            .description
+            .clone()
+            .or_else(|| err.code.clone())
+            .unwrap_or_else(|| "Yahoo quote error".to_string());
+        return Err(ProviderError::ApiMessage(msg));
+    }
+    let Some(items) = env.quote_response.result.as_ref() else {
+        return Ok(TickerResponse {
+            ticker: String::new(),
+            results: vec![],
+            status: "OK".to_string(),
+            error: None,
+        });
+    };
+    let Some(q) = items.first() else {
+        return Ok(TickerResponse {
+            ticker: String::new(),
+            results: vec![],
+            status: "OK".to_string(),
+            error: None,
+        });
+    };
+
+    let close = q.regular_market_price.ok_or_else(|| {
+        ProviderError::ApiMessage(format!("No regularMarketPrice for {}", requested))
+    })?;
+
+    let open = q
+        .regular_market_open
+        .or(q.regular_market_previous_close)
+        .unwrap_or(close);
+    let high = q.regular_market_day_high.unwrap_or(close);
+    let low = q.regular_market_day_low.unwrap_or(close);
+    let vol = v7_volume_as_f64(q.regular_market_volume.as_ref());
+    let t_sec = q
+        .regular_market_time
+        .unwrap_or_else(|| Utc::now().timestamp());
+    let t_ms = (t_sec.max(0) as u64).saturating_mul(1000);
+
+    let ticker_name = q
+        .symbol
+        .clone()
+        .unwrap_or_else(|| requested.to_uppercase());
+
+    Ok(TickerResponse {
+        ticker: ticker_name,
+        results: vec![TickerResult {
+            o: open,
+            h: high,
+            l: low,
+            c: close,
+            v: vol,
+            t: t_ms,
+        }],
+        status: "OK".to_string(),
+        error: None,
+    })
+}
+
+async fn yahoo_quote_v7(symbol: &str) -> ProviderResult<TickerResponse> {
+    let enc_sym = encode(symbol);
+    let url = format!("{}/v7/finance/quote?symbols={}", QUERY1, enc_sym);
+    let text = fetch_text(&url).await?;
+    let env: V7QuoteEnvelope = serde_json::from_str(&text)?;
+    v7_envelope_to_ticker(&env, symbol)
+}
+
+/// Try **`v7/finance/quote`** first; on failure or empty body, use v8 chart ([`yahoo_quote`]).
+async fn yahoo_latest_quote(symbol: &str) -> ProviderResult<TickerResponse> {
+    match yahoo_quote_v7(symbol).await {
+        Ok(t) if !t.results.is_empty() => Ok(t),
+        Ok(_) | Err(_) => yahoo_quote(symbol).await,
+    }
+}
+
+/// Latest quote via **v8 chart** `range=1d` (fallback when v7 is empty or errors).
 async fn yahoo_quote(symbol: &str) -> ProviderResult<TickerResponse> {
     let enc_sym = encode(symbol);
     let url = format!(
@@ -754,6 +889,60 @@ struct StreamProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn v7_envelope_maps_regular_market_fields() {
+        let json = r#"{
+            "quoteResponse": {
+                "result": [{
+                    "symbol": "AAPL",
+                    "regularMarketPrice": 195.5,
+                    "regularMarketOpen": 194.0,
+                    "regularMarketDayHigh": 196.25,
+                    "regularMarketDayLow": 193.5,
+                    "regularMarketVolume": 52800000,
+                    "regularMarketTime": 1700000000
+                }],
+                "error": null
+            }
+        }"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
+        let tr = v7_envelope_to_ticker(&env, "AAPL").expect("map");
+        assert_eq!(tr.ticker, "AAPL");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 195.5).abs() < 1e-9);
+        assert!((bar.o - 194.0).abs() < 1e-9);
+        assert!((bar.h - 196.25).abs() < 1e-9);
+        assert!((bar.l - 193.5).abs() < 1e-9);
+        assert!((bar.v - 52_800_000.0).abs() < 1.0);
+        assert_eq!(bar.t, 1_700_000_000_000u64);
+    }
+
+    #[test]
+    fn v7_envelope_empty_result_yields_no_bars_for_fallback() {
+        let json = r#"{"quoteResponse":{"result":[],"error":null}}"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse");
+        let tr = v7_envelope_to_ticker(&env, "ZZZZ").expect("ok envelope");
+        assert!(tr.results.is_empty());
+    }
+
+    #[test]
+    fn v7_envelope_api_error_returns_err() {
+        let json = r#"{"quoteResponse":{"result":null,"error":{"description":"User is not logged in"}}}"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse");
+        let e = v7_envelope_to_ticker(&env, "X").unwrap_err();
+        match e {
+            ProviderError::ApiMessage(s) => assert!(s.contains("logged in")),
+            other => panic!("expected ApiMessage, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn v7_missing_price_returns_err() {
+        let json = r#"{"quoteResponse":{"result":[{"symbol":"AAPL","regularMarketOpen":1.0}],"error":null}}"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse");
+        assert!(v7_envelope_to_ticker(&env, "AAPL").is_err());
+    }
 
     #[test]
     fn chart_to_ticker_fixture() {

@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17).
 
 ---
 
@@ -280,6 +280,66 @@ _Manual validation passed 2026-05-11._
 | #77 pending vs `InflightRecovery::Stock` (per §16.3) | | | |
 
 _Shipment PR: [#88](https://github.com/FelipeMorandini/stockterm/pull/88)._
+
+---
+
+## Issue #2 — Latest-session quotes (Yahoo + Polygon)
+
+**Scope:**
+
+- [Issue #2](https://github.com/FelipeMorandini/stockterm/issues/2) — Stock View and watchlist show **current trading-session** (or last close) prices, not a stale fixed-year snapshot; **`TickerResult`** unchanged at UI; no fixed calendar-year literals in **`src/api/`** for live quotes.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §17.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+2. **Regression grep (maintainer):** No fixed multi-year **live-quote** date literals in `src/api/` (per SPEC §17.2). Example check: search the tree for patterns like `2023-01-01` through `2023-12-31` used as quote window endpoints — **Pass:** none for quote paths (historical `period1`/`period2` builders may still parse user-facing dates).
+
+3. **Unit tests:** §17.6 fixtures for Yahoo v7 mapping + empty v7 → v8 fallback — **Pass:** present and green after implementation.
+
+### Manual — Yahoo (default `provider`)
+
+1. **`cargo run --release`**, **Stock View**, symbols **`AAPL`**, **`MSFT`**, **`SPY`** in turn (**Enter** or watchlist row so each is active).  
+   **Pass:** Detail pane **Price** / **Change** / **Open** / **High** / **Low** / **Volume** look plausible vs a public finance page for the **same calendar day** (intraday vs last close is acceptable per SPEC).
+
+2. During **US regular session** (if available): pick **`SPY`**, wait one **`refresh_rate`** cycle, note **Price**; wait another cycle.  
+   **Pass:** Values may move or stay flat, but do **not** look like an ancient static fixture (e.g. unchanged for days while the market moved sharply).
+
+3. **After hours / weekend:** same three symbols.  
+   **Pass:** Prices reflect **last regular session** (or documented extended-hours behavior in adapter comments), not empty/garbage.
+
+### Manual — Polygon (`"provider": "polygon"` + API key)
+
+1. Set **`provider`** to **`polygon`** and a valid key in **`~/.stockterm.json`**. Restart, repeat **AAPL** / **MSFT** / **SPY** on **Stock View**.  
+   **Pass:** Same plausibility checks as Yahoo; errors are readable if the key is invalid.
+
+2. **Pass:** **`latest_result()`** bar used for the table/detail is the **most recent** bar in the adapter response (no obvious off-by-years date in volume or price magnitude).
+
+### Manual — Symbol switch
+
+1. With watchlist rows for **two** symbols, use **`j`/`k`** to switch the highlighted row.  
+   **Pass:** Detail pane **Open/High/Low/Volume** update to match the **newly selected** symbol without restarting the app.
+
+### Sign-off — Issue #2
+
+_Manual validation passed 2026-05-11._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-11 | Pass |
+| Regression grep (no stale fixed-year quote windows in `src/api/`) | maintainer | 2026-05-11 | Pass |
+| Yahoo AAPL / MSFT / SPY plausibility | maintainer | 2026-05-11 | Pass |
+| Yahoo session vs after-hours | maintainer | 2026-05-11 | Pass |
+| Polygon optional smoke | maintainer | 2026-05-11 | Pass |
+| Symbol switch updates OHLCV | maintainer | 2026-05-11 | Pass |
 
 ---
 
