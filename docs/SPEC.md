@@ -958,7 +958,7 @@ After maintainer approval of §12, implementation may proceed per `.cursor/rules
 
 ### 12.7 Shipment record
 
-- **Status:** Shipped — manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (Issue #48 section); closes [#48](https://github.com/FelipeMorandini/stockterm/issues/48) (same PR as §13).
+- **Status:** Shipped — manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (Issue #48 section); closes [#48](https://github.com/FelipeMorandini/stockterm/issues/48) (PR [#70](https://github.com/FelipeMorandini/stockterm/pull/70), same as §13).
 - **Code:** [`src/app/portfolio.rs`](../src/app/portfolio.rs) — `letter_key_plain` on Portfolio `a`/`d`/armed keys + **`j`**/**`k`** navigation.
 - **Follow-ups:** [#67](https://github.com/FelipeMorandini/stockterm/issues/67) (Tab cycles dialog fields vs global tab bar).
 
@@ -1040,7 +1040,7 @@ After maintainer approval of §13, implementation may proceed per `.cursor/rules
 
 ### 13.9 Shipment record
 
-- **Status:** Shipped — manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (Issue #6 section); closes [#6](https://github.com/FelipeMorandini/stockterm/issues/6).
+- **Status:** Shipped — manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (Issue #6 section); closes [#6](https://github.com/FelipeMorandini/stockterm/issues/6). **PR:** [#70](https://github.com/FelipeMorandini/stockterm/pull/70).
 - **Code:** [`src/app/portfolio.rs`](../src/app/portfolio.rs) (`PortfolioAddDialog`, overlay, two-step remove); [`src/app/app.rs`](../src/app/app.rs) (`collect_symbols_for_quote_fetch` includes portfolio symbols; `add_to_portfolio` / `remove_from_portfolio` + **`try_save`**).
 - **Related closure:** [#39](https://github.com/FelipeMorandini/stockterm/issues/39) (portfolio **`try_save`** parity — addressed in same delivery).
 - **Follow-ups:** [#67](https://github.com/FelipeMorandini/stockterm/issues/67) (Tab in dialog), [#68](https://github.com/FelipeMorandini/stockterm/issues/68) (decimal money), [#69](https://github.com/FelipeMorandini/stockterm/issues/69) (commit edge cases / input caps).
