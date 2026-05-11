@@ -464,6 +464,7 @@ pub fn handle_portfolio_events(app: &mut App, key: KeyEvent) {
             if let Some(selected) = app.portfolio_state.selected() {
                 if selected < app.portfolio.len() {
                     app.symbol = app.portfolio[selected].symbol.clone();
+                    app.on_active_symbol_changed_for_charts();
                     app.notify_symbol_changed_for_news();
                     app.sync_watchlist_selection_to_symbol();
                     app.request_immediate_stock_poll();

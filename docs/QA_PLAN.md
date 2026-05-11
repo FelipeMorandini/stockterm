@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11).
 
 ---
 
@@ -96,6 +96,79 @@ _Manual validation passed 2026-05-10 (pre-merge). Viewport preserved across back
 | Viewport + range change (#8/#9) | maintainer | 2026-05-10 | Pass |
 | Candlestick toggle (#7) | maintainer | 2026-05-10 | Pass |
 | Empty / single-point (#7/#9) | maintainer | 2026-05-10 | Pass |
+
+---
+
+## Issues #62, #63, #64 — M4 Charts polish
+
+**Scope:**
+
+- [Issue #62](https://github.com/FelipeMorandini/stockterm/issues/62) — No mismatch between chart title / active symbol and the OHLC series after changing symbol **without** visiting Charts (clear or gate stale series per [`docs/SPEC.md`](SPEC.md) §11.11.1).
+- [Issue #63](https://github.com/FelipeMorandini/stockterm/issues/63) — Yahoo **W1**: if intraday window is empty, automatic **daily** retry for the same window; illiquid symbols still get a chart when possible.
+- [Issue #64](https://github.com/FelipeMorandini/stockterm/issues/64) — Transient historical errors: last-good series + error message; viewport logic uses requested symbol when response **`ticker`** is empty; document UX for background fetch behavior.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §11.11.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+### Manual — Issue #62 (symbol vs series)
+
+1. Open **Charts**, load data for a liquid symbol (**`AAPL`**), press **`3`** (M1) and wait until bars appear. Note the chart is populated.
+
+2. Switch to **Search** (or **Stock View**), pick a **different** symbol (e.g. search **`MSFT`**, **Enter** to go to Stock View). **Do not** open Charts yet.
+
+3. Switch to **Charts**.  
+   **Pass:** Chart title / active symbol matches **MSFT** (or the new symbol) and the **plotted series** is for that symbol — **not** a frozen **AAPL** image. Acceptable: empty / loading state until fetch completes, but **not** the previous ticker’s bars.
+
+4. Repeat using **watchlist** navigation: load **AAPL** on Charts, go to Stock View, **`j`/`k`** to another watchlist row, return to **Charts**.  
+   **Pass:** Same — no old ticker’s bars under the new title.
+
+5. From **Portfolio**, select a row whose symbol differs from the last charted symbol, press **Enter** to jump to Stock View, then open **Charts**.  
+   **Pass:** Series matches the portfolio row’s symbol.
+
+### Manual — Issue #63 (Yahoo W1 empty fallback)
+
+1. Set **`provider`: `yahoo`** in **`~/.stockterm.json`**. Use a symbol that often has **sparse** activity (e.g. a low-volume OTC or thin ETF — pick one you know can return empty intraday; if hard to find, use a mock/stub only in dev — then skip and note **N/A** in sign-off).
+
+2. Open **Charts**, press **`2`** (**W1**).  
+   **Pass:** Either intraday **or** (after fallback) **daily** bars appear for the week window, **or** a clear empty message — **no panic**, no infinite spinner.
+
+3. Switch to a liquid symbol (**`AAPL`**), **W1** again.  
+   **Pass:** Chart still behaves; primary path unchanged.
+
+### Manual — Issue #64 (resilience + UX)
+
+1. **Transient error / last-good:** With a **loaded** chart (any range with visible bars), simulate a network failure (e.g. disable Wi-Fi / unplug Ethernet) and trigger a **refresh** of historical data (e.g. wait for periodic refresh on Charts, change range and back, or use whatever UX forces refetch per implementation).  
+   **Pass:** Per [`docs/SPEC.md`](SPEC.md) §11.11.3 — an **error** appears in the status / error line, and the **previous** bars remain visible (not wiped) until a **successful** fetch replaces them. Restore network; confirm a successful fetch **clears** the error and updates data.
+
+2. **First-load failure:** With network off, open the app, go to **Charts** for a symbol with no cached history.  
+   **Pass:** No crash; empty or error state is consistent with SPEC (no fake bars).
+
+3. **Regression — symbol change still clears stale data:** After a failed refresh with last-good series, change symbol via Search (**#62** scenario).  
+   **Pass:** Old series is **not** combined with the new symbol (same as §11.11: clearing on symbol change).
+
+### Sign-off — Issues #62 / #63 / #64
+
+_Manual validation passed 2026-05-11._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-11 | Pass |
+| #62 Search → Charts mismatch | maintainer | 2026-05-11 | Pass |
+| #62 watchlist / Portfolio Enter | maintainer | 2026-05-11 | Pass |
+| #63 W1 fallback (Yahoo) | maintainer | 2026-05-11 | Pass |
+| #64 transient error + last-good | maintainer | 2026-05-11 | Pass |
+| #64 first-load failure | maintainer | 2026-05-11 | Pass |
 
 ---
 

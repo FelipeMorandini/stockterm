@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-10 (M4 Charts #7/#8/#9; portfolio Issues #6/#48 — ROADMAP §4.3)
+Last updated: 2026-05-11 (M4 Charts polish #62/#63/#64 — ROADMAP §4.4)
 
 ---
 
@@ -117,7 +117,8 @@ incomplete, broken, or unwired; **Missing** = no code path.
 ### 4.4 Core — Historical charts in terminal
 
 - **Implemented (Issues #7 / #8 / #9, M4)** — line + candlestick widget, viewport zoom/pan, `TimeRange` keys; see `docs/SPEC.md` §11.
-- **Partial — further polish** — dense candle layout vs web charts, Yahoo W1 empty fallback ([#63](https://github.com/FelipeMorandini/stockterm/issues/63)), symbol/history sync ([#62](https://github.com/FelipeMorandini/stockterm/issues/62)).
+- **Implemented (Issues [#62](https://github.com/FelipeMorandini/stockterm/issues/62) / [#63](https://github.com/FelipeMorandini/stockterm/issues/63) / [#64](https://github.com/FelipeMorandini/stockterm/issues/64), §11.11)** — symbol change clears stale `historical_data`; Yahoo W1 intraday empty → daily retry; transient historical errors keep last-good series; viewport ticker uses requested symbol when response `ticker` is empty; see `docs/SPEC.md` §11.11.7.
+- **Partial — further polish** — dense candle layout vs web charts; follow-ups [#71](https://github.com/FelipeMorandini/stockterm/issues/71)–[#74](https://github.com/FelipeMorandini/stockterm/issues/74) (channel/inflight, dead sync fetch, W1 unit tests, watchlist chart flicker).
 
 ### 4.5 Core — Time ranges (1D/1W/1M/1Y)
 

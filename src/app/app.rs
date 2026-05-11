@@ -468,11 +468,13 @@ impl App {
                 .get_historical(&sym, &hq, &cfg)
                 .await
                 .map_err(|e| e.to_string());
-            let _ = tx.send(FetchDone::Historical {
+            if let Err(e) = tx.send(FetchDone::Historical {
                 symbol: sym,
                 time_range: tr,
                 result,
-            });
+            }) {
+                eprintln!("stockterm: dropped historical fetch result (channel closed): {e}");
+            }
         });
     }
 
@@ -589,6 +591,13 @@ impl App {
         });
     }
 
+    /// Clear chart series when the active ticker changes (Issue #62 / SPEC §11.11.1).
+    pub fn on_active_symbol_changed_for_charts(&mut self) {
+        self.historical_data = None;
+        self.chart_viewport = ChartViewport::default();
+        self.last_charts_network_poll = None;
+    }
+
     /// Clear news UI when the active symbol changes while on the News tab (SPEC §10.3).
     pub fn notify_symbol_changed_for_news(&mut self) {
         if self.active_tab != Tab::News {
@@ -651,6 +660,7 @@ impl App {
             return;
         };
         self.symbol = sym;
+        self.on_active_symbol_changed_for_charts();
         self.notify_symbol_changed_for_news();
         self.active_tab = Tab::StockView;
         self.sync_watchlist_selection_to_symbol();
@@ -824,14 +834,16 @@ impl App {
                             prev,
                             self.chart_viewport,
                             &data,
+                            &symbol,
                         );
                         self.historical_data = Some(data);
                         self.error_message = None;
                     }
                     Err(err) => {
                         self.error_message = Some(format!("Error fetching historical data: {err}"));
-                        self.historical_data = None;
-                        self.chart_viewport = ChartViewport::default();
+                        if self.historical_data.is_none() {
+                            self.chart_viewport = ChartViewport::default();
+                        }
                     }
                 }
             }
@@ -984,6 +996,7 @@ impl App {
             self.error_message = None;
         }
         self.watchlist_state.select(Some(self.watchlist.len().saturating_sub(1)));
+        self.on_active_symbol_changed_for_charts();
         self.notify_symbol_changed_for_news();
     }
 
@@ -1015,6 +1028,9 @@ impl App {
             .watchlist_quotes
             .get(&self.symbol)
             .cloned();
+        if !self.watchlist.is_empty() {
+            self.on_active_symbol_changed_for_charts();
+        }
         self.notify_symbol_changed_for_news();
     }
 
@@ -1031,6 +1047,7 @@ impl App {
         }
         if let Some(i) = self.watchlist_state.selected() {
             self.symbol = self.watchlist[i].clone();
+            self.on_active_symbol_changed_for_charts();
         }
         self.notify_symbol_changed_for_news();
     }
@@ -1048,6 +1065,7 @@ impl App {
         }
         if let Some(i) = self.watchlist_state.selected() {
             self.symbol = self.watchlist[i].clone();
+            self.on_active_symbol_changed_for_charts();
         }
         self.notify_symbol_changed_for_news();
     }
@@ -1078,7 +1096,8 @@ impl App {
         };
 
         let provider = market_provider_for(self.config.provider);
-        match provider.get_historical(&self.symbol, &hq, &self.config).await
+        let sym = self.symbol.clone();
+        match provider.get_historical(&sym, &hq, &self.config).await
         {
             Ok(data) => {
                 let prev = self.historical_data.as_ref();
@@ -1086,14 +1105,16 @@ impl App {
                     prev,
                     self.chart_viewport,
                     &data,
+                    &sym,
                 );
                 self.historical_data = Some(data);
                 self.error_message = None;
             }
             Err(err) => {
                 self.error_message = Some(format!("Error fetching historical data: {err}"));
-                self.historical_data = None;
-                self.chart_viewport = ChartViewport::default();
+                if self.historical_data.is_none() {
+                    self.chart_viewport = ChartViewport::default();
+                }
             }
         }
     }
