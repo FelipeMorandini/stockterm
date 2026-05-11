@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior. **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11).
 
 ---
 
@@ -346,6 +346,131 @@ _Manual validation passed 2026-05-10 (pre-merge). Clipboard copy deferred to [#5
 | Alerts `a`/`A` add | | | |
 | Alerts `d`/`D` remove | | | |
 | Alt/Ctrl chord on Alerts | | | |
+
+---
+
+## Issue #48 — Portfolio tab keyboard parity (Issue #44 follow-up)
+
+**Scope:** [GitHub Issue #48](https://github.com/FelipeMorandini/stockterm/issues/48) — Portfolio **`a`** / **`d`** use `letter_key_plain` and case-insensitive letter matching, consistent with **Issue #44** / [`docs/SPEC.md`](SPEC.md) §8 and §12.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §12.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+### Manual — Portfolio add/remove keys
+
+1. Open **Portfolio** with at least one holding (or empty — **`a`** may open §13 dialog later; for #48 alone, verify key recognition).
+
+2. **Lowercase `a`:** Press **`a`** without Shift.  
+   **Pass:** Same behavior as pre–#48 uppercase-only **`A`** (opens add flow or performs add per current implementation).
+
+3. **`Shift+a`:** Press **`Shift+a`** (terminal may send `A` with `SHIFT` set).  
+   **Pass:** Still triggers add (not ignored).
+
+4. **Lowercase / Shift `d`:** With a row selected, press **`d`** and **`Shift+d`**.  
+   **Pass:** Remove or confirm-remove flow runs per §13; keys are not ignored solely due to modifiers/case.
+
+5. **Chord safety:** **`Ctrl+a`**, **`Alt+d`**.  
+   **Pass:** Does **not** add/remove or arm remove.
+
+6. **Regression — Stock View / Alerts:** Re-run a subset of the **Issue #44** QA rows.  
+   **Pass:** No behavior change on those tabs.
+
+### Sign-off — Issue #48
+
+_Manual validation passed 2026-05-10._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Build / clippy / tests | maintainer | 2026-05-10 | Pass |
+| Portfolio `a` / `A` / Shift | maintainer | 2026-05-10 | Pass |
+| Portfolio `d` / `D` / Shift | maintainer | 2026-05-10 | Pass |
+| Ctrl/Alt chords blocked | maintainer | 2026-05-10 | Pass |
+| Issue #44 regression (spot) | maintainer | 2026-05-10 | Pass |
+
+---
+
+## Issue #6 — Portfolio add dialog, confirm remove, quote coverage
+
+**Scope:** [GitHub Issue #6](https://github.com/FelipeMorandini/stockterm/issues/6) — numeric **add** dialog (shares + purchase price), **two-step** remove confirmation, **all portfolio symbols** included in the quote fan-out, **`try_save`** error surfacing.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §13. **Issue #48** (§12) should be satisfied so Portfolio letter keys behave like Alerts during manual runs.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+### Manual — Add dialog
+
+1. On **Stock View**, set active symbol to **`MSFT`** (type + **Enter** as required).
+
+2. Switch to **Portfolio**, press **`a`**.  
+   **Pass:** A dialog (or overlay) appears; **no** silent add with **1 @ 100** defaults.
+
+3. Enter **shares** **`10`** and **purchase price** **`412.55`** per SPEC (**`;`** cycles Shares/Price if needed; **Enter** advances Shares → Price → commit).  
+   **Pass:** Row shows **MSFT**, **10**, avg **412.55**; **Current** / **Value** / **P/L** update after quote batch completes (may take one refresh cycle); totals change.
+
+4. **Esc** during dialog.  
+   **Pass:** Dialog closes; portfolio unchanged.
+
+5. **Invalid input:** Non-numeric or empty buffers on commit.  
+   **Pass:** Inline or status error; no panic; config not corrupted.
+
+### Manual — Confirm remove
+
+1. Select a row, press **`d`** once.  
+   **Pass:** UI shows armed / confirm hint; row **not** removed yet.
+
+2. Press **`d`** again **or** **`y`**.  
+   **Pass:** Row removed; JSON updated.
+
+3. Arm remove, then **`Esc`** or **`n`**.  
+   **Pass:** Armed state clears; row remains.
+
+### Manual — Quote coverage for portfolio-only symbols
+
+1. Edit **`~/.stockterm.json`**: ensure a holding exists for ticker **`IBM`** while **`IBM`** is **not** in **`watchlist`** and active **`symbol`** is **`AAPL`** (adjust paths carefully).
+
+2. Launch app, open **Portfolio**.  
+   **Pass:** After a quote cycle, **IBM** row shows a non-zero **Current** when the market data provider returns a quote (or a clear error), not stuck at **0** forever solely because the symbol was omitted from the batch.
+
+### Manual — Persistence / errors
+
+1. After add/remove, verify **`~/.stockterm.json`** **`portfolio`** array. Restart app.  
+   **Pass:** Holdings survive.
+
+2. **Optional (#19):** If **`try_save`** fails, **Pass:** **`error_message`** surfaces; no panic.
+
+### Sign-off — Issue #6
+
+_Manual validation passed 2026-05-10._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-10 | Pass |
+| Add dialog; MSFT 10 @ 412.55 | maintainer | 2026-05-10 | Pass |
+| Esc cancel; invalid input | maintainer | 2026-05-10 | Pass |
+| Remove two-step + cancel | maintainer | 2026-05-10 | Pass |
+| Portfolio-only symbol quoted | maintainer | 2026-05-10 | Pass |
+| JSON persistence + try_save | maintainer | 2026-05-10 | Pass |
 
 ---
 

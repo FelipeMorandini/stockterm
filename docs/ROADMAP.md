@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-10 (M4 Charts #7/#8/#9; ROADMAP §4.4–4.5)
+Last updated: 2026-05-10 (M4 Charts #7/#8/#9; portfolio Issues #6/#48 — ROADMAP §4.3)
 
 ---
 
@@ -102,22 +102,17 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 ### 4.3 Core — Portfolio (CRUD, totals, P/L, share counts)
 
-- **Implemented (logic)**
-  - Evidence: `models/portfolio.rs::PortfolioItem` with `shares`,
-    `purchase_price`, `current_price`, `market_value`, `cost_basis`,
-    `profit_loss`, `profit_loss_percent`.
-  - `App::add_to_portfolio` does weighted-average cost on add;
-    `App::remove_from_portfolio`; `calculate_portfolio_value`,
-    `calculate_portfolio_cost`, `calculate_portfolio_profit_loss`.
-  - `draw_portfolio` (`src/app/portfolio.rs`) renders summary + holdings table
-    (Symbol/Shares/Avg/Current/Value/P/L/P/L %).
-  - `current_price` is back-filled from the watchlist quote batch
-    (`watchlist_quotes`) when symbols match.
-- **Partial — UX wiring**
-  - Add/remove are bound to `'a'`/`'d'` in `handle_portfolio_events` but with
-    **hard-coded** `(1.0, 100.0)` shares/price — no input dialog.
-  - `handle_portfolio_events` is dispatched from `handlers.rs` on `Tab::Portfolio`;
-    Enter jumps to Stock View and triggers `request_immediate_stock_poll`.
+- **Implemented (Issues [#6](https://github.com/FelipeMorandini/stockterm/issues/6) / [#48](https://github.com/FelipeMorandini/stockterm/issues/48))**
+  - Evidence: `models/portfolio.rs::PortfolioItem`; `App::add_to_portfolio` /
+    `remove_from_portfolio` with **`Config::try_save`**; weighted-average cost;
+    totals helpers; `draw_portfolio` + add dialog / two-step remove /
+    `letter_key_plain` (`src/app/portfolio.rs`).
+  - Quote batch includes **watchlist + active symbol + all portfolio tickers**
+    (`collect_symbols_for_quote_fetch`); `apply_stock_fetch_done` back-fills
+    `current_price` from `watchlist_quotes`.
+  - `handle_portfolio_events` from `handlers.rs` on `Tab::Portfolio`; Enter → Stock
+    View + `request_immediate_stock_poll`.
+- **Partial — further polish** — Tab cycles dialog fields ([#67](https://github.com/FelipeMorandini/stockterm/issues/67)); optional decimal money ([#68](https://github.com/FelipeMorandini/stockterm/issues/68)); commit edge cases / input caps ([#69](https://github.com/FelipeMorandini/stockterm/issues/69)); row edit UI not implemented.
 
 ### 4.4 Core — Historical charts in terminal
 
