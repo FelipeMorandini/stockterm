@@ -1023,7 +1023,7 @@ After maintainer approval of §11.11, implementation may proceed per `.cursor/ru
 
 - **Status:** Shipped — manual QA per [`docs/QA_PLAN.md`](QA_PLAN.md) (Issues #62 / #63 / #64 section, 2026-05-11).
 - **Tracking:** Closes [#62](https://github.com/FelipeMorandini/stockterm/issues/62), [#63](https://github.com/FelipeMorandini/stockterm/issues/63), [#64](https://github.com/FelipeMorandini/stockterm/issues/64).
-- **PR:** _Link added in repo after merge (search closed PRs for §11.11 / #62)._
+- **PR:** https://github.com/FelipeMorandini/stockterm/pull/75
 - **Code:** `src/app/{app,charts,portfolio}.rs`, `src/api/yahoo.rs`.
 - **Follow-ups:** [#71](https://github.com/FelipeMorandini/stockterm/issues/71) (inflight + send failure parity), [#72](https://github.com/FelipeMorandini/stockterm/issues/72) (`fetch_historical_data`), [#73](https://github.com/FelipeMorandini/stockterm/issues/73) (W1 unit tests), [#74](https://github.com/FelipeMorandini/stockterm/issues/74) (watchlist add chart flicker).
 
