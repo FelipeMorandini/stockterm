@@ -18,6 +18,21 @@ use crate::models::ticker::{TickerResponse, TickerResult};
 const QUERY1: &str = "https://query1.finance.yahoo.com";
 const QUERY2: &str = "https://query2.finance.yahoo.com";
 
+/// Issue #73 / SPEC §11.12.3 — if the first W1 intraday response has no bars, retry with daily interval.
+pub(crate) fn yahoo_w1_daily_fallback_interval(
+    yahoo_range: Option<&str>,
+    bar_interval: &str,
+    first_result_count: usize,
+) -> Option<&'static str> {
+    if first_result_count != 0 {
+        return None;
+    }
+    match (yahoo_range, bar_interval) {
+        (Some("5d"), "30m") => Some("1d"),
+        _ => None,
+    }
+}
+
 pub struct YahooProvider;
 
 #[async_trait]
@@ -37,8 +52,10 @@ impl MarketDataProvider for YahooProvider {
         if let Some(range) = query.yahoo_range {
             let mut res = yahoo_historical_range(symbol, range, query.bar_interval).await?;
             // Issue #63 / SPEC §11.11.2 — W1 intraday empty → retry same window with daily bars.
-            if res.results.is_empty() && range == "5d" && query.bar_interval == "30m" {
-                res = yahoo_historical_range(symbol, "5d", "1d").await?;
+            if let Some(iv) =
+                yahoo_w1_daily_fallback_interval(Some(range), query.bar_interval, res.results.len())
+            {
+                res = yahoo_historical_range(symbol, "5d", iv).await?;
             }
             Ok(res)
         } else {
@@ -795,5 +812,25 @@ mod tests {
         assert_eq!(v.len(), 1);
         assert_eq!(v[0].title, "T1");
         assert_eq!(v[0].article_url, "https://a");
+    }
+
+    #[test]
+    fn yahoo_w1_fallback_empty_intraday_requests_daily() {
+        assert_eq!(
+            yahoo_w1_daily_fallback_interval(Some("5d"), "30m", 0),
+            Some("1d")
+        );
+    }
+
+    #[test]
+    fn yahoo_w1_fallback_skips_when_intraday_has_bars() {
+        assert_eq!(yahoo_w1_daily_fallback_interval(Some("5d"), "30m", 3), None);
+    }
+
+    #[test]
+    fn yahoo_w1_fallback_skips_wrong_range_or_interval() {
+        assert_eq!(yahoo_w1_daily_fallback_interval(Some("1mo"), "30m", 0), None);
+        assert_eq!(yahoo_w1_daily_fallback_interval(Some("5d"), "1d", 0), None);
+        assert_eq!(yahoo_w1_daily_fallback_interval(None, "30m", 0), None);
     }
 }

@@ -18,7 +18,7 @@ use ratatui::Terminal;
 use std::collections::{HashMap, HashSet};
 use std::io;
 use std::time::{Duration, Instant};
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{error::SendError, UnboundedSender};
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
@@ -66,6 +66,15 @@ impl Default for PortfolioAddDialog {
     }
 }
 
+/// Clears a stuck `*_inflight` flag when `FetchDone` could not be sent (Issue #71 / SPEC §11.12.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InflightRecovery {
+    Historical,
+    News,
+    Search,
+    Stock,
+}
+
 /// Outcomes from background HTTP tasks (never awaited on the draw/input hot path).
 pub enum FetchDone {
     Stock {
@@ -87,6 +96,10 @@ pub enum FetchDone {
         query: String,
         result: Result<SymbolSearchResponse, String>,
     },
+}
+
+fn warn_fetch_channel_closed(context: &str, err: &SendError<FetchDone>) {
+    eprintln!("stockterm: dropped {context} (channel closed): {err}");
 }
 
 pub struct App {
@@ -126,6 +139,7 @@ pub struct App {
     /// True while a watchlist / quote batch is in flight.
     pub stock_refresh_inflight: bool,
     fetch_done_tx: Option<UnboundedSender<FetchDone>>,
+    inflight_recovery_tx: Option<UnboundedSender<InflightRecovery>>,
     stock_fetch_generation: u64,
     stock_refresh_pending: bool,
     hist_refresh_inflight: bool,
@@ -270,6 +284,7 @@ impl App {
             last_news_network_poll: None,
             stock_refresh_inflight: false,
             fetch_done_tx: None,
+            inflight_recovery_tx: None,
             stock_fetch_generation: 0,
             stock_refresh_pending: false,
             hist_refresh_inflight: false,
@@ -377,10 +392,16 @@ impl App {
         self.stock_fetch_generation += 1;
         let generation = self.stock_fetch_generation;
         let cfg = self.config.clone();
+        let recovery_tx = self.inflight_recovery_tx.clone();
 
         tokio::spawn(async move {
             let done = run_stock_quote_batch(generation, symbols, cfg).await;
-            let _ = tx.send(done);
+            if let Err(e) = tx.send(done) {
+                warn_fetch_channel_closed("stock quote batch result", &e);
+                if let Some(rtx) = recovery_tx {
+                    let _ = rtx.send(InflightRecovery::Stock);
+                }
+            }
         });
     }
 
@@ -451,6 +472,7 @@ impl App {
         let sym = self.symbol.clone();
         let cfg = self.config.clone();
         let tr = self.time_range;
+        let recovery_tx = self.inflight_recovery_tx.clone();
         tokio::spawn(async move {
             let params = tr.historical_params(chrono::Local::now());
             let from = params.from.clone();
@@ -473,7 +495,10 @@ impl App {
                 time_range: tr,
                 result,
             }) {
-                eprintln!("stockterm: dropped historical fetch result (channel closed): {e}");
+                warn_fetch_channel_closed("historical fetch result", &e);
+                if let Some(rtx) = recovery_tx {
+                    let _ = rtx.send(InflightRecovery::Historical);
+                }
             }
         });
     }
@@ -506,13 +531,19 @@ impl App {
         self.news_refresh_inflight = true;
         let sym = self.symbol.clone();
         let cfg = self.config.clone();
+        let recovery_tx = self.inflight_recovery_tx.clone();
         tokio::spawn(async move {
             let provider = market_provider_for(cfg.provider);
             let result = provider.get_news(&sym, &cfg).await.map_err(|e| e.to_string());
-            let _ = tx.send(FetchDone::News {
+            if let Err(e) = tx.send(FetchDone::News {
                 symbol: sym,
                 result,
-            });
+            }) {
+                warn_fetch_channel_closed("news fetch result", &e);
+                if let Some(rtx) = recovery_tx {
+                    let _ = rtx.send(InflightRecovery::News);
+                }
+            }
         });
     }
 
@@ -580,14 +611,20 @@ impl App {
         let generation = self.search_request_generation;
         let cfg = self.config.clone();
         self.search_refresh_inflight = true;
+        let recovery_tx = self.inflight_recovery_tx.clone();
         tokio::spawn(async move {
             let provider = market_provider_for(cfg.provider);
             let result = provider.search_symbols(&query, &cfg).await.map_err(|e| e.to_string());
-            let _ = tx.send(FetchDone::Search {
+            if let Err(e) = tx.send(FetchDone::Search {
                 generation,
                 query,
                 result,
-            });
+            }) {
+                warn_fetch_channel_closed("search fetch result", &e);
+                if let Some(rtx) = recovery_tx {
+                    let _ = rtx.send(InflightRecovery::Search);
+                }
+            }
         });
     }
 
@@ -809,6 +846,15 @@ impl App {
         }
     }
 
+    fn apply_inflight_recovery(&mut self, kind: InflightRecovery) {
+        match kind {
+            InflightRecovery::Historical => self.hist_refresh_inflight = false,
+            InflightRecovery::News => self.news_refresh_inflight = false,
+            InflightRecovery::Search => self.search_refresh_inflight = false,
+            InflightRecovery::Stock => self.stock_refresh_inflight = false,
+        }
+    }
+
     fn apply_fetch_done(&mut self, msg: FetchDone) {
         match msg {
             FetchDone::Stock {
@@ -929,6 +975,8 @@ impl App {
     pub async fn run<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
         let (fetch_tx, mut fetch_rx) = tokio::sync::mpsc::unbounded_channel();
         self.fetch_done_tx = Some(fetch_tx);
+        let (recovery_tx, mut recovery_rx) = tokio::sync::mpsc::unbounded_channel();
+        self.inflight_recovery_tx = Some(recovery_tx);
 
         let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
         spawn_event_thread(event_tx);
@@ -962,6 +1010,11 @@ impl App {
                         self.apply_fetch_done(msg);
                     }
                 }
+                recovery = recovery_rx.recv() => {
+                    if let Some(kind) = recovery {
+                        self.apply_inflight_recovery(kind);
+                    }
+                }
             }
         }
     }
@@ -981,12 +1034,14 @@ impl App {
     }
 
     pub fn add_current_to_watchlist(&mut self) {
+        let prev_effective = self.symbol.clone();
         let Some(sym) = normalize_symbol(&self.symbol) else {
             return;
         };
         if self.watchlist.iter().any(|s| s == &sym) {
             return;
         }
+        let same_ticker_case_only = prev_effective.eq_ignore_ascii_case(&sym);
         self.watchlist.push(sym.clone());
         self.symbol = sym;
         self.config.watchlist = self.watchlist.clone();
@@ -996,7 +1051,9 @@ impl App {
             self.error_message = None;
         }
         self.watchlist_state.select(Some(self.watchlist.len().saturating_sub(1)));
-        self.on_active_symbol_changed_for_charts();
+        if !same_ticker_case_only {
+            self.on_active_symbol_changed_for_charts();
+        }
         self.notify_symbol_changed_for_news();
     }
 
@@ -1068,55 +1125,6 @@ impl App {
             self.on_active_symbol_changed_for_charts();
         }
         self.notify_symbol_changed_for_news();
-    }
-
-    pub async fn fetch_historical_data(&mut self) {
-        if self.symbol.is_empty() {
-            return;
-        }
-
-        if !self.provider_ready() {
-            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
-            self.historical_data = None;
-            return;
-        }
-
-        let params = self
-            .time_range
-            .historical_params(chrono::Local::now());
-        let from = params.from.clone();
-        let to = params.to.clone();
-        let hq = HistoricalQuery {
-            from: &from,
-            to: &to,
-            bar_interval: params.bar_interval,
-            yahoo_range: params.yahoo_range,
-            polygon_multiplier: params.polygon_multiplier,
-            polygon_timespan: params.polygon_timespan,
-        };
-
-        let provider = market_provider_for(self.config.provider);
-        let sym = self.symbol.clone();
-        match provider.get_historical(&sym, &hq, &self.config).await
-        {
-            Ok(data) => {
-                let prev = self.historical_data.as_ref();
-                self.chart_viewport = crate::app::charts::chart_viewport_after_refresh(
-                    prev,
-                    self.chart_viewport,
-                    &data,
-                    &sym,
-                );
-                self.historical_data = Some(data);
-                self.error_message = None;
-            }
-            Err(err) => {
-                self.error_message = Some(format!("Error fetching historical data: {err}"));
-                if self.historical_data.is_none() {
-                    self.chart_viewport = ChartViewport::default();
-                }
-            }
-        }
     }
 
     /// Charts tab: switch time range and refetch (keys `1`–`4`).
