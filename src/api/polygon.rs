@@ -51,12 +51,15 @@ pub struct PolygonProvider;
 
 #[async_trait]
 impl MarketDataProvider for PolygonProvider {
+    /// Daily aggregates over a rolling calendar window; [`TickerResponse::latest_result`] (max `t`)
+    /// is the **most recent bar** in the response — typically the last **US session** in range.
     async fn get_quote(&self, symbol: &str, config: &Config) -> ProviderResult<TickerResponse> {
         let key = polygon_key(config)?;
         let to = Local::now().format("%Y-%m-%d").to_string();
         let from = (Local::now() - Duration::days(30)).format("%Y-%m-%d").to_string();
+        // `sort=desc` + small `limit`: latest session first, minimal payload (Issue #2 / SPEC §17.4).
         let url = format!(
-            "{}/v2/aggs/ticker/{}/range/1/day/{}/{}?adjusted=true&sort=desc&limit=120&apiKey={}",
+            "{}/v2/aggs/ticker/{}/range/1/day/{}/{}?adjusted=true&sort=desc&limit=5&apiKey={}",
             BASE_URL,
             enc(symbol),
             enc(&from),
