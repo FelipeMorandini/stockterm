@@ -279,6 +279,8 @@ _Manual validation passed 2026-05-11._
 | #46 inflight never stuck (normal + optional panic hook) | | | |
 | #77 pending vs `InflightRecovery::Stock` (per §16.3) | | | |
 
+_Shipment PR: [#88](https://github.com/FelipeMorandini/stockterm/pull/88)._
+
 ---
 
 ## Issues #29, #5, #11, #12 — M3: Search, News, Settings
