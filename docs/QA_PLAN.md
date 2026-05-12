@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20).
 
 ## Issues #7, #8, #9 — M4: Charts (candlesticks, viewport, time ranges)
 
@@ -699,6 +699,102 @@ _Automated §19.8 coverage in `cargo test`; **manual** steps below still require
 | Yahoo smoke | | | |
 | Polygon / throttling (optional) | | | |
 | Concurrency spot-check | | | |
+
+---
+
+## Issue #20 — Error UX (categories, error log, retry, auto-clear)
+
+**Scope:**
+
+- [GitHub Issue #20](https://github.com/FelipeMorandini/stockterm/issues/20) — **`AppError`** + **`UiErrorCategory`** prefixes on the status line; **`retry in Ns`** hint for **`ProviderError::RateLimited`**; ring buffer (**20**) with overlay; **retry** last failed fetch for the active tab domain; **transient** errors auto-clear (**10 s** TTL or success); **sticky** errors until resolved; **startup** vs **runtime** visual distinction.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §20. **HTTP behavior** matches [`docs/SPEC.md`](SPEC.md) §19 / Issue #18 (`ProviderError`, retries).
+
+**Binding note (SPEC §20.1):** [Issue #20](https://github.com/FelipeMorandini/stockterm/issues/20) suggests plain **`e`** / **`r`**; Stock View and Search use plain letters for symbol/query input. Manual steps below use **`Ctrl+E`** (error log) and **`Ctrl+R`** (retry) as the **canonical** chords. **Pass** = behavior matches §20.1, not bare **`e`**/**`r`** on Stock View.
+
+### GitHub Issue #20 acceptance ↔ this section
+
+| [Issue #20](https://github.com/FelipeMorandini/stockterm/issues/20) acceptance criterion | Verified by |
+|------------------------------------------------------------------------------------------|-------------|
+| **429** surfaces as **`[rate] … retry in 10s`** (not raw **`reqwest`**) | **Manual** with throttled provider or mock (if available); else **automated** §19 tests + **code review** of §20.3 mapping from **`RateLimited { retry_after: Some(10s) }`** to status line. |
+| Network outage → **`[net] …`** and clears after a successful fetch | **Manual** — toggle network / bad proxy; restore; **Ctrl+R** or natural poll. |
+| **Retry** last failed fetch | **Manual** — **`Ctrl+R`** on each tab domain (Stock, Charts, News, Search) after a forced failure. |
+| **Error log** lists last **N** with timestamps | **Manual** — **`Ctrl+E`** overlay; generate ≥3 distinct errors; **Esc** closes. |
+| Errors never block rest of UI | **Manual** — during **`STOCKTERM_DEBUG_HTTP_DELAY_MS`** (§16) delay, confirm tabs/typing still work; overlay does not freeze terminal. |
+
+### Automated (local)
+
+1. From the repo root (after implementation lands):
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0; §20.10 unit tests for category mapping + ring buffer present per SPEC.
+
+### Manual — Status prefixes and rate limit hint
+
+1. **`cargo run --release`**, force a **rate-limited** or **429**-class outcome (Polygon with aggressive refresh, or local mock if wired).  
+   **Pass:** Status line shows **`[rate]`** and a **`retry in …s`** (or documented equivalent when **`retry_after`** is **`None`**) — **no** substring **`reqwest`**.
+
+2. Force a **connection refused** or **DNS** failure (invalid proxy host, unplug network).  
+   **Pass:** **`[net]`** prefix; body text is short and readable.
+
+3. Provoke a **JSON** / parse failure path if testable without code changes (else skip).  
+   **Pass:** **`[parse]`** when implementation maps **`ProviderError::Json`**.
+
+### Manual — Transient auto-clear vs sticky
+
+1. Trigger a **transient** error (**timeout** / **transport**). Wait **≥ 10 s** without fixing the network.  
+   **Pass:** Active status error **clears** from the status line per §20.6 (or documented TTL), while **error log** still retains the row.
+
+2. Trigger a **sticky** error (e.g. **401**/**403** or invalid API key message).  
+   **Pass:** Message remains past **10 s** until provider succeeds or user fixes config / retries successfully.
+
+### Manual — Error log overlay (**`Ctrl+E`**)
+
+1. Generate several errors (wrong symbol, network off, throttling). Press **`Ctrl+E`**.  
+   **Pass:** Overlay lists up to **20** entries with **timestamps** and readable text; **`j`/`k`** scroll if list exceeds viewport.
+
+2. Press **`Esc`**.  
+   **Pass:** Overlay closes; underlying tab UI intact.
+
+3. On **Stock View**, type **`aapl`** — confirm plain **`e`** still types **`E`** into the symbol buffer (no regression). Press **`Ctrl+E`**.  
+   **Pass:** Overlay toggles; symbol buffer unchanged by **`Ctrl+E`**.
+
+### Manual — Retry (**`Ctrl+R`**)
+
+1. **Stock View:** Cause quote batch failure; press **`Ctrl+R`**.  
+   **Pass:** A new quote batch is scheduled; inflight / generation behavior matches SPEC (no panic; no duplicate stuck **`stock_refresh_inflight`**).
+
+2. **Charts:** Force historical fetch error; **`Ctrl+R`**.  
+   **Pass:** Historical refetch attempted.
+
+3. **News / Search:** Repeat for tab-appropriate failures.  
+   **Pass:** Same domain retry only (no cross-tab accidental fetch).
+
+### Manual — Startup vs runtime
+
+1. Temporarily rename or corrupt **`~/.stockterm.json`** backup, replace with invalid JSON, launch app.  
+   **Pass:** **Startup** banner or distinct styling per §20.7; not identical to a mid-session fetch error line.
+
+2. Restore valid config; restart.  
+   **Pass:** No startup error; normal status bar.
+
+### Sign-off — Issue #20
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | | | |
+| §20 unit tests (category + ring buffer) | | | |
+| Status prefixes + **`[rate]`** hint | | | |
+| Transient TTL vs sticky | | | |
+| **`Ctrl+E`** overlay + **`Esc`** | | | |
+| Stock View plain-letter regression | | | |
+| **`Ctrl+R`** per tab domain | | | |
+| Startup vs runtime presentation | | | |
 
 ---
 
