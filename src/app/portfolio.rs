@@ -1,4 +1,5 @@
 use crate::app::keyboard::letter_key_plain;
+use crate::app::layout::centered_rect;
 use crate::app::{normalize_symbol, App, PortfolioAddField, Tab};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
@@ -53,25 +54,6 @@ pub(crate) fn cycle_portfolio_dialog_focus(app: &mut App, _forward: bool) {
         PortfolioAddField::Shares => PortfolioAddField::Price,
         PortfolioAddField::Price => PortfolioAddField::Shares,
     };
-}
-
-fn centered_rect(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
-    let v = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y).div_ceil(2)),
-        ])
-        .split(area);
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x).div_ceil(2)),
-        ])
-        .split(v[1])[1]
 }
 
 fn append_numeric_char(buf: &mut String, c: char) -> bool {

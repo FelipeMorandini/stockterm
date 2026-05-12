@@ -1,9 +1,10 @@
 use crate::app::keyboard::letter_key_plain;
+use crate::app::layout::centered_rect;
 use crate::app::{AlertAddDialog, AlertAddField, App};
 use crate::models::alerts::{process_alert_crossings, Alert, AlertCondition};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table},
@@ -35,30 +36,17 @@ fn spawn_desktop_alert_notification(
         if let Some(p) = last_price {
             body.push_str(&format!(" · last ${p:.2}"));
         }
-        let _ = notify_rust::Notification::new()
+        let show_result = notify_rust::Notification::new()
             .summary("StockTerm")
             .body(&body)
             .show();
+        if matches!(
+            std::env::var("STOCKTERM_DEBUG_ALERT_NOTIFY"),
+            Ok(ref s) if s == "1"
+        ) {
+            eprintln!("stockterm: Notification::show() = {show_result:?}");
+        }
     });
-}
-
-fn centered_rect(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
-    let v = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y).div_ceil(2)),
-        ])
-        .split(area);
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x).div_ceil(2)),
-        ])
-        .split(v[1])[1]
 }
 
 pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
@@ -184,7 +172,7 @@ fn draw_alert_add_overlay(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let mut lines: Vec<Line> = vec![
-        Line::from("Add price alert — Esc cancel · Tab / Shift+Tab or ; cycle field · Enter advances / saves on Threshold"),
+        Line::from("Add price alert — Esc cancel · Tab / Shift+Tab or ; cycle field · ←/→ on Condition (Below/Above) · Enter advances / saves on Threshold"),
         Line::from(vec![
             Span::styled("Symbol:    ", sym_style),
             Span::raw(dialog.symbol_buffer.as_str()),
@@ -192,7 +180,7 @@ fn draw_alert_add_overlay(f: &mut Frame, app: &App, area: Rect) {
         Line::from(vec![
             Span::styled("Condition: ", cond_style),
             Span::raw(cond_label),
-            Span::styled("  (; flips when focused)", Style::default().fg(Color::DarkGray)),
+            Span::styled("  (; toggles · ← Below · → Above · a/A · b/B)", Style::default().fg(Color::DarkGray)),
         ]),
         Line::from(vec![
             Span::styled("Threshold: ", thr_style),
@@ -306,6 +294,24 @@ fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
         }
         BackTab => {
             cycle_alert_dialog_focus(app, false);
+        }
+        Left if key.modifiers == KeyModifiers::NONE => {
+            let Some(d) = app.alert_add_dialog.as_mut() else {
+                return;
+            };
+            if d.focused == AlertAddField::Condition {
+                d.condition = AlertCondition::Below;
+                d.inline_error = None;
+            }
+        }
+        Right if key.modifiers == KeyModifiers::NONE => {
+            let Some(d) = app.alert_add_dialog.as_mut() else {
+                return;
+            };
+            if d.focused == AlertAddField::Condition {
+                d.condition = AlertCondition::Above;
+                d.inline_error = None;
+            }
         }
         Char(';') if letter_key_plain(key.modifiers) => {
             let Some(d) = app.alert_add_dialog.as_mut() else {
