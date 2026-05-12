@@ -5,10 +5,10 @@ use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
 use serde::Deserialize;
 use urlencoding::encode;
 
-use crate::api::error::{map_reqwest, ProviderError, ProviderResult};
+use crate::api::error::{ProviderError, ProviderResult};
 use crate::api::historical_query::HistoricalQuery;
-use crate::api::http::shared_client;
 use crate::api::provider::MarketDataProvider;
+use crate::api::retry::execute_get_text_with_retry;
 use crate::config::Config;
 use crate::models::historical::{HistoricalData, HistoricalResponse};
 use crate::models::news::{NewsItem, NewsResponse, Publisher};
@@ -75,17 +75,7 @@ impl MarketDataProvider for YahooProvider {
 }
 
 async fn fetch_text(url: &str) -> ProviderResult<String> {
-    let client = shared_client();
-    let resp = client.get(url).send().await.map_err(map_reqwest)?;
-    let status = resp.status();
-    let url_owned = url.to_string();
-    if !status.is_success() {
-        return Err(ProviderError::Http {
-            status: status.as_u16(),
-            url: url_owned,
-        });
-    }
-    resp.text().await.map_err(map_reqwest)
+    execute_get_text_with_retry(url).await
 }
 
 // --- v7/finance/quote (Issue #2 / SPEC §17) ---

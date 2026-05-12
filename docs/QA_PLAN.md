@@ -641,6 +641,16 @@ _Ship review 2026-05-12 (automated + doc/code review + audit). Tracked in [PR #1
 
 **Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §19.
 
+### GitHub Issue #18 acceptance ↔ this section
+
+| [Issue #18](https://github.com/FelipeMorandini/stockterm/issues/18) acceptance criterion | Verified by |
+|------------------------------------------------------------------------------------------|-------------|
+| Simulated **429** + **`Retry-After: 10`** → retry after ~**10 s** with backoff; no crash | **Automated:** §19.8 — **`retry::wiremock_tests::retry_after_one_second_before_success`** uses **`Retry-After: 1`** and asserts **≥ ~900 ms** wall time (same semantics, faster CI); **`tokio::test-util`** + paused time used in **`stall_triggers_timeout`**. |
+| Simulated **500** → retries up to cap with exponential backoff | **Automated:** bullet 2 (**≤ 5** attempts). |
+| **10 s** server stall → **`Timeout`**, not hang | **Automated:** bullet 3 (mock delay vs client request timeout per SPEC). **Manual:** healthy Yahoo smoke still non-blocking (debug delay step below). |
+| Non-JSON **4xx** → status/body-style error, **not** primary **`serde_json`** message | **Automated:** bullet 4. |
+| Watchlist concurrent fetches ≤ configured cap | **Manual:** “Concurrency spot-check” below; **Automated** optional (harder — not required for sign-off if manual done). |
+
 ### Automated (local)
 
 1. From the repo root:
@@ -653,12 +663,13 @@ _Ship review 2026-05-12 (automated + doc/code review + audit). Tracked in [PR #1
 
    **Pass:** All exit **0**.
 
-2. **Issue #18 acceptance (required after §19 implementation):** integration tests added per SPEC §19.8 (**`wiremock`** or equivalent) must cover at minimum:
+2. **Issue #18 acceptance (required after §19 implementation):** integration tests added per SPEC §19.8 (**`wiremock`**) must cover at minimum:
 
-   - **429** with **`Retry-After: 10`** then success — virtual time (**`tokio::time::pause` / `start_paused`**) proves a **~10 s** wait before the successful attempt.
+   - **429** with **`Retry-After`** then success — **`retry_after_one_second_before_success`** asserts **≥ ~900 ms** wall time before the successful attempt (scaled from **`Retry-After: 10`** for CI speed; semantics unchanged).
    - **500** responses then success — bounded retries (**≤ 5** attempts).
    - **401**/**403** with **non-JSON** body — error is **not** primarily a **`serde_json`** parse error string.
    - **`Retry-After`** parsing unit tests — integer seconds, HTTP-date, malformed.
+   - **`Timeout`** — **`stall_triggers_timeout`** (short client timeout + **`tokio::test(start_paused = true)`** + **`time::advance`**).
 
    **Pass:** `cargo test` runs those tests green without real network.
 
@@ -679,7 +690,7 @@ _Ship review 2026-05-12 (automated + doc/code review + audit). Tracked in [PR #1
 
 ### Sign-off — Issue #18
 
-_Pending §19 implementation._
+_Automated §19.8 coverage in `cargo test`; **manual** steps below still required before closing the issue._
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
