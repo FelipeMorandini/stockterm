@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15).
 
 ## Issues #7, #8, #9 — M4: Charts (candlesticks, viewport, time ranges)
 
@@ -564,6 +564,72 @@ _Automated checks pass locally / CI on **[PR #105](https://github.com/FelipeMora
 | #97 one toast / multi-fire | | | |
 | #98 sanitizer tests or manual | | | |
 | Spot regression #10 / #95 | | | |
+
+---
+
+## Issues #100, #101, #104 — Alerts ship triage (layout contract, README debug env, notify body cap)
+
+**Scope:**
+
+- [Issue #100](https://github.com/FelipeMorandini/stockterm/issues/100) — **`debug_assert!(percent_x <= 100 && percent_y <= 100)`** at the start of **`app::layout::centered_rect`**; document **`0..=100`** contract in the function doc comment (see [`docs/SPEC.md`](SPEC.md) §18.15.1).
+- [Issue #101](https://github.com/FelipeMorandini/stockterm/issues/101) — **`README.md`** **Developer / debug** subsection: **`STOCKTERM_DEBUG_ALERT_NOTIFY`** (**`1`** exact, stderr logs **`show()`** **`Result`** when **`desktop-notify`** is on); **`STOCKTERM_DEBUG_HTTP_DELAY_MS`** (quote-batch delay, §16); note that other **`STOCKTERM_DEBUG_*`** vars are unsupported unless documented (see [`docs/SPEC.md`](SPEC.md) §18.15.2).
+- [Issue #104](https://github.com/FelipeMorandini/stockterm/issues/104) — UTF-8-safe **total** byte cap (default **1024** per SPEC) on the joined coalesced **`body`** before **`Notification::body`**; debug stderr uses the same capped string (see [`docs/SPEC.md`](SPEC.md) §18.15.3).
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §18.15.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+2. Lean build matrix (same as §18.14):
+
+   ```bash
+   cargo clippy --no-default-features -- -D warnings
+   cargo test --no-default-features
+   ```
+
+   **Pass:** All invoked commands exit **0**.
+
+### Manual — Issue #100 (`centered_rect` contract)
+
+1. Run the app on a **debug** build (`cargo run` without `--release` is typical). Open **Portfolio** add overlay and **Alerts** add overlay (paths that call **`centered_rect`**).  
+   **Pass:** No panic; modals center as before.
+2. (Optional developer check) Confirm **`src/app/layout.rs`** contains the **`debug_assert!`** and doc comment per §18.15.1.
+
+### Manual — Issue #101 (README)
+
+1. Open **`README.md`** at the repo root.  
+   **Pass:** A **Developer / debug** (or clearly named) subsection lists **`STOCKTERM_DEBUG_ALERT_NOTIFY`** (exact **`1`**, mentions possible **`Ok(())`** / **`Err`** on stderr) and **`STOCKTERM_DEBUG_HTTP_DELAY_MS`** (milliseconds, quote batch); states other **`STOCKTERM_DEBUG_*`** names are not supported unless listed.
+
+### Manual — Issue #104 (capped notify body)
+
+1. Requires **`desktop-notify`** and **`notifications_enabled`**. After implementation, configure **≥2** alerts that co-fire with thresholds/symbols chosen so the **joined** detail text would exceed the SPEC byte cap without truncation (e.g. many wide lines — may require a temporary local test build that forces long **`format!`** lines **only** for QA, or rely on **`cargo test`** for the truncation helper).
+2. Trigger a coalesced batch toast.  
+   **Pass:** OS notification **`body`** is readable (not absurdly long); **`STOCKTERM_DEBUG_ALERT_NOTIFY=1`** stderr shows a **`body`** no longer than the capped length (including **`…`** when truncated).
+3. Prefer: run **`cargo test`** and confirm a unit test covers UTF-8-safe truncation for the batch **`body`** builder (developer QA acceptable if manual OS check is impractical).
+
+### Regression — Issues #93 / #97 / #98 (spot)
+
+1. **#93:** Portfolio and Alerts modals still use **`centered_rect`** with **55×40** and **55×42** — visual spot-check unchanged proportions.  
+2. **#97 / #98:** Multi-alert batch still produces **one** desktop toast; sanitized symbols unchanged aside from optional tail truncation from #104.
+
+### Sign-off — Issues #100, #101, #104
+
+_Ship review 2026-05-12 (automated + doc/code review + audit)._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-12 | Pass |
+| #100 debug build modals | maintainer | 2026-05-12 | Pass |
+| #101 README subsection | maintainer | 2026-05-12 | Pass |
+| #104 cap (manual or test) | maintainer | 2026-05-12 | Pass |
+| Spot regression #93 / #97 | maintainer | 2026-05-12 | Pass |
 
 ---
 
