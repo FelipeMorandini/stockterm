@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12).
 
 ## Issues #7, #8, #9 — M4: Charts (candlesticks, viewport, time ranges)
 
@@ -413,6 +413,86 @@ _Manual validation passed 2026-05-11._
 | #10 persistence across restart | maintainer | 2026-05-11 | Pass |
 | Bell + toast toggle | maintainer | 2026-05-11 | Pass |
 | Regression Alerts keys | maintainer | 2026-05-11 | Pass |
+
+---
+
+## Issues #93, #94, #95 — Alerts follow-ups (shared layout, Condition arrows, notify debug)
+
+**Scope:**
+
+- [Issue #93](https://github.com/FelipeMorandini/stockterm/issues/93) — single **`centered_rect`** helper for portfolio + alert add overlays; behavior and per-dialog **percent_y** unchanged.
+- [Issue #94](https://github.com/FelipeMorandini/stockterm/issues/94) — on **Condition** focus, **Left** / **Right** (no modifiers) set **Below** / **Above** per [`docs/SPEC.md`](SPEC.md) §18.13.2; overlay copy documents **←/→**; **`;`** / **`a`**/**`b`** unchanged.
+- [Issue #95](https://github.com/FelipeMorandini/stockterm/issues/95) — when **`STOCKTERM_DEBUG_ALERT_NOTIFY=1`**, **`eprintln!`** the **`Result`** from **`Notification::show()`** inside the notify thread (feature **`desktop-notify`**).
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §18.13.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+2. If CI or local matrix covers **`--no-default-features`**, also:
+
+   ```bash
+   cargo clippy --no-default-features -- -D warnings
+   cargo test --no-default-features
+   ```
+
+   **Pass:** All invoked commands exit **0**.
+
+### Manual — Issue #93 (modal layout parity)
+
+1. Use a large terminal (e.g. **≥** 100×30). Open **Portfolio** → **`a`** (add holding) and note modal placement and width. Close, open **Alerts** → **`a`** and note the alert modal (slightly different height vs portfolio is expected).
+2. After the refactor, repeat on the same geometry.  
+   **Pass:** Centering and proportions match the pre-change behavior; no clipped title or missing borders.
+
+### Manual — Issue #94 (Condition **←** / **→**)
+
+1. **Alerts** → **`a`**. **Tab** (or **`;`**) until **Condition** is the focused (highlighted) field.
+2. Press **`;`** a few times.  
+   **Pass:** Still toggles **Above** ↔ **Below**; **`a`**/**`b`** still set **Above** / **Below** when Condition focused.
+3. Set condition to **Above**, then press **Left** (arrow, **no** Shift/Ctrl/Alt).  
+   **Pass:** Condition becomes **Below** (per §18.13.2).
+4. Press **Right**.  
+   **Pass:** Condition becomes **Above**.
+5. Read the overlay helper line and Condition hint.  
+   **Pass:** Text mentions **←**/**→** (or “Left/Right”) alongside **`;`** / **`a`**/**`b`**.
+
+### Manual — Issue #95 (`STOCKTERM_DEBUG_ALERT_NOTIFY`)
+
+1. Run with default features so **`desktop-notify`** is on. From a terminal:
+
+   ```bash
+   export STOCKTERM_DEBUG_ALERT_NOTIFY=1
+   # then launch stockterm from the same shell (e.g. cargo run --release, or your installed binary)
+   ```
+
+2. Ensure **Settings** → **Desktop alert toasts** is **on**. Create and fire a **new** alert cross (same style as the “Bell and desktop toast” steps in the Issues **#10 / #42** section above).
+3. **Pass:** The shell that launched the app prints at least one line to **stderr** reflecting the **`show()`** **`Result`** (e.g. **`Ok(())`** or an **`Err`** message if the OS denied notifications).
+4. Unset the variable (or set it to anything other than **`1`**), repeat a fire.  
+   **Pass:** No extra stderr noise from this debug path (unless the platform or another layer logs separately).
+
+### Regression — Issues #10 / #42 (spot)
+
+1. Re-run **Manual — Issue #10** steps **1** (dialog opens) and **3** (**Esc** cancels) from the section above.  
+   **Pass:** Unchanged behavior.
+
+### Sign-off — Issues #93, #94, #95
+
+_Manual validation passed 2026-05-12 (post-audit)._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-12 | Pass |
+| #93 modal parity | maintainer | 2026-05-12 | Pass |
+| #94 Left/Right + copy | maintainer | 2026-05-12 | Pass |
+| #95 debug stderr | maintainer | 2026-05-12 | Pass |
+| #10 dialog spot regression | maintainer | 2026-05-12 | Pass |
 
 ---
 

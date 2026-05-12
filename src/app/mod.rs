@@ -5,6 +5,7 @@ pub mod ui;
 pub mod event;
 pub mod handlers;
 pub mod keyboard;
+mod layout;
 pub mod charts;
 pub mod portfolio;
 pub mod alerts;
