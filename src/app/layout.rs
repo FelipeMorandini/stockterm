@@ -1,9 +1,16 @@
-//! Shared modal overlay geometry (SPEC §18.13.1 / Issue #93).
+//! Shared modal overlay geometry (SPEC §18.13.1 / Issue #93, §18.15.1 / Issue #100).
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 /// Centered inner rectangle as a percentage of `area` (width `percent_x`, height `percent_y`).
+///
+/// `percent_x` and `percent_y` must be in `0..=100` (inclusive). Values greater than 100 are a
+/// contract violation and may wrap in internal arithmetic.
 pub(crate) fn centered_rect(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
+    debug_assert!(
+        percent_x <= 100 && percent_y <= 100,
+        "centered_rect: percent_x and percent_y must be ≤ 100"
+    );
     let v = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
