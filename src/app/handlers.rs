@@ -1,4 +1,4 @@
-use crate::app::alerts::handle_alerts_events;
+use crate::app::alerts::{cycle_alert_dialog_focus, handle_alerts_events};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::portfolio::{cycle_portfolio_dialog_focus, handle_portfolio_events};
 use crate::app::{App, SettingsEdit, Tab};
@@ -18,7 +18,9 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             code: KeyCode::Tab,
             ..
         } => {
-            if app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some() {
+            if app.active_tab == Tab::Alerts && app.alert_add_dialog.is_some() {
+                cycle_alert_dialog_focus(app, true);
+            } else if app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some() {
                 cycle_portfolio_dialog_focus(app, true);
             } else {
                 app.next_tab();
@@ -28,7 +30,9 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             code: KeyCode::BackTab,
             ..
         } => {
-            if app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some() {
+            if app.active_tab == Tab::Alerts && app.alert_add_dialog.is_some() {
+                cycle_alert_dialog_focus(app, false);
+            } else if app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some() {
                 cycle_portfolio_dialog_focus(app, false);
             } else {
                 app.prev_tab();

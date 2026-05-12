@@ -1,8 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17).
-
----
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18).
 
 ## Issues #7, #8, #9 — M4: Charts (candlesticks, viewport, time ranges)
 
@@ -340,6 +338,81 @@ _Manual validation passed 2026-05-11._
 | Yahoo session vs after-hours | maintainer | 2026-05-11 | Pass |
 | Polygon optional smoke | maintainer | 2026-05-11 | Pass |
 | Symbol switch updates OHLCV | maintainer | 2026-05-11 | Pass |
+
+---
+
+## Issues #10, #42 — Alerts: dialog, notifications, latched Status
+
+**Scope:**
+
+- [Issue #10](https://github.com/FelipeMorandini/stockterm/issues/10) — Add dialog (symbol, condition, threshold); terminal bell on first threshold cross; optional desktop toast via **`notify-rust`**, gated by **`notifications_enabled`** (default **true**); Settings row to toggle toasts; regressions on existing **`save_alerts`** / **`check_alerts`** / handler wiring.
+- [Issue #42](https://github.com/FelipeMorandini/stockterm/issues/42) — Alerts table **Status** column reflects **`Alert.triggered`** (latched), not live price vs threshold; **Armed** when not triggered and a quote exists; **No quote** when **`get_current_price`** is missing.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §18.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0. If **`notify-rust`** is behind a Cargo feature, document the exact **`cargo test`** invocation used in CI (e.g. **`--no-default-features`** vs default).
+
+### Manual — Issue #42 (Status vs JSON)
+
+1. Add a liquid symbol to the watchlist (**`AAPL`**). Open **Alerts**, use **`a`** and create an **Above** alert with threshold **well below** the current quote (e.g. **Above $1.00**). Wait at least one quote refresh cycle.  
+   **Pass:** **`check_alerts`** sets **`triggered: true`** in **`~/.stockterm.json`** (inspect file); **Status** shows **TRIGGERED** (red).
+
+2. Without removing the alert, hand-edit **`~/.stockterm.json`**: set **`"triggered": true`** and set **`"price"`** to a value **above** the real market (so live price is *below* threshold). Restart the app, open **Alerts**.  
+   **Pass:** **Status** remains **TRIGGERED** (not “Waiting” / armed based on live math). **Current** column may show the real last price.
+
+3. Reset the JSON to a sane **Above** threshold again with **`triggered": false`**, restart.  
+   **Pass:** **Status** shows **Armed** while quotes exist, until the first real crossing fires again.
+
+### Manual — Issue #10 (add dialog + persistence)
+
+1. On **Alerts**, press **`a`**.  
+   **Pass:** A modal dialog appears (not an immediate silent add at $100).
+
+2. Set **symbol** to **`MSFT`**, **Below**, threshold **1000** (or any value you can later cross with a fake JSON test if needed), **`Enter`** to commit.  
+   **Pass:** Row appears; **`~/.stockterm.json`** lists the alert with correct **symbol / condition / price**; restart app — row still present.
+
+3. **`Esc`** while the dialog is open (before commit).  
+   **Pass:** Dialog closes; no new row.
+
+4. Invalid threshold (**`0`**, **`-1`**, empty) on commit.  
+   **Pass:** Inline error; no row added.
+
+### Manual — Bell and desktop toast
+
+1. Create an **Above** alert with threshold **just under** the current live price (so the next refresh is likely to cross). **`notifications_enabled`** **true** (default).  
+   **Pass:** On first transition to **TRIGGERED**, terminal emits a **bell** (audible or visible flash, depending on terminal). If OS permissions allow, a **desktop notification** appears with symbol + condition text.
+
+2. Toggle **Desktop alert toasts** (or equivalent Settings row per §18.7) **off**, **`try_save`** succeeds, repeat a **new** alert fire (use a fresh symbol or reset **`triggered`** in JSON).  
+   **Pass:** **Bell** still fires per §18.5; **no** desktop toast (or documented platform limitation).
+
+### Manual — Regression (#15 / §8)
+
+1. **Alerts** tab: **`d`** removes selected row; config updates. **`a`**/**`A`** with Shift still opens add per §8.  
+   **Pass:** No panic; watchlist quote batch still updates **Current** column.
+
+### Sign-off — Issues #10, #42
+
+_Manual validation passed 2026-05-11._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-11 | Pass |
+| #42 Status latched vs JSON | maintainer | 2026-05-11 | Pass |
+| #42 TRIGGERED when live would disagree | maintainer | 2026-05-11 | Pass |
+| #10 dialog open / commit / Esc | maintainer | 2026-05-11 | Pass |
+| #10 persistence across restart | maintainer | 2026-05-11 | Pass |
+| Bell + toast toggle | maintainer | 2026-05-11 | Pass |
+| Regression Alerts keys | maintainer | 2026-05-11 | Pass |
 
 ---
 
