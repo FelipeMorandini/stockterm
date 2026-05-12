@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19).
 
 ## Issues #7, #8, #9 — M4: Charts (candlesticks, viewport, time ranges)
 
@@ -630,6 +630,64 @@ _Ship review 2026-05-12 (automated + doc/code review + audit). Tracked in [PR #1
 | #101 README subsection | maintainer | 2026-05-12 | Pass |
 | #104 cap (manual or test) | maintainer | 2026-05-12 | Pass |
 | Spot regression #93 / #97 | maintainer | 2026-05-12 | Pass |
+
+---
+
+## Issue #18 — API robustness (timeouts, 429 / `Retry-After`, backoff, structured errors)
+
+**Scope:**
+
+- [GitHub Issue #18](https://github.com/FelipeMorandini/stockterm/issues/18) — shared **`reqwest::Client`** tuning; **`ProviderError`** including **`RateLimited`**; non-2xx body surfaced before JSON parse failures; exponential backoff + jitter for transient failures; watchlist quote concurrency cap; readable **`error_message`** / per-symbol batch errors.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §19.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit **0**.
+
+2. **Issue #18 acceptance (required after §19 implementation):** integration tests added per SPEC §19.8 (**`wiremock`** or equivalent) must cover at minimum:
+
+   - **429** with **`Retry-After: 10`** then success — virtual time (**`tokio::time::pause` / `start_paused`**) proves a **~10 s** wait before the successful attempt.
+   - **500** responses then success — bounded retries (**≤ 5** attempts).
+   - **401**/**403** with **non-JSON** body — error is **not** primarily a **`serde_json`** parse error string.
+   - **`Retry-After`** parsing unit tests — integer seconds, HTTP-date, malformed.
+
+   **Pass:** `cargo test` runs those tests green without real network.
+
+### Manual — Regression (live providers)
+
+1. **Yahoo (default):** `cargo run --release`, **Stock View**, ensure quotes still load for **AAPL** / a small watchlist.  
+   **Pass:** No regression vs pre–#18 behavior when the network is healthy.
+
+2. **Polygon (optional):** Valid key, **≥3** symbols on the watchlist, **`refresh_rate`** at **5** or higher.  
+   **Pass:** App remains responsive; on throttling, status / **`error_message`** explains rate limiting or HTTP failure without panic; no **`apiKey=`** substring in any visible error string.
+
+3. **Slow path:** With **`STOCKTERM_DEBUG_HTTP_DELAY_MS`** (§16) set high on a **debug** build, confirm the UI still accepts input during an in-flight quote batch (non-blocking loop unchanged).
+
+### Manual — Concurrency spot-check
+
+1. Add **5+** symbols to the watchlist (or use portfolio + watchlist so **`collect_symbols_for_quote_fetch`** returns many symbols). Use a network monitor or temporary logging if available.  
+   **Pass:** At most **`MAX_CONCURRENT_QUOTES`** (documented in SPEC / source, default **2**) concurrent **`get_quote`** operations per batch — no unbounded fan-out.
+
+### Sign-off — Issue #18
+
+_Pending §19 implementation._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | | | |
+| §19.8 wiremock / paused-time tests | | | |
+| Yahoo smoke | | | |
+| Polygon / throttling (optional) | | | |
+| Concurrency spot-check | | | |
 
 ---
 
