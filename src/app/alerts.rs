@@ -4,7 +4,7 @@ use crate::app::{AlertAddDialog, AlertAddField, App};
 use crate::models::alerts::{process_alert_crossings, Alert, AlertCondition};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
-    layout::{Constraint, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table},
@@ -12,7 +12,32 @@ use ratatui::{
 };
 use std::io::{self, Write};
 
+/// Prefix for `App::error_message` when `Config::try_save` fails in `save_alerts` (§18.14.2).
+pub(crate) const ALERTS_SAVE_ERROR_PREFIX: &str = "Failed to save alerts:";
+
 const MAX_ALERT_FIELD_LEN: usize = 24;
+
+#[cfg(any(test, feature = "desktop-notify"))]
+const NOTIFY_SYMBOL_DISPLAY_MAX_CHARS: usize = 32;
+
+/// Strip control characters, collapse whitespace, cap length for OS notification bodies (§18.14.4).
+#[cfg(any(test, feature = "desktop-notify"))]
+pub(crate) fn sanitize_alert_notify_display_text(s: &str) -> String {
+    let mapped: String = s
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect();
+    let collapsed = mapped.split_whitespace().collect::<Vec<_>>().join(" ");
+    let trimmed = collapsed.trim();
+    if trimmed.chars().count() > NOTIFY_SYMBOL_DISPLAY_MAX_CHARS {
+        format!(
+            "{}…",
+            trimmed.chars().take(NOTIFY_SYMBOL_DISPLAY_MAX_CHARS).collect::<String>()
+        )
+    } else {
+        trimmed.to_string()
+    }
+}
 
 fn ring_terminal_bell() {
     let mut out = io::stdout();
@@ -20,24 +45,20 @@ fn ring_terminal_bell() {
     let _ = out.flush();
 }
 
+pub(crate) fn alerts_tab_banner_active(app: &App) -> bool {
+    app.alerts_save_retry_pending
+        || app
+            .error_message
+            .as_deref()
+            .is_some_and(|m| m.starts_with(ALERTS_SAVE_ERROR_PREFIX))
+}
+
 #[cfg(feature = "desktop-notify")]
-fn spawn_desktop_alert_notification(
-    symbol: String,
-    condition: AlertCondition,
-    threshold: f64,
-    last_price: Option<f64>,
-) {
-    let cond_s = match condition {
-        AlertCondition::Above => "Above",
-        AlertCondition::Below => "Below",
-    };
+fn spawn_desktop_alert_notifications_batch(summary: String, body_lines: Vec<String>) {
     std::thread::spawn(move || {
-        let mut body = format!("{symbol} {cond_s} ${threshold:.2}");
-        if let Some(p) = last_price {
-            body.push_str(&format!(" · last ${p:.2}"));
-        }
+        let body = body_lines.join("\n");
         let show_result = notify_rust::Notification::new()
-            .summary("StockTerm")
+            .summary(&summary)
             .body(&body)
             .show();
         if matches!(
@@ -50,6 +71,35 @@ fn spawn_desktop_alert_notification(
 }
 
 pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
+    let show_banner = alerts_tab_banner_active(app);
+    let chunks = if show_banner {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(2), Constraint::Min(0)])
+            .split(area)
+    } else {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(0)])
+            .split(area)
+    };
+    let main = if show_banner { chunks[1] } else { chunks[0] };
+
+    if show_banner {
+        let banner = Paragraph::new(vec![
+            Line::from(vec![Span::styled(
+                "Alert state may not be saved to disk (TRIGGERED may be memory-only).",
+                Style::default().fg(Color::Yellow),
+            )]),
+            Line::from(vec![Span::styled(
+                "Fix path/permissions/quota; save retries on the next quote batch.",
+                Style::default().fg(Color::Yellow),
+            )]),
+        ])
+        .block(Block::default().borders(Borders::BOTTOM));
+        f.render_widget(banner, chunks[0]);
+    }
+
     if app.alerts.is_empty() && app.alert_add_dialog.is_none() {
         let block = Block::default()
             .title("Price Alerts")
@@ -59,7 +109,7 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(Color::Yellow),
         )]);
         let paragraph = Paragraph::new(no_data_text).block(block);
-        f.render_widget(paragraph, area);
+        f.render_widget(paragraph, main);
         return;
     }
 
@@ -72,7 +122,7 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(Color::Yellow),
         )]);
         let paragraph = Paragraph::new(no_data_text).block(block);
-        f.render_widget(paragraph, area);
+        f.render_widget(paragraph, main);
     } else {
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);
 
@@ -133,7 +183,7 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
         .highlight_style(selected_style)
         .highlight_symbol("> ");
 
-        f.render_stateful_widget(table, area, &mut app.alerts_state);
+        f.render_stateful_widget(table, main, &mut app.alerts_state);
     }
 
     if app.alert_add_dialog.is_some() {
@@ -492,28 +542,67 @@ impl App {
 
         if self.config.notifications_enabled {
             #[cfg(feature = "desktop-notify")]
-            for idx in &newly {
-                let alert = &self.alerts[*idx];
-                let last = prices
-                    .iter()
-                    .find(|(s, _)| s == &alert.symbol)
-                    .map(|(_, p)| *p);
-                spawn_desktop_alert_notification(
-                    alert.symbol.clone(),
-                    alert.condition,
-                    alert.price,
-                    last,
-                );
+            {
+                const K: usize = 5;
+                let mut body_lines: Vec<String> = Vec::with_capacity(newly.len().min(K) + 1);
+                for idx in &newly {
+                    let alert = &self.alerts[*idx];
+                    let last = prices
+                        .iter()
+                        .find(|(s, _)| s == &alert.symbol)
+                        .map(|(_, p)| *p);
+                    let sym = sanitize_alert_notify_display_text(&alert.symbol);
+                    let cond_s = match alert.condition {
+                        AlertCondition::Above => "Above",
+                        AlertCondition::Below => "Below",
+                    };
+                    let mut line = format!("{sym} {cond_s} ${:.2}", alert.price);
+                    if let Some(p) = last {
+                        line.push_str(&format!(" · last ${p:.2}"));
+                    }
+                    body_lines.push(line);
+                }
+                let len = body_lines.len();
+                let (summary, lines_for_notify) = if len == 1 {
+                    ("StockTerm".to_string(), body_lines)
+                } else {
+                    let summary = format!("StockTerm — {len} alerts");
+                    let mut body: Vec<String> = body_lines.iter().take(K).cloned().collect();
+                    if len > K {
+                        body.push(format!("… and {} more", len - K));
+                    }
+                    (summary, body)
+                };
+                spawn_desktop_alert_notifications_batch(summary, lines_for_notify);
             }
         }
 
         self.save_alerts();
     }
 
+    pub(crate) fn retry_alerts_save_if_pending(&mut self) {
+        if self.alerts_save_retry_pending {
+            self.save_alerts();
+        }
+    }
+
     fn save_alerts(&mut self) {
         self.config.alerts = self.alerts.clone();
-        if let Err(e) = self.config.try_save() {
-            self.error_message = Some(format!("Failed to save alerts: {e}"));
+        match self.config.try_save() {
+            Ok(()) => {
+                self.alerts_save_retry_pending = false;
+                if self
+                    .error_message
+                    .as_deref()
+                    .is_some_and(|m| m.starts_with(ALERTS_SAVE_ERROR_PREFIX))
+                {
+                    self.error_message = None;
+                }
+            }
+            Err(e) => {
+                self.alerts_save_retry_pending = true;
+                self.error_message = Some(format!("{ALERTS_SAVE_ERROR_PREFIX} {e}"));
+            }
         }
     }
 
@@ -541,5 +630,41 @@ impl App {
         }
 
         None
+    }
+}
+
+#[cfg(test)]
+mod sanitize_tests {
+    use super::sanitize_alert_notify_display_text;
+
+    #[test]
+    fn sanitize_plain_symbol() {
+        assert_eq!(sanitize_alert_notify_display_text("AAPL"), "AAPL");
+    }
+
+    #[test]
+    fn sanitize_strips_control_and_collapses_whitespace() {
+        assert_eq!(
+            sanitize_alert_notify_display_text("AA\nPL"),
+            "AA PL"
+        );
+        assert_eq!(
+            sanitize_alert_notify_display_text("MSFT\x00"),
+            "MSFT"
+        );
+    }
+
+    #[test]
+    fn sanitize_emptyish() {
+        assert_eq!(sanitize_alert_notify_display_text(""), "");
+        assert_eq!(sanitize_alert_notify_display_text("  \n\t  "), "");
+    }
+
+    #[test]
+    fn sanitize_truncates_long_token() {
+        let s = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let out = sanitize_alert_notify_display_text(s);
+        assert!(out.ends_with('…'));
+        assert_eq!(out.chars().count(), 32 + 1);
     }
 }

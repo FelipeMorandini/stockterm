@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — run the **Issues #96, #97, #98** section after implementation).
 
 ## Issues #7, #8, #9 — M4: Charts (candlesticks, viewport, time ranges)
 
@@ -493,6 +493,77 @@ _Manual validation passed 2026-05-12 (post-audit)._
 | #94 Left/Right + copy | maintainer | 2026-05-12 | Pass |
 | #95 debug stderr | maintainer | 2026-05-12 | Pass |
 | #10 dialog spot regression | maintainer | 2026-05-12 | Pass |
+
+---
+
+## Issues #96, #97, #98 — Alerts persistence UX, batched desktop notify, sanitized notification body
+
+**Scope:**
+
+- [Issue #96](https://github.com/FelipeMorandini/stockterm/issues/96) — when **`save_alerts`** → **`try_save`** fails after **`triggered`** latched in memory, show an **Alerts-tab** banner (and optional one-retry-per-quote-batch per [`docs/SPEC.md`](SPEC.md) §18.14.2); keep stable **`Failed to save alerts:`** prefix or equivalent detection contract.
+- [Issue #97](https://github.com/FelipeMorandini/stockterm/issues/97) — **BEL** still once per newly triggered alert (§18.5); **desktop:** at most **one** OS notification + **one** notify thread per **`check_alerts`** batch; multi-fire **`body`** lists up to **5** lines + **“… and M more”** per §18.14.3.
+- [Issue #98](https://github.com/FelipeMorandini/stockterm/issues/98) — **`sanitize_alert_notify_display_text`** strips control chars / odd whitespace from **`symbol`** before **`Notification::body`**; unit tests on the pure helper.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §18.14.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+2. Matrix (if CI or local policy requires lean builds):
+
+   ```bash
+   cargo clippy --no-default-features -- -D warnings
+   cargo test --no-default-features
+   ```
+
+   **Pass:** All invoked commands exit **0**.
+
+### Manual — Issue #96 (save failure after cross)
+
+**Setup (destructive to config path — use a throwaway home or backup `~/.stockterm.json`):** make the config file **unwritable** after the app has started (e.g. **`chmod a-w ~/.stockterm.json`** on Unix) **or** point **`HOME`** at a full disk / read-only volume if you have a sandbox.
+
+1. With a normal writable config, add watchlist symbols and **≥2** alerts whose thresholds will **all** newly cross on the **same** next quote refresh (or use one cross if only testing save failure).
+2. Make config **unwritable**, return to the app, wait for a refresh that fires **`check_alerts`** (Status **TRIGGERED** in memory).
+3. Open **Alerts**.  
+   **Pass:** A **visible banner** (per §18.14.2) explains disk may be stale; **status bar** still shows **`Failed to save alerts:`** (or the chosen stable prefix).
+4. Restore write permissions; wait for another quote cycle (or trigger any path that completes **`apply_stock_fetch_done`** per SPEC).  
+   **Pass:** If §18.14.2 retry is implemented, **`~/.stockterm.json`** eventually reflects **`triggered: true`** without requiring add/remove; banner clears when save succeeds. If minimal ship is **banner-only** (no retry), document in sign-off — user must perform an action that calls **`save_alerts`** (e.g. add dummy alert then remove).
+
+### Manual — Issue #97 (one toast per batch)
+
+1. **`notifications_enabled`** on; **`desktop-notify`** on. Configure **≥3** alerts that will newly cross on the **same** quote batch (tight thresholds just under/over last price).
+2. Observe the OS notification layer during the single batch fire.  
+   **Pass:** **One** desktop notification (summary may mention multiple alerts); **not** three separate StockTerm toasts. Audible/visual **BEL** count may still match per-alert §18.5 (multiple bells acceptable).
+
+### Manual — Issue #98 (sanitized body)
+
+1. Add an alert whose **symbol** field contains embedded control characters **via a test build** or temporary local patch that bypasses normal validation **only** for QA — **or** use **`cargo test`** output to confirm unit cases if UI cannot enter **`"\n"`** in symbol. Preferred: run **`cargo test`** and read the **`sanitize_alert_notify_display_text`** tests (developer QA).
+2. If a manual UI path exists (e.g. future relaxed input), fire a notify with a dirty symbol.  
+   **Pass:** OS toast **`body`** shows a **single-line** sensible label (no vertical runaway layout).
+
+### Regression — Issues #10 / #42 / #93–#95 (spot)
+
+1. Re-run **Manual — Bell and desktop toast** (single-alert fire) from the **Issues #10, #42** section — **Pass:** bell + single-line toast still work when only **one** alert crosses.
+2. Re-run **Manual — Issue #95** (`STOCKTERM_DEBUG_ALERT_NOTIFY`) after a **multi-alert** batch — **Pass:** **one** stderr line for **`show()`** **`Result`** (coalesced path).
+
+### Sign-off — Issues #96, #97, #98
+
+_Automated checks pass locally / CI on the §18.14 PR; **manual** steps in this section should be run before closing [#96](https://github.com/FelipeMorandini/stockterm/issues/96)–[#98](https://github.com/FelipeMorandini/stockterm/issues/98)._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-12 | Pass |
+| #96 banner + save recovery | | | |
+| #97 one toast / multi-fire | | | |
+| #98 sanitizer tests or manual | | | |
+| Spot regression #10 / #95 | | | |
 
 ---
 

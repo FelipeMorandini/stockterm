@@ -1,6 +1,7 @@
 use crate::api::http::maybe_debug_http_delay;
 use crate::api::market_provider_for;
 use crate::api::HistoricalQuery;
+use crate::app::alerts::ALERTS_SAVE_ERROR_PREFIX;
 use crate::app::charts::{viewport_zoom_in, viewport_zoom_out, ChartDisplayMode, ChartViewport};
 use crate::app::event::{spawn_event_thread, Event};
 use crate::app::handlers::handle_event;
@@ -192,6 +193,8 @@ pub struct App {
     pub portfolio_remove_armed: bool,
     /// SPEC §18.4 — add price alert dialog.
     pub alert_add_dialog: Option<AlertAddDialog>,
+    /// SPEC §18.14.2 — `try_save` failed in `save_alerts`; retry once per stock batch.
+    pub alerts_save_retry_pending: bool,
 }
 
 const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
@@ -335,6 +338,7 @@ impl App {
             portfolio_dialog: None,
             portfolio_remove_armed: false,
             alert_add_dialog: None,
+            alerts_save_retry_pending: false,
         };
 
         if !app.portfolio.is_empty() {
@@ -478,7 +482,11 @@ impl App {
             self.error_message = Some(errors.join("; "));
         } else if !errors.is_empty() {
             self.error_message = Some(format!("Some quotes failed: {}", errors.join("; ")));
-        } else {
+        } else if !self
+            .error_message
+            .as_deref()
+            .is_some_and(|m| m.starts_with(ALERTS_SAVE_ERROR_PREFIX))
+        {
             self.error_message = None;
         }
 
@@ -491,6 +499,7 @@ impl App {
         }
 
         self.check_alerts();
+        self.retry_alerts_save_if_pending();
 
         if self.stock_refresh_pending {
             self.stock_refresh_pending = false;
