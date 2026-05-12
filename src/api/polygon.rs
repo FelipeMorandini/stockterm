@@ -4,10 +4,10 @@ use async_trait::async_trait;
 use chrono::{Duration, Local};
 use urlencoding::encode;
 
-use crate::api::error::{map_reqwest, ProviderError, ProviderResult};
+use crate::api::error::{ProviderError, ProviderResult};
 use crate::api::historical_query::HistoricalQuery;
-use crate::api::http::shared_client;
 use crate::api::provider::MarketDataProvider;
+use crate::api::retry::execute_get_text_with_retry;
 use crate::config::Config;
 use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
@@ -33,17 +33,7 @@ fn polygon_key(config: &Config) -> ProviderResult<String> {
 
 
 async fn fetch_json<T: serde::de::DeserializeOwned>(url: &str) -> ProviderResult<T> {
-    let client = shared_client();
-    let resp = client.get(url).send().await.map_err(map_reqwest)?;
-    let status = resp.status();
-    let url_owned = url.to_string();
-    if !status.is_success() {
-        return Err(ProviderError::Http {
-            status: status.as_u16(),
-            url: url_owned,
-        });
-    }
-    let text = resp.text().await.map_err(map_reqwest)?;
+    let text = execute_get_text_with_retry(url).await?;
     serde_json::from_str(&text).map_err(ProviderError::from)
 }
 

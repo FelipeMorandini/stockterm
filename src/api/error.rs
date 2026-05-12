@@ -1,6 +1,7 @@
 //! Structured failures from market-data HTTP layers.
 
 use std::fmt;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub enum ProviderError {
@@ -8,6 +9,11 @@ pub enum ProviderError {
     Http {
         status: u16,
         url: String,
+        body_snippet: Option<String>,
+    },
+    /// HTTP 429 before retries are exhausted; after exhaustion callers map to [`Http`] with status 429.
+    RateLimited {
+        retry_after: Option<Duration>,
     },
     Json(serde_json::Error),
     ApiMessage(String),
@@ -25,14 +31,25 @@ impl fmt::Display for ProviderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProviderError::Timeout => write!(f, "Request timed out"),
-            ProviderError::Http { status, url } => {
-                write!(
-                    f,
-                    "HTTP {} ({})",
-                    status,
-                    url_without_query(url)
-                )
+            ProviderError::Http {
+                status,
+                url,
+                body_snippet,
+            } => {
+                write!(f, "HTTP {} ({})", status, url_without_query(url))?;
+                if let Some(s) = body_snippet {
+                    if !s.is_empty() {
+                        write!(f, " — {s}")?;
+                    }
+                }
+                Ok(())
             }
+            ProviderError::RateLimited { retry_after } => match retry_after {
+                Some(d) if !d.is_zero() => {
+                    write!(f, "Rate limited (retry after {}s)", d.as_secs())
+                }
+                _ => f.write_str("Rate limited"),
+            },
             ProviderError::Json(err) => write!(f, "Invalid JSON response: {err}"),
             ProviderError::ApiMessage(msg) => f.write_str(msg),
             ProviderError::Transport(msg) => write!(f, "Network error: {msg}"),
@@ -71,10 +88,21 @@ mod tests {
         let e = ProviderError::Http {
             status: 401,
             url: "https://api.polygon.io/v2/foo?apiKey=SECRET99&x=1".to_string(),
+            body_snippet: None,
         };
         let s = e.to_string();
         assert!(!s.contains("SECRET99"));
         assert!(s.contains("api.polygon.io"));
         assert!(s.contains("401"));
+    }
+
+    #[test]
+    fn http_display_includes_body_snippet() {
+        let e = ProviderError::Http {
+            status: 403,
+            url: "https://example.com/x".to_string(),
+            body_snippet: Some("access denied".to_string()),
+        };
+        assert!(e.to_string().contains("access denied"));
     }
 }

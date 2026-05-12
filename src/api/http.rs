@@ -3,6 +3,10 @@
 use std::sync::OnceLock;
 use std::time::Duration;
 
+/// Connect / per-request timeouts per [`docs/SPEC.md`](../../docs/SPEC.md) §19 / Issue #18.
+pub const HTTP_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+pub const HTTP_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// Milliseconds for optional quote-batch delay (Issue #17 / SPEC §16.1). Parsed once; invalid → 0.
 fn debug_http_delay_ms() -> u64 {
     static MS: OnceLock<u64> = OnceLock::new();
@@ -35,8 +39,8 @@ static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 pub fn shared_client() -> &'static reqwest::Client {
     CLIENT.get_or_init(|| {
         reqwest::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .connect_timeout(Duration::from_secs(10))
+            .timeout(HTTP_REQUEST_TIMEOUT)
+            .connect_timeout(HTTP_CONNECT_TIMEOUT)
             .user_agent(user_agent())
             .build()
             .expect("reqwest Client builder")

@@ -1,7 +1,9 @@
 pub mod error;
 pub mod historical_query;
 pub mod http;
+pub(crate) mod http_fetch;
 pub mod polygon;
+pub(crate) mod retry;
 pub mod provider;
 pub mod yahoo;
 
