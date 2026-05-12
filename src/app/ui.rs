@@ -548,16 +548,23 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect) {
         Span::raw(ds_display),
     ]));
 
+    let notify_s = if app.config.notifications_enabled { "on" } else { "off" };
     lines.push(Line::from(vec![
-        Span::styled("2. Theme: ", row_style(2)),
+        Span::styled("2. Desktop alert toasts: ", row_style(2)),
+        Span::raw(notify_s),
+        Span::styled("  (Enter toggles)", Style::default().fg(Color::DarkGray)),
+    ]));
+
+    lines.push(Line::from(vec![
+        Span::styled("3. Theme: ", row_style(3)),
         Span::raw(theme_s),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("3. Provider (read-only): ", row_style(3)),
+        Span::styled("4. Provider (read-only): ", row_style(4)),
         Span::raw(provider_s),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("4. Keymap: ", row_style(4)),
+        Span::styled("5. Keymap: ", row_style(5)),
         Span::styled("Coming later (#13)", Style::default().fg(Color::DarkGray)),
     ]));
 

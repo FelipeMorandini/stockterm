@@ -3,6 +3,10 @@ name = "stockterm"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["desktop-notify"]
+desktop-notify = ["dep:notify-rust"]
+
 [dependencies]
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["full"] }
@@ -17,3 +21,4 @@ chrono = "0.4.40"
 thiserror = "2"
 urlencoding = "2"
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
+notify-rust = { version = "4.11", optional = true }

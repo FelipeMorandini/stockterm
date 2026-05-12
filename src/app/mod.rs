@@ -10,6 +10,6 @@ pub mod portfolio;
 pub mod alerts;
 
 pub use self::app::{
-    normalize_symbol, App, FetchDone, PortfolioAddDialog, PortfolioAddField, SettingsEdit, Tab,
-    SETTINGS_ROW_COUNT,
+    normalize_symbol, AlertAddDialog, AlertAddField, App, FetchDone, PortfolioAddDialog,
+    PortfolioAddField, SettingsEdit, Tab, SETTINGS_ROW_COUNT,
 };

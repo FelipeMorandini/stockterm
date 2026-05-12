@@ -18,7 +18,7 @@ pub enum MarketProviderKind {
     Polygon,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
     /// Symbols to show in the Stock View watchlist table (uppercase tickers).
@@ -32,6 +32,29 @@ pub struct Config {
     /// When `Polygon`, [`effective_api_key`](Config::effective_api_key) must be non-empty for API calls.
     #[serde(default)]
     pub provider: MarketProviderKind,
+    /// Desktop toast when a price alert fires (bell always rings per SPEC §18.5).
+    #[serde(default = "default_notifications_enabled")]
+    pub notifications_enabled: bool,
+}
+
+fn default_notifications_enabled() -> bool {
+    true
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            portfolio: Vec::new(),
+            watchlist: Vec::new(),
+            refresh_rate: 0,
+            api_key: String::new(),
+            alerts: Vec::new(),
+            default_symbol: String::new(),
+            theme: None,
+            provider: MarketProviderKind::default(),
+            notifications_enabled: default_notifications_enabled(),
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -117,6 +140,13 @@ mod tests {
     fn default_provider_is_yahoo() {
         let c = Config::default();
         assert_eq!(c.provider, MarketProviderKind::Yahoo);
+    }
+
+    #[test]
+    fn serde_notifications_enabled_defaults_when_omitted() {
+        let j = r#"{"portfolio":[],"watchlist":[],"refresh_rate":0,"api_key":"","alerts":[],"default_symbol":"","provider":"yahoo"}"#;
+        let c: Config = serde_json::from_str(j).expect("parse");
+        assert!(c.notifications_enabled);
     }
 
     #[test]

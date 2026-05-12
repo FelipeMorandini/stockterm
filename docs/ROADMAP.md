@@ -3,7 +3,7 @@
 _A living gap analysis between the current codebase and the StockTerm product
 requirements. Source of truth for the next round of `docs/SPEC.md` work._
 
-Last updated: 2026-05-11 (Issue #2: [PR #92](https://github.com/FelipeMorandini/stockterm/pull/92) / [`docs/SPEC.md`](SPEC.md) §17 — Yahoo **v7** quote + **v8** fallback, Polygon `get_quote` `limit=5`; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md); scratchpad filed [#89](https://github.com/FelipeMorandini/stockterm/issues/89) / [#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91); §16 ship: [PR #88](https://github.com/FelipeMorandini/stockterm/pull/88); audit [#85](https://github.com/FelipeMorandini/stockterm/issues/85)–[#87](https://github.com/FelipeMorandini/stockterm/issues/87); §15 — #43, #49, #50, #67, #69; [#81](https://github.com/FelipeMorandini/stockterm/issues/81)–[#83](https://github.com/FelipeMorandini/stockterm/issues/83); charts [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79))
+Last updated: 2026-05-11 — **Alerts ([#10](https://github.com/FelipeMorandini/stockterm/issues/10) / [#42](https://github.com/FelipeMorandini/stockterm/issues/42))** per [`docs/SPEC.md`](SPEC.md) §18 + [`docs/QA_PLAN.md`](QA_PLAN.md); follow-ups [#93](https://github.com/FelipeMorandini/stockterm/issues/93)–[#98](https://github.com/FelipeMorandini/stockterm/issues/98). **Earlier:** Issue #2 [PR #92](https://github.com/FelipeMorandini/stockterm/pull/92) / §17; scratch [#89](https://github.com/FelipeMorandini/stockterm/issues/89)–[#91](https://github.com/FelipeMorandini/stockterm/issues/91); §16 [PR #88](https://github.com/FelipeMorandini/stockterm/pull/88); audit [#85](https://github.com/FelipeMorandini/stockterm/issues/85)–[#87](https://github.com/FelipeMorandini/stockterm/issues/87); §15 (#43, #49, #50, #67, #69); [#81](https://github.com/FelipeMorandini/stockterm/issues/81)–[#83](https://github.com/FelipeMorandini/stockterm/issues/83); charts [#76](https://github.com/FelipeMorandini/stockterm/issues/76)–[#79](https://github.com/FelipeMorandini/stockterm/issues/79).
 
 ---
 
@@ -61,7 +61,7 @@ Workspace rule `.cursor/rules/sdd_workflow.mdc` requires Spec-Driven Development
 
 Current state:
 
-- `docs/SPEC.md` — maintained (SDD baseline + milestones; latest shipped slices §11.12 / [#71](https://github.com/FelipeMorandini/stockterm/issues/71)–[#74](https://github.com/FelipeMorandini/stockterm/issues/74) and §15 / [#43](https://github.com/FelipeMorandini/stockterm/issues/43) [#49](https://github.com/FelipeMorandini/stockterm/issues/49) [#50](https://github.com/FelipeMorandini/stockterm/issues/50) [#67](https://github.com/FelipeMorandini/stockterm/issues/67) [#69](https://github.com/FelipeMorandini/stockterm/issues/69)).
+- `docs/SPEC.md` — maintained (SDD baseline + milestones; latest shipped slices §11.12 / [#71](https://github.com/FelipeMorandini/stockterm/issues/71)–[#74](https://github.com/FelipeMorandini/stockterm/issues/74), §15 / [#43](https://github.com/FelipeMorandini/stockterm/issues/43) [#49](https://github.com/FelipeMorandini/stockterm/issues/49) [#50](https://github.com/FelipeMorandini/stockterm/issues/50) [#67](https://github.com/FelipeMorandini/stockterm/issues/67) [#69](https://github.com/FelipeMorandini/stockterm/issues/69), and **§18 / [#10](https://github.com/FelipeMorandini/stockterm/issues/10) [#42](https://github.com/FelipeMorandini/stockterm/issues/42)** — alerts dialog, notifications, latched Status).
 - `docs/QA_PLAN.md` — maintained (manual steps per milestone).
 - `docs/ROADMAP.md` — this file (gap analysis vs product goals).
 
@@ -123,22 +123,9 @@ incomplete, broken, or unwired; **Missing** = no code path.
 
 ### 4.6 Core — Price alerts and notifications
 
-- **Partial**
-  - Evidence: `models/alerts.rs::{Alert, AlertCondition::{Above,Below}}`,
-    `App::{add_alert, remove_alert, check_alerts, get_current_price}` and
-    `draw_alerts` (`src/app/alerts.rs`).
-  - `Config.alerts` field exists; `check_alerts` writes to it on transition.
-  - Gaps:
-    - **Resolved (Issue #27):** `save_alerts` persists `alerts` to
-      `~/.stockterm.json` via `Config::try_save`, with errors in
-      `App.error_message`.
-    - **Resolved (Issues #30 / #38 / #3):** `check_alerts` runs after each
-      successful quote batch update; throttled quote fetch on `Tab::StockView` and
-      `Tab::Alerts` (shared throttle).
-    - `handle_alerts_events` is dispatched from `handlers.rs` on `Tab::Alerts`.
-    - No OS-level notification (no `notify-rust` / bell / toast); only an
-      in-pane "TRIGGERED" label.
-    - Alert add UX is hard-coded to `(Above, $100)` with no dialog.
+- **Implemented ([Issues #10](https://github.com/FelipeMorandini/stockterm/issues/10) / [#42](https://github.com/FelipeMorandini/stockterm/issues/42), [`docs/SPEC.md`](SPEC.md) §18)**
+  - Evidence: `models/alerts.rs` (`Alert`, `AlertCondition`, `process_alert_crossings`); `App::{add_alert, remove_alert, check_alerts, get_current_price}`; `draw_alerts` / `AlertAddDialog` / `handle_alerts_events` (`src/app/alerts.rs`); `save_alerts` → `Config::try_save`; `check_alerts` after `apply_stock_fetch_done`; terminal **BEL** + optional **`notify-rust`** (Cargo feature **`desktop-notify`**, default on) when `notifications_enabled`; Settings row **Desktop alert toasts**; **Status** uses latched **`triggered`** (**TRIGGERED** / **Armed** / **No quote**).
+  - **Follow-ups:** [#93](https://github.com/FelipeMorandini/stockterm/issues/93)–[#98](https://github.com/FelipeMorandini/stockterm/issues/98) (scratchpad / audit polish); [#19](https://github.com/FelipeMorandini/stockterm/issues/19) (persistence UX overlap for failed saves).
 
 ### 4.7 Core — News headlines
 

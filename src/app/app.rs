@@ -6,7 +6,7 @@ use crate::app::event::{spawn_event_thread, Event};
 use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
 use crate::config::{Config, MarketProviderKind};
-use crate::models::alerts::Alert;
+use crate::models::alerts::{Alert, AlertCondition};
 use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
 use crate::models::portfolio::PortfolioItem;
@@ -64,6 +64,35 @@ impl Default for PortfolioAddDialog {
             shares_buffer: String::new(),
             price_buffer: String::new(),
             focused: PortfolioAddField::Shares,
+            inline_error: None,
+        }
+    }
+}
+
+/// Add-alert modal field focus (SPEC §18.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlertAddField {
+    Symbol,
+    Condition,
+    Threshold,
+}
+
+#[derive(Debug, Clone)]
+pub struct AlertAddDialog {
+    pub symbol_buffer: String,
+    pub condition: AlertCondition,
+    pub threshold_buffer: String,
+    pub focused: AlertAddField,
+    pub inline_error: Option<String>,
+}
+
+impl AlertAddDialog {
+    pub fn new_from_app(app: &App) -> Self {
+        Self {
+            symbol_buffer: normalize_symbol(&app.symbol).unwrap_or_default(),
+            condition: AlertCondition::Above,
+            threshold_buffer: String::new(),
+            focused: AlertAddField::Symbol,
             inline_error: None,
         }
     }
@@ -161,6 +190,8 @@ pub struct App {
     pub portfolio_dialog: Option<PortfolioAddDialog>,
     /// Issue #6 — first `d` arms; second `d` or `y` confirms remove.
     pub portfolio_remove_armed: bool,
+    /// SPEC §18.4 — add price alert dialog.
+    pub alert_add_dialog: Option<AlertAddDialog>,
 }
 
 const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
@@ -169,8 +200,8 @@ const MAX_CONCURRENT_QUOTES: usize = 2;
 
 const SEARCH_DEBOUNCE: Duration = Duration::from_millis(250);
 
-/// Rows in the Settings tab (refresh, default symbol, theme, provider, keymap).
-pub const SETTINGS_ROW_COUNT: usize = 5;
+/// Rows in the Settings tab (refresh, default symbol, notifications, theme, provider, keymap).
+pub const SETTINGS_ROW_COUNT: usize = 6;
 
 const SETTINGS_SAVED_FLASH: Duration = Duration::from_secs(2);
 
@@ -303,6 +334,7 @@ impl App {
             chart_mode: ChartDisplayMode::default(),
             portfolio_dialog: None,
             portfolio_remove_armed: false,
+            alert_add_dialog: None,
         };
 
         if !app.portfolio.is_empty() {
@@ -871,7 +903,20 @@ impl App {
         }
         match self.settings_row {
             0 | 1 => self.settings_begin_edit(),
+            2 => self.settings_toggle_notifications(),
             _ => {}
+        }
+    }
+
+    /// SPEC §18.7 — toggle desktop toasts for alert fires (bell always rings).
+    pub fn settings_toggle_notifications(&mut self) {
+        self.config.notifications_enabled = !self.config.notifications_enabled;
+        if let Err(e) = self.config.try_save() {
+            self.config.notifications_enabled = !self.config.notifications_enabled;
+            self.error_message = Some(format!("Failed to save settings: {e}"));
+        } else {
+            self.error_message = None;
+            self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
         }
     }
 
