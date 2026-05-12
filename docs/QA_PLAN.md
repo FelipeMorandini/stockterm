@@ -555,7 +555,7 @@ _Manual validation passed 2026-05-12 (post-audit)._
 
 ### Sign-off — Issues #96, #97, #98
 
-_Automated checks pass locally / CI on the §18.14 PR; **manual** steps in this section should be run before closing [#96](https://github.com/FelipeMorandini/stockterm/issues/96)–[#98](https://github.com/FelipeMorandini/stockterm/issues/98)._
+_Automated checks pass locally / CI on **[PR #105](https://github.com/FelipeMorandini/stockterm/pull/105)**; **manual** steps in this section should be run before closing [#96](https://github.com/FelipeMorandini/stockterm/issues/96)–[#98](https://github.com/FelipeMorandini/stockterm/issues/98)._
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
