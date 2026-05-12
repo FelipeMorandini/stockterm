@@ -621,7 +621,7 @@ _Automated checks pass locally / CI on **[PR #105](https://github.com/FelipeMora
 
 ### Sign-off — Issues #100, #101, #104
 
-_Ship review 2026-05-12 (automated + doc/code review + audit)._
+_Ship review 2026-05-12 (automated + doc/code review + audit). Tracked in [PR #107](https://github.com/FelipeMorandini/stockterm/pull/107)._
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
