@@ -29,7 +29,8 @@ Crate layout (from `src/`):
 
 - `main.rs` — terminal bootstrap (raw mode, alt screen, `App::run`).
 - `lib.rs` — re-exports `app`, `api`, `config`, `models`.
-- `api/polygon.rs`, `api/yahoo.rs` — `MarketDataProvider` implementations; **`api/http_fetch.rs`** / **`api/retry.rs`** — Issue #18 shared GET + retry (**§19**).
+- `api/http.rs` — shared **`reqwest::Client`** (timeouts); **`api/http_fetch.rs`** / **`api/retry.rs`** — Issue #18 GET + **`Retry-After`** / backoff (**§19**).
+- `api/polygon.rs`, `api/yahoo.rs` — **`MarketDataProvider`** implementations.
 - `app/` — `app.rs` (state machine), `ui.rs`, `event.rs`, `handlers.rs`,
   `charts.rs`, `layout.rs` (modal `centered_rect`), `portfolio.rs`, `alerts.rs`.
 - `config/config.rs` — JSON-backed config at `~/.stockterm.json`.
