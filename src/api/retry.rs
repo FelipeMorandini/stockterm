@@ -89,9 +89,8 @@ pub(crate) async fn execute_get_text_with_retry_inner(
             }
         }
     }
-    Err(ProviderError::Transport(
-        "HTTP retry loop exhausted unexpectedly".to_string(),
-    ))
+    // `MAX_ATTEMPTS > 0`: every iteration returns, retries, or errors out.
+    unreachable!("HTTP retry loop: MAX_ATTEMPTS > 0 ensures a return inside the loop");
 }
 
 #[cfg(test)]
