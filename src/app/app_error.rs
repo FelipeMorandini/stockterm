@@ -92,8 +92,18 @@ impl AppError {
                     if d.is_zero() {
                         return None;
                     }
-                    let secs = d.as_secs().max(1);
-                    Some(format!("retry in {secs}s"))
+                    let ms = d.as_millis().max(1);
+                    if ms < 1000 {
+                        Some(format!("retry in {ms}ms"))
+                    } else {
+                        let secs = d.as_secs();
+                        let ceil_secs = if d.subsec_nanos() > 0 {
+                            secs.saturating_add(1)
+                        } else {
+                            secs
+                        };
+                        Some(format!("retry in {ceil_secs}s"))
+                    }
                 })
             }
             _ => None,
@@ -265,6 +275,15 @@ mod tests {
         let s = e.status_line();
         assert!(s.starts_with("[rate]"));
         assert!(s.contains("retry in 10s"), "got {s:?}");
+    }
+
+    #[test]
+    fn rate_limited_status_retry_hint_ms_when_under_one_second() {
+        let e = AppError::Provider(ProviderError::RateLimited {
+            retry_after: Some(Duration::from_millis(500)),
+        });
+        let s = e.status_line();
+        assert!(s.contains("retry in 500ms"), "got {s:?}");
     }
 
     #[test]

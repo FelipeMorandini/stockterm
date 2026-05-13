@@ -3,7 +3,6 @@
 use std::fmt;
 use std::time::Duration;
 
-#[derive(Debug)]
 pub enum ProviderError {
     Timeout,
     Http {
@@ -75,6 +74,32 @@ fn url_without_query(url: &str) -> &str {
     url.split('?').next().unwrap_or(url)
 }
 
+/// Redact query strings from [`ProviderError::Http::url`] in `Debug` output (Issue #116 / SPEC §19.13.5).
+impl fmt::Debug for ProviderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProviderError::Timeout => f.write_str("Timeout"),
+            ProviderError::Http {
+                status,
+                url,
+                body_snippet,
+            } => f
+                .debug_struct("Http")
+                .field("status", status)
+                .field("url", &url_without_query(url))
+                .field("body_snippet", body_snippet)
+                .finish(),
+            ProviderError::RateLimited { retry_after } => f
+                .debug_struct("RateLimited")
+                .field("retry_after", retry_after)
+                .finish(),
+            ProviderError::Json(err) => f.debug_tuple("Json").field(err).finish(),
+            ProviderError::ApiMessage(msg) => f.debug_tuple("ApiMessage").field(msg).finish(),
+            ProviderError::Transport(msg) => f.debug_tuple("Transport").field(msg).finish(),
+        }
+    }
+}
+
 impl fmt::Display for ProviderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -94,7 +119,18 @@ impl fmt::Display for ProviderError {
             }
             ProviderError::RateLimited { retry_after } => match retry_after {
                 Some(d) if !d.is_zero() => {
-                    write!(f, "Rate limited (retry after {}s)", d.as_secs())
+                    let ms = d.as_millis().max(1);
+                    if ms < 1000 {
+                        write!(f, "Rate limited (retry after {ms}ms)")
+                    } else {
+                        let secs = d.as_secs();
+                        let ceil_secs = if d.subsec_nanos() > 0 {
+                            secs.saturating_add(1)
+                        } else {
+                            secs
+                        };
+                        write!(f, "Rate limited (retry after {ceil_secs}s)")
+                    }
                 }
                 _ => f.write_str("Rate limited"),
             },
@@ -129,6 +165,8 @@ pub fn map_reqwest(err: reqwest::Error) -> ProviderError {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use super::*;
 
     #[test]
@@ -152,6 +190,43 @@ mod tests {
             body_snippet: Some("access denied".to_string()),
         };
         assert!(e.to_string().contains("access denied"));
+    }
+
+    #[test]
+    fn http_debug_redacts_query_secrets() {
+        let e = ProviderError::Http {
+            status: 401,
+            url: "https://api.polygon.io/v2/foo?apiKey=SECRET99&x=1".to_string(),
+            body_snippet: None,
+        };
+        let d = format!("{e:?}");
+        assert!(
+            !d.contains("SECRET99"),
+            "Debug leaked secret: {d}"
+        );
+        assert!(!d.contains("apiKey="), "Debug leaked query: {d}");
+        assert!(d.contains("api.polygon.io"), "{d}");
+    }
+
+    #[test]
+    fn rate_limited_display_subsecond_uses_ms() {
+        let e = ProviderError::RateLimited {
+            retry_after: Some(Duration::from_millis(400)),
+        };
+        let s = e.to_string();
+        assert!(s.contains("400ms"), "{s}");
+    }
+
+    #[test]
+    fn rate_limited_display_seconds_round_up_when_subsec() {
+        let e = ProviderError::RateLimited {
+            retry_after: Some(Duration::from_millis(1500)),
+        };
+        let s = e.to_string();
+        assert!(
+            s.contains("retry after 2s"),
+            "expected ceiling seconds, got {s:?}"
+        );
     }
 
     /// Issue #122 / SPEC §20.15.3 — `<ProviderError as Clone>::clone` lossily
