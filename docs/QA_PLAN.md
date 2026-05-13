@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13).
 
 ## Issues #7, #8, #9 — M4: Charts (candlesticks, viewport, time ranges)
 
@@ -1017,6 +1017,70 @@ _Manual validation passed 2026-05-10 (pre-merge). Clipboard copy deferred to [#5
 | News: empty + symbol change | maintainer | 2026-05-10 | Pass |
 | Settings: edit + persist + relaunch default | maintainer | 2026-05-10 | Pass |
 | Settings: validation + placeholders | maintainer | 2026-05-10 | Pass |
+
+---
+
+## Issue #14 — Theme system (palette, Settings picker, no raw `Color::` in draw paths)
+
+**Scope:** [GitHub Issue #14](https://github.com/FelipeMorandini/stockterm/issues/14) — full `Theme` / `ResolvedTheme`, built-in presets, Settings Theme row editing, persistence, and theme-aware rendering per [`docs/SPEC.md`](SPEC.md) §21.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §21 (approval + merge record).
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+2. **Unit tests:** hex parser, `Theme::resolve` / preset + overrides, serde migration from legacy `accent_hex` / `background_hex` JSON (per §21.7).
+
+### Manual — Settings picker & live preview
+
+1. **`cargo run --release`**, open **Settings**, move to row **3. Theme** (`j`/`k`).
+
+2. Use the keys defined in §21.5 (e.g. **←/→** or **`h`/`l`**) to change the highlighted preset.  
+   **Pass:** **Before** save, other tabs already show the **preview** palette **or** the row label updates consistently with §21 spec; no panic.
+
+3. Press **Enter** to save (if §21 specifies Enter-to-commit).  
+   **Pass:** **`~/.stockterm.json`** contains updated **`theme`**; optional **Saved** flash; switching to **Stock**, **Charts**, **Portfolio**, **Alerts**, **Search**, **News** shows recolored UI **without** restarting the binary.
+
+4. Cycle through **Default**, **Dark**, **Light**, and **High contrast** (exact labels per implementation).  
+   **Pass:** Each preset is visually distinct; borders, positive/negative numbers, and chart candle up/down colors all track the theme (no stray default-green/red islands).
+
+### Manual — Cross-tab regression
+
+1. With a **non-default** theme active, exercise: Stock watchlist + detail, Charts line + candle modes, Portfolio table + add dialog, Alerts table + add dialog, Search results, News list, Settings (all rows), **error** status line and **^E** error log overlay (if present).
+
+   **Pass:** Readable contrast on a normal terminal; no garbled layout; **Esc** / **q** behaviors unchanged from pre-theme build.
+
+### Manual — JSON custom theme
+
+1. Quit the app. Edit **`~/.stockterm.json`** to set **`theme`** to a valid custom object per §21.8 (partial overrides allowed).
+
+2. Relaunch **`cargo run --release`**.  
+   **Pass:** Custom colors apply on startup; invalid hex strings do **not** crash — offending slots fall back to preset defaults (confirm by setting one field to **`"not-a-color"`**).
+
+### Manual — Save failure (Issue #19 alignment)
+
+1. If you can safely simulate a **write-protected** config path (or temp `HOME`), change theme from Settings and attempt save.  
+   **Pass:** User sees **`AppError::ConfigSave`** / status error path; in-memory theme reverts or stays consistent with §21.5; no silent loss of prior **`theme`** on disk.
+
+### Sign-off — Issue #14
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-13 | Pass |
+| Settings: cycle + commit + JSON on disk | maintainer | 2026-05-13 | Pass |
+| Live recolor all tabs without restart | maintainer | 2026-05-13 | Pass |
+| Presets distinct + charts P/L colors | maintainer | 2026-05-13 | Pass |
+| Custom JSON load + invalid hex fallback | maintainer | 2026-05-13 | Pass |
+| Save failure surfaced | maintainer | 2026-05-13 | Pass |
 
 ---
 

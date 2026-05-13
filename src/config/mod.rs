@@ -3,4 +3,4 @@ pub mod config;
 pub mod theme;
 
 pub use self::config::{Config, ConfigError, MarketProviderKind};
-pub use self::theme::Theme;
+pub use self::theme::{parse_hex_rgb, PaletteRgb, Theme, ThemePalette, ThemePreset};

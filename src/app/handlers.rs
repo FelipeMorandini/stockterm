@@ -440,6 +440,41 @@ fn handle_settings_events(app: &mut App, key: KeyEvent) {
         },
         None => match key {
             KeyEvent {
+                code: KeyCode::Esc,
+                modifiers: KeyModifiers::NONE,
+                ..
+            } if app.settings_row == 3 => {
+                app.sync_settings_theme_draft_from_config();
+            }
+            KeyEvent {
+                code: KeyCode::Char('h'),
+                modifiers,
+                ..
+            } if app.settings_row == 3 && letter_key_plain(modifiers) => {
+                app.settings_cycle_theme_draft_prev();
+            }
+            KeyEvent {
+                code: KeyCode::Char('l'),
+                modifiers,
+                ..
+            } if app.settings_row == 3 && letter_key_plain(modifiers) => {
+                app.settings_cycle_theme_draft_next();
+            }
+            KeyEvent {
+                code: KeyCode::Left,
+                modifiers: KeyModifiers::NONE,
+                ..
+            } if app.settings_row == 3 => {
+                app.settings_cycle_theme_draft_prev();
+            }
+            KeyEvent {
+                code: KeyCode::Right,
+                modifiers: KeyModifiers::NONE,
+                ..
+            } if app.settings_row == 3 => {
+                app.settings_cycle_theme_draft_next();
+            }
+            KeyEvent {
                 code: KeyCode::Char('j'),
                 modifiers,
                 ..

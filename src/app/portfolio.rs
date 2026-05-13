@@ -1,3 +1,4 @@
+use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
@@ -5,7 +6,7 @@ use crate::app::{normalize_symbol, App, PortfolioAddField, Tab};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, Wrap},
     Frame,
@@ -101,14 +102,17 @@ fn portfolio_move_down(app: &mut App) {
     }
 }
 
-pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
+pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedTheme) {
+    let border_st = Style::default().fg(theme.border).bg(theme.background);
     if app.portfolio.is_empty() {
         let block = Block::default()
             .title("Portfolio")
-            .borders(Borders::ALL);
+            .borders(Borders::ALL)
+            .style(theme.canvas())
+            .border_style(border_st);
         let no_data_text = Line::from(vec![Span::styled(
             "Your portfolio is empty. Press 'a' to add the active symbol (set it on Stock View first).",
-            Style::default().fg(Color::Yellow),
+            theme.fg_border(),
         )]);
         let paragraph = Paragraph::new(no_data_text)
             .wrap(Wrap { trim: true })
@@ -117,7 +121,9 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
     } else {
         let block = Block::default()
             .title("Portfolio")
-            .borders(Borders::ALL);
+            .borders(Borders::ALL)
+            .style(theme.canvas())
+            .border_style(border_st);
 
         let inner = block.inner(area);
         f.render_widget(block, area);
@@ -147,44 +153,53 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
         };
 
         let pl_color = if total_profit_loss >= 0.0 {
-            Color::Green
+            theme.positive
         } else {
-            Color::Red
+            theme.negative
         };
 
         let summary_text = vec![Line::from(vec![
-            Span::raw("Total Value: "),
+            Span::styled("Total Value: ", theme.canvas()),
             Span::styled(
                 format!("${:.2}", total_value),
-                Style::default().fg(Color::Cyan),
+                theme.fg_accent(),
             ),
-            Span::raw("  |  Cost Basis: "),
+            Span::styled("  |  Cost Basis: ", theme.canvas()),
             Span::styled(
                 format!("${:.2}", total_cost),
-                Style::default().fg(Color::White),
+                theme.fg_foreground(),
             ),
-            Span::raw("  |  P/L: "),
+            Span::styled("  |  P/L: ", theme.canvas()),
             Span::styled(
                 format!("${:.2} ({:.2}%)", total_profit_loss, profit_loss_percent),
-                Style::default().fg(pl_color),
+                theme.fg_color(pl_color),
             ),
         ])];
 
         let summary = Paragraph::new(summary_text)
-            .block(Block::default().borders(Borders::ALL).title("Summary"));
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Summary")
+                    .style(theme.canvas())
+                    .border_style(border_st),
+            );
 
         f.render_widget(summary, chunks[0]);
 
         let table_chunk = chunks[1];
 
-        let selected_style = Style::default().add_modifier(Modifier::REVERSED);
+        let selected_style = Style::default()
+            .bg(theme.selection)
+            .fg(theme.foreground)
+            .add_modifier(Modifier::BOLD);
 
         let header_cells = ["Symbol", "Shares", "Avg Price", "Current", "Value", "P/L", "P/L %"]
             .iter()
-            .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
+            .map(|h| Cell::from(*h).style(theme.fg_foreground()));
 
         let header = Row::new(header_cells)
-            .style(Style::default().add_modifier(Modifier::BOLD))
+            .style(theme.canvas().add_modifier(Modifier::BOLD))
             .height(1);
 
         let rows = app.portfolio.iter().map(|item| {
@@ -198,9 +213,9 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
             };
 
             let pl_color = if profit_loss >= 0.0 {
-                Color::Green
+                theme.positive
             } else {
-                Color::Red
+                theme.negative
             };
 
             let cells = [
@@ -209,11 +224,11 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
                 Cell::from(format!("${:.2}", item.purchase_price)),
                 Cell::from(format!("${:.2}", current_price)),
                 Cell::from(format!("${:.2}", market_value)),
-                Cell::from(format!("${:.2}", profit_loss)).style(Style::default().fg(pl_color)),
-                Cell::from(format!("{:.2}%", pl_percent)).style(Style::default().fg(pl_color)),
+                Cell::from(format!("${:.2}", profit_loss)).style(theme.fg_color(pl_color)),
+                Cell::from(format!("{:.2}%", pl_percent)).style(theme.fg_color(pl_color)),
             ];
 
-            Row::new(cells).height(1)
+            Row::new(cells).height(1).style(theme.canvas())
         });
 
         let table = Table::new(
@@ -229,7 +244,13 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
             ],
         )
         .header(header)
-        .block(Block::default().borders(Borders::ALL).title("Holdings"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Holdings")
+                .style(theme.canvas())
+                .border_style(border_st),
+        )
         .highlight_style(selected_style)
         .highlight_symbol("> ");
 
@@ -238,18 +259,19 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect) {
         if app.portfolio_remove_armed {
             let hint = Paragraph::new(Line::from(vec![Span::styled(
                 "Remove armed — confirm: d or y  |  cancel: Esc or n",
-                Style::default().fg(Color::Yellow),
-            )]));
+                theme.fg_border(),
+            )]))
+            .style(theme.canvas());
             f.render_widget(hint, chunks[2]);
         }
     }
 
     if app.portfolio_dialog.is_some() {
-        draw_portfolio_add_overlay(f, app, area);
+        draw_portfolio_add_overlay(f, app, area, theme);
     }
 }
 
-fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect) {
+fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme) {
     let Some(dialog) = app.portfolio_dialog.as_ref() else {
         return;
     };
@@ -257,48 +279,55 @@ fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(Clear, area);
 
     let popup = centered_rect(area, 55, 40);
+    let border_st = Style::default().fg(theme.border).bg(theme.background);
     let sym_label = normalize_symbol(&app.symbol).unwrap_or_default();
 
     let shares_style = if dialog.focused == PortfolioAddField::Shares {
-        Style::default().fg(Color::Cyan)
+        theme.fg_accent()
     } else {
-        Style::default()
+        theme.fg_foreground()
     };
     let price_style = if dialog.focused == PortfolioAddField::Price {
-        Style::default().fg(Color::Cyan)
+        theme.fg_accent()
     } else {
-        Style::default()
+        theme.fg_foreground()
     };
 
     let mut lines: Vec<Line> = vec![
-        Line::from(
+        Line::from(vec![Span::styled(
             "Add holding — Esc cancel · Tab / Shift+Tab or ; cycle field · Enter on Price saves",
-        ),
+            theme.canvas(),
+        )]),
         Line::from(vec![
-            Span::raw("Symbol: "),
-            Span::styled(sym_label, Style::default().add_modifier(Modifier::BOLD)),
+            Span::styled("Symbol: ", theme.canvas()),
+            Span::styled(sym_label, theme.fg_accent().add_modifier(Modifier::BOLD)),
         ]),
         Line::from(vec![
             Span::styled("Shares:  ", shares_style),
-            Span::raw(dialog.shares_buffer.as_str()),
+            Span::styled(dialog.shares_buffer.as_str(), theme.fg_foreground()),
         ]),
         Line::from(vec![
             Span::styled("Price:   ", price_style),
-            Span::raw(dialog.price_buffer.as_str()),
+            Span::styled(dialog.price_buffer.as_str(), theme.fg_foreground()),
         ]),
-        Line::from("Enter on Shares → Price | Enter on Price → save"),
+        Line::from(vec![Span::styled(
+            "Enter on Shares → Price | Enter on Price → save",
+            theme.fg_muted(),
+        )]),
     ];
 
     if let Some(ref err) = dialog.inline_error {
         lines.push(Line::from(vec![Span::styled(
             err.as_str(),
-            Style::default().fg(Color::Red),
+            theme.error_text(),
         )]));
     }
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .title("Add to portfolio");
+        .title("Add to portfolio")
+        .style(theme.canvas())
+        .border_style(border_st);
     let p = Paragraph::new(lines).block(block);
     f.render_widget(p, popup);
 }

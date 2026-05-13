@@ -4,7 +4,6 @@ use std::collections::VecDeque;
 use std::time::Duration;
 
 use chrono::{DateTime, Local};
-use ratatui::style::{Color, Style};
 
 use crate::api::error::ProviderError;
 use super::Tab;
@@ -241,10 +240,6 @@ pub fn push_error_log(
     while deque.len() > ERROR_LOG_CAP {
         deque.pop_front();
     }
-}
-
-pub fn startup_banner_style() -> Style {
-    Style::default().fg(Color::Red).bg(Color::DarkGray)
 }
 
 fn truncate_line_utf8(mut s: String, max_chars: usize) -> String {
