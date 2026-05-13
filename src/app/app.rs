@@ -247,6 +247,27 @@ async fn run_stock_quote_batch(
 ) -> FetchDone {
     maybe_debug_http_delay().await;
 
+    if config.provider == MarketProviderKind::Yahoo {
+        let (quotes_raw, mut errors) =
+            crate::api::yahoo::yahoo_latest_quotes_for_symbols(&symbols, MAX_CONCURRENT_QUOTES).await;
+        let mut quotes = HashMap::new();
+        for (sym, mut data) in quotes_raw {
+            if let Some(msg) = data.api_error_message() {
+                errors.push((sym.clone(), ProviderError::ApiMessage(msg)));
+                continue;
+            }
+            if data.ticker.is_empty() {
+                data.ticker = sym.clone();
+            }
+            quotes.insert(sym, data);
+        }
+        return FetchDone::Stock {
+            generation,
+            quotes,
+            errors,
+        };
+    }
+
     let provider = market_provider_for(config.provider);
     let sem = std::sync::Arc::new(Semaphore::new(MAX_CONCURRENT_QUOTES));
     let mut set = JoinSet::new();
