@@ -1,5 +1,6 @@
 //! Charts tab: line chart, candlesticks, viewport (Issues #7 / #8 / #9).
 
+use crate::app::styles::ResolvedTheme;
 use crate::app::App;
 use crate::models::historical::{HistoricalData, HistoricalResponse};
 use crate::models::time_range::TimeRange;
@@ -7,7 +8,7 @@ use chrono::{DateTime, Utc};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
+    style::Style,
     symbols,
     text::{Line, Span},
     widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Widget},
@@ -239,19 +240,23 @@ fn format_time_axis(ts_ms: f64, intraday: bool) -> String {
     }
 }
 
-pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
+pub fn draw_charts(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme) {
     let title = format!(
         "{} · {} · {} │ 1-4 range │ +/- zoom │ h l pan │ 0 reset │ c mode",
         app.symbol,
         app.time_range.label(),
         app.chart_mode.label()
     );
-    let block = Block::default().title(title).borders(Borders::ALL);
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .style(theme.canvas())
+        .border_style(Style::default().fg(theme.border).bg(theme.background));
 
     let Some(historical_data) = &app.historical_data else {
         let loading_text = Line::from(vec![Span::styled(
             "Loading historical data...",
-            Style::default().fg(Color::Yellow),
+            theme.warning_text(),
         )]);
         let paragraph = ratatui::widgets::Paragraph::new(loading_text).block(block);
         f.render_widget(paragraph, area);
@@ -261,7 +266,7 @@ pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
     if historical_data.results.is_empty() {
         let no_data_text = Line::from(vec![Span::styled(
             "No historical data available",
-            Style::default().fg(Color::Red),
+            theme.error_text(),
         )]);
         let paragraph = ratatui::widgets::Paragraph::new(no_data_text).block(block);
         f.render_widget(paragraph, area);
@@ -272,7 +277,7 @@ pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
     if slice.is_empty() {
         let no_data_text = Line::from(vec![Span::styled(
             "No data in current view",
-            Style::default().fg(Color::Red),
+            theme.error_text(),
         )]);
         let paragraph = ratatui::widgets::Paragraph::new(no_data_text).block(block);
         f.render_widget(paragraph, area);
@@ -282,7 +287,7 @@ pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
     let Some((price_min, price_max)) = price_bounds(slice) else {
         let no_data_text = Line::from(vec![Span::styled(
             "Invalid price data",
-            Style::default().fg(Color::Red),
+            theme.error_text(),
         )]);
         let paragraph = ratatui::widgets::Paragraph::new(no_data_text).block(block);
         f.render_widget(paragraph, area);
@@ -315,9 +320,9 @@ pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
                     "Candles need 2+ bars (visible {}–{}, {} bar(s)). Press `c` for line.",
                     vis_from, vis_to, slice.len()
                 ),
-                Style::default().fg(Color::Yellow),
+                theme.warning_text(),
             )]);
-            let paragraph = ratatui::widgets::Paragraph::new(msg);
+            let paragraph = ratatui::widgets::Paragraph::new(msg).style(theme.canvas());
             f.render_widget(paragraph, inner);
             return;
         }
@@ -325,6 +330,7 @@ pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
             data: slice,
             min_y: price_min,
             max_y: price_max,
+            theme,
         };
         f.render_widget(chart, inner);
         return;
@@ -334,7 +340,7 @@ pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
         .name("Close")
         .marker(symbols::Marker::Braille)
         .graph_type(GraphType::Line)
-        .style(Style::default().fg(Color::Cyan))
+        .style(theme.fg_accent())
         .data(&data)];
 
     let format_time = |time: &f64| format_time_axis(*time * 1000.0, intraday);
@@ -345,34 +351,34 @@ pub fn draw_charts(f: &mut Frame, app: &App, area: Rect) {
             Axis::default()
                 .title(Line::from(vec![Span::styled(
                     format!("UTC  {vis_from} → {vis_to}"),
-                    Style::default().fg(Color::White),
+                    theme.fg_foreground(),
                 )]))
-                .style(Style::default().fg(Color::White))
+                .style(theme.fg_foreground())
                 .bounds([min_time, max_time])
                 .labels(vec![
-                    Span::styled(format_time(&min_time), Style::default().fg(Color::White)),
+                    Span::styled(format_time(&min_time), theme.fg_foreground()),
                     Span::styled(
                         format_time(&((min_time + max_time) / 2.0)),
-                        Style::default().fg(Color::White),
+                        theme.fg_foreground(),
                     ),
-                    Span::styled(format_time(&max_time), Style::default().fg(Color::White)),
+                    Span::styled(format_time(&max_time), theme.fg_foreground()),
                 ]),
         )
         .y_axis(
             Axis::default()
                 .title(Line::from(vec![Span::styled(
                     "Price",
-                    Style::default().fg(Color::White),
+                    theme.fg_foreground(),
                 )]))
-                .style(Style::default().fg(Color::White))
+                .style(theme.fg_foreground())
                 .bounds([price_min, price_max])
                 .labels(vec![
-                    Span::styled(format_price(&price_min), Style::default().fg(Color::White)),
+                    Span::styled(format_price(&price_min), theme.fg_foreground()),
                     Span::styled(
                         format_price(&((price_min + price_max) / 2.0)),
-                        Style::default().fg(Color::White),
+                        theme.fg_foreground(),
                     ),
-                    Span::styled(format_price(&price_max), Style::default().fg(Color::White)),
+                    Span::styled(format_price(&price_max), theme.fg_foreground()),
                 ]),
         );
 
@@ -384,6 +390,7 @@ struct CandlestickChart<'a> {
     data: &'a [HistoricalData],
     min_y: f64,
     max_y: f64,
+    theme: ResolvedTheme,
 }
 
 impl CandlestickChart<'_> {
@@ -436,6 +443,16 @@ impl Widget for CandlestickChart<'_> {
         if self.data.is_empty() || area.width < 2 || area.height < 2 {
             return;
         }
+        let bg = self.theme.background;
+        let fg = self.theme.foreground;
+        for y in area.top()..area.bottom() {
+            for x in area.left()..area.right() {
+                let cell = buf.get_mut(x, y);
+                cell.set_symbol(" ");
+                cell.set_fg(fg);
+                cell.set_bg(bg);
+            }
+        }
         let n = self.data.len();
 
         for (i, bar) in self.data.iter().enumerate() {
@@ -456,7 +473,11 @@ impl Widget for CandlestickChart<'_> {
             };
 
             let up = bar.c >= bar.o;
-            let color = if up { Color::Green } else { Color::Red };
+            let color = if up {
+                self.theme.positive
+            } else {
+                self.theme.negative
+            };
 
             let y_wick_top = y_high.min(y_low);
             let y_wick_bot = y_high.max(y_low);
@@ -464,6 +485,7 @@ impl Widget for CandlestickChart<'_> {
                 let cell = buf.get_mut(cx, y);
                 cell.set_symbol(symbols::line::VERTICAL);
                 cell.set_fg(color);
+                cell.set_bg(bg);
             }
 
             let body_top = y_open.min(y_close);
@@ -477,6 +499,7 @@ impl Widget for CandlestickChart<'_> {
                     let cell = buf.get_mut(xx, y);
                     cell.set_symbol("█");
                     cell.set_fg(color);
+                    cell.set_bg(bg);
                 }
             }
         }

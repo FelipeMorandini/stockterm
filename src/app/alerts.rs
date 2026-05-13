@@ -1,3 +1,4 @@
+use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
@@ -6,7 +7,7 @@ use crate::models::alerts::{process_alert_crossings, Alert, AlertCondition};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table},
     Frame,
@@ -100,7 +101,8 @@ fn spawn_desktop_alert_notifications_batch(summary: String, body_lines: Vec<Stri
     });
 }
 
-pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
+pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedTheme) {
+    let border_st = Style::default().fg(theme.border).bg(theme.background);
     let show_banner = alerts_tab_banner_active(app);
     let chunks = if show_banner {
         Layout::default()
@@ -119,24 +121,32 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
         let banner = Paragraph::new(vec![
             Line::from(vec![Span::styled(
                 "Alert state may not be saved to disk (TRIGGERED may be memory-only).",
-                Style::default().fg(Color::Yellow),
+                theme.fg_border(),
             )]),
             Line::from(vec![Span::styled(
                 "Fix path/permissions/quota; save retries on the next quote batch.",
-                Style::default().fg(Color::Yellow),
+                theme.fg_border(),
             )]),
         ])
-        .block(Block::default().borders(Borders::BOTTOM));
+        .style(theme.canvas())
+        .block(
+            Block::default()
+                .borders(Borders::BOTTOM)
+                .style(theme.canvas())
+                .border_style(border_st),
+        );
         f.render_widget(banner, chunks[0]);
     }
 
     if app.alerts.is_empty() && app.alert_add_dialog.is_none() {
         let block = Block::default()
             .title("Price Alerts")
-            .borders(Borders::ALL);
+            .borders(Borders::ALL)
+            .style(theme.canvas())
+            .border_style(border_st);
         let no_data_text = Line::from(vec![Span::styled(
             "No alerts configured. Add with a or A (Shift+a works).",
-            Style::default().fg(Color::Yellow),
+            theme.fg_border(),
         )]);
         let paragraph = Paragraph::new(no_data_text).block(block);
         f.render_widget(paragraph, main);
@@ -146,22 +156,27 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
     if app.alerts.is_empty() {
         let block = Block::default()
             .title("Price Alerts")
-            .borders(Borders::ALL);
+            .borders(Borders::ALL)
+            .style(theme.canvas())
+            .border_style(border_st);
         let no_data_text = Line::from(vec![Span::styled(
             "No alerts configured. Add with a or A (Shift+a works).",
-            Style::default().fg(Color::Yellow),
+            theme.fg_border(),
         )]);
         let paragraph = Paragraph::new(no_data_text).block(block);
         f.render_widget(paragraph, main);
     } else {
-        let selected_style = Style::default().add_modifier(Modifier::REVERSED);
+        let selected_style = Style::default()
+            .bg(theme.selection)
+            .fg(theme.foreground)
+            .add_modifier(Modifier::BOLD);
 
         let header_cells = ["Symbol", "Condition", "Price", "Current", "Status"]
             .iter()
-            .map(|h| Cell::from(*h).style(Style::default().fg(Color::White)));
+            .map(|h| Cell::from(*h).style(theme.fg_foreground()));
 
         let header = Row::new(header_cells)
-            .style(Style::default().add_modifier(Modifier::BOLD))
+            .style(theme.canvas().add_modifier(Modifier::BOLD))
             .height(1);
 
         let rows = app.alerts.iter().map(|alert| {
@@ -176,11 +191,11 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
             };
 
             let (status_text, status_color) = if alert.triggered {
-                ("TRIGGERED", Color::Red)
+                ("TRIGGERED", theme.negative)
             } else if current_opt.is_some() {
-                ("Armed", Color::Yellow)
+                ("Armed", theme.border)
             } else {
-                ("No quote", Color::DarkGray)
+                ("No quote", theme.muted)
             };
 
             let cells = [
@@ -188,10 +203,10 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
                 Cell::from(condition_text),
                 Cell::from(format!("${:.2}", alert.price)),
                 Cell::from(current_cell),
-                Cell::from(status_text).style(Style::default().fg(status_color)),
+                Cell::from(status_text).style(theme.fg_color(status_color)),
             ];
 
-            Row::new(cells).height(1)
+            Row::new(cells).height(1).style(theme.canvas())
         });
 
         let table = Table::new(
@@ -208,7 +223,9 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Price Alerts"),
+                .title("Price Alerts")
+                .style(theme.canvas())
+                .border_style(border_st),
         )
         .highlight_style(selected_style)
         .highlight_symbol("> ");
@@ -217,11 +234,11 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect) {
     }
 
     if app.alert_add_dialog.is_some() {
-        draw_alert_add_overlay(f, app, area);
+        draw_alert_add_overlay(f, app, area, theme);
     }
 }
 
-fn draw_alert_add_overlay(f: &mut Frame, app: &App, area: Rect) {
+fn draw_alert_add_overlay(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme) {
     let Some(dialog) = app.alert_add_dialog.as_ref() else {
         return;
     };
@@ -229,21 +246,22 @@ fn draw_alert_add_overlay(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(Clear, area);
 
     let popup = centered_rect(area, 55, 42);
+    let border_st = Style::default().fg(theme.border).bg(theme.background);
 
     let sym_style = if dialog.focused == AlertAddField::Symbol {
-        Style::default().fg(Color::Cyan)
+        theme.fg_accent()
     } else {
-        Style::default()
+        theme.fg_foreground()
     };
     let cond_style = if dialog.focused == AlertAddField::Condition {
-        Style::default().fg(Color::Cyan)
+        theme.fg_accent()
     } else {
-        Style::default()
+        theme.fg_foreground()
     };
     let thr_style = if dialog.focused == AlertAddField::Threshold {
-        Style::default().fg(Color::Cyan)
+        theme.fg_accent()
     } else {
-        Style::default()
+        theme.fg_foreground()
     };
 
     let cond_label = match dialog.condition {
@@ -252,33 +270,38 @@ fn draw_alert_add_overlay(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let mut lines: Vec<Line> = vec![
-        Line::from("Add price alert — Esc cancel · Tab / Shift+Tab or ; cycle field · ←/→ on Condition (Below/Above) · Enter advances / saves on Threshold"),
+        Line::from(vec![Span::styled(
+            "Add price alert — Esc cancel · Tab / Shift+Tab or ; cycle field · ←/→ on Condition (Below/Above) · Enter advances / saves on Threshold",
+            theme.canvas(),
+        )]),
         Line::from(vec![
             Span::styled("Symbol:    ", sym_style),
-            Span::raw(dialog.symbol_buffer.as_str()),
+            Span::styled(dialog.symbol_buffer.as_str(), theme.fg_foreground()),
         ]),
         Line::from(vec![
             Span::styled("Condition: ", cond_style),
-            Span::raw(cond_label),
-            Span::styled("  (; toggles · ← Below · → Above · a/A · b/B)", Style::default().fg(Color::DarkGray)),
+            Span::styled(cond_label, theme.fg_foreground()),
+            Span::styled("  (; toggles · ← Below · → Above · a/A · b/B)", theme.fg_muted()),
         ]),
         Line::from(vec![
             Span::styled("Threshold: ", thr_style),
-            Span::raw("$"),
-            Span::raw(dialog.threshold_buffer.as_str()),
+            Span::styled("$", theme.fg_foreground()),
+            Span::styled(dialog.threshold_buffer.as_str(), theme.fg_foreground()),
         ]),
     ];
 
     if let Some(ref err) = dialog.inline_error {
         lines.push(Line::from(vec![Span::styled(
             err.as_str(),
-            Style::default().fg(Color::Red),
+            theme.error_text(),
         )]));
     }
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .title("Add alert");
+        .title("Add alert")
+        .style(theme.canvas())
+        .border_style(border_st);
     let p = Paragraph::new(lines).block(block);
     f.render_widget(p, popup);
 }

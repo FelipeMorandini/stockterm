@@ -11,6 +11,7 @@ use crate::app::charts::{viewport_zoom_in, viewport_zoom_out, ChartDisplayMode, 
 use crate::app::event::{spawn_event_thread, Event};
 use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
+use crate::config::theme::{PaletteRgb, Theme, ThemePreset};
 use crate::config::{Config, MarketProviderKind};
 use crate::models::alerts::{Alert, AlertCondition};
 use crate::models::historical::HistoricalResponse;
@@ -215,6 +216,8 @@ pub struct App {
     pub alert_add_dialog: Option<AlertAddDialog>,
     /// SPEC §18.14.2 — `try_save` failed in `save_alerts`; retry once per stock batch.
     pub alerts_save_retry_pending: bool,
+    /// Issue #14 / SPEC §21.5 — Settings Theme row: preset ring before **Enter** saves.
+    pub settings_theme_draft: ThemePreset,
 }
 
 const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
@@ -324,6 +327,12 @@ impl App {
             watchlist_state.select(Some(0));
         }
 
+        let settings_theme_draft = config
+            .theme
+            .as_ref()
+            .map(Theme::effective_preset)
+            .unwrap_or(ThemePreset::BuiltinDefault);
+
         let mut app = App {
             config: config.clone(),
             ticker_data: None,
@@ -376,6 +385,7 @@ impl App {
             portfolio_remove_armed: false,
             alert_add_dialog: None,
             alerts_save_retry_pending: false,
+            settings_theme_draft,
         };
 
         if !app.portfolio.is_empty() {
@@ -393,6 +403,27 @@ impl App {
         self.active_runtime_error
             .as_ref()
             .map(|a| a.display_line())
+    }
+
+    /// Issue #14 — palette for this frame (Settings Theme row previews `settings_theme_draft`).
+    pub fn theme_palette_for_render(&self) -> PaletteRgb {
+        let mut t = self.config.theme.clone().unwrap_or_default();
+        if self.active_tab == Tab::Settings
+            && self.settings_row == 3
+            && self.settings_editing.is_none()
+        {
+            t.preset = Some(self.settings_theme_draft);
+        }
+        t.resolve_rgb()
+    }
+
+    pub(crate) fn sync_settings_theme_draft_from_config(&mut self) {
+        self.settings_theme_draft = self
+            .config
+            .theme
+            .as_ref()
+            .map(Theme::effective_preset)
+            .unwrap_or(ThemePreset::BuiltinDefault);
     }
 
     pub(crate) fn surface_runtime_error(
@@ -1051,14 +1082,22 @@ impl App {
         if self.settings_editing.is_some() {
             return;
         }
+        let prev_row = self.settings_row;
         self.settings_row = self.settings_row.saturating_sub(1);
+        if prev_row != 3 && self.settings_row == 3 {
+            self.sync_settings_theme_draft_from_config();
+        }
     }
 
     pub fn settings_row_next(&mut self) {
         if self.settings_editing.is_some() {
             return;
         }
+        let prev_row = self.settings_row;
         self.settings_row = (self.settings_row + 1).min(SETTINGS_ROW_COUNT - 1);
+        if prev_row != 3 && self.settings_row == 3 {
+            self.sync_settings_theme_draft_from_config();
+        }
     }
 
     pub fn settings_begin_edit(&mut self) {
@@ -1152,8 +1191,41 @@ impl App {
         match self.settings_row {
             0 | 1 => self.settings_begin_edit(),
             2 => self.settings_toggle_notifications(),
+            3 => self.settings_commit_theme_preset(),
             _ => {}
         }
+    }
+
+    /// Issue #14 — persist `settings_theme_draft` as the active `Config.theme` preset.
+    pub fn settings_commit_theme_preset(&mut self) {
+        let previous = self.config.theme.clone();
+        let mut merged = previous.clone().unwrap_or_default();
+        merged.preset = Some(self.settings_theme_draft);
+        self.config.theme = Some(merged);
+        if let Err(e) = self.config.try_save() {
+            self.config.theme = previous;
+            self.surface_runtime_error(
+                Tab::Settings,
+                ErrorSourceDomain::Settings,
+                AppError::ConfigSave(format!("Failed to save theme: {e}")),
+                true,
+            );
+        } else {
+            if self.active_runtime_error.as_ref().is_some_and(|a| {
+                a.source_domain == ErrorSourceDomain::Settings
+            }) {
+                self.active_runtime_error = None;
+            }
+            self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
+        }
+    }
+
+    pub fn settings_cycle_theme_draft_next(&mut self) {
+        self.settings_theme_draft = self.settings_theme_draft.next();
+    }
+
+    pub fn settings_cycle_theme_draft_prev(&mut self) {
+        self.settings_theme_draft = self.settings_theme_draft.prev();
     }
 
     /// SPEC §18.7 — toggle desktop toasts for alert fires (bell always rings).
