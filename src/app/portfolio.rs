@@ -1,3 +1,4 @@
+use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
 use crate::app::{normalize_symbol, App, PortfolioAddField, Tab};
@@ -320,7 +321,7 @@ pub(crate) fn try_commit_portfolio_dialog(app: &mut App) {
             if app.add_to_portfolio(shares, price) {
                 app.portfolio_dialog = None;
                 app.request_immediate_stock_poll();
-            } else if app.error_message.is_none() {
+            } else if app.error_message().is_none() {
                 if let Some(d) = app.portfolio_dialog.as_mut() {
                     d.inline_error = Some(
                         "Cannot add holding: no valid ticker is set. Pick a symbol on Stock View."
@@ -433,14 +434,19 @@ pub fn handle_portfolio_events(app: &mut App, key: KeyEvent) {
             ..
         } if letter_key_plain(key.modifiers) && c.eq_ignore_ascii_case(&'a') => {
             if normalize_symbol(&app.symbol).is_none() {
-                app.error_message = Some(
-                    "Set a ticker on Stock View first (or press Enter on a holding).".to_string(),
+                app.surface_runtime_error(
+                    Tab::Portfolio,
+                    ErrorSourceDomain::Portfolio,
+                    AppError::Internal(
+                        "Set a ticker on Stock View first (or press Enter on a holding).".to_string(),
+                    ),
+                    true,
                 );
                 return;
             }
             app.portfolio_remove_armed = false;
             app.portfolio_dialog = Some(crate::app::PortfolioAddDialog::default());
-            app.error_message = None;
+            app.clear_active_runtime_unless_alerts_save();
         }
         KeyEvent {
             code: KeyCode::Char(c),

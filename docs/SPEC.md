@@ -2236,5 +2236,5 @@ After maintainer approval of §20, implementation may proceed per `.cursor/rules
 
 ### 20.14 Implementation record
 
-- **Status:** **Planning** — SPEC §20 + QA in **PR** [#119](https://github.com/FelipeMorandini/stockterm/pull/119); **Rust implementation** pending merge of follow-up code PRs.
+- **Status:** **Implemented** in-tree — `AppError` / `ActiveErrorState`, `error_message()` status line, `startup_error` banner, `error_log` + `Ctrl+E` overlay (`draw_error_log_overlay`), `Ctrl+R` → `retry_last_failed_fetch`, transient TTL tick, `LastFailedFetch` wiring in fetch paths; alerts/portfolio save paths use `surface_runtime_error`.
 - **Tracking:** [Issue #20](https://github.com/FelipeMorandini/stockterm/issues/20).

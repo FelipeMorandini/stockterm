@@ -6,6 +6,20 @@ use crate::models::time_range::TimeRange;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub fn handle_event(app: &mut App, key: KeyEvent) {
+    if key.code == KeyCode::Char('e') && key.modifiers == KeyModifiers::CONTROL {
+        app.error_log_overlay_open = !app.error_log_overlay_open;
+        return;
+    }
+    if key.code == KeyCode::Char('r') && key.modifiers == KeyModifiers::CONTROL {
+        app.retry_last_failed_fetch();
+        return;
+    }
+
+    if app.error_log_overlay_open {
+        handle_error_log_overlay_keys(app, key);
+        return;
+    }
+
     match key {
         KeyEvent {
             code: KeyCode::Char('q'),
@@ -61,6 +75,68 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
                 handle_charts_events(app, key);
             }
         },
+    }
+}
+
+const ERROR_LOG_OVERLAY_VISIBLE_ROWS: usize = 12;
+const ERROR_LOG_OVERLAY_PAGE_ROWS: usize = 10;
+
+fn handle_error_log_overlay_keys(app: &mut App, key: KeyEvent) {
+    let total = app.error_log.len();
+    let max_scroll = total.saturating_sub(
+        ERROR_LOG_OVERLAY_VISIBLE_ROWS
+            .min(total.max(1)),
+    );
+
+    match key {
+        KeyEvent {
+            code: KeyCode::Esc,
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => {
+            app.error_log_overlay_open = false;
+        }
+        KeyEvent {
+            code: KeyCode::Char('j'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        }
+        | KeyEvent {
+            code: KeyCode::Down,
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => {
+            app.error_log_scroll = (app.error_log_scroll + 1).min(max_scroll);
+        }
+        KeyEvent {
+            code: KeyCode::Char('k'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        }
+        | KeyEvent {
+            code: KeyCode::Up,
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => {
+            app.error_log_scroll = app.error_log_scroll.saturating_sub(1);
+        }
+        KeyEvent {
+            code: KeyCode::PageDown,
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => {
+            app.error_log_scroll = (app.error_log_scroll + ERROR_LOG_OVERLAY_PAGE_ROWS).min(max_scroll);
+        }
+        KeyEvent {
+            code: KeyCode::PageUp,
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => {
+            app.error_log_scroll = app
+                .error_log_scroll
+                .saturating_sub(ERROR_LOG_OVERLAY_PAGE_ROWS);
+        }
+        _ => {}
     }
 }
 

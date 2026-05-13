@@ -1,6 +1,7 @@
+use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
-use crate::app::{AlertAddDialog, AlertAddField, App};
+use crate::app::{AlertAddDialog, AlertAddField, App, Tab};
 use crate::models::alerts::{process_alert_crossings, Alert, AlertCondition};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
@@ -12,7 +13,7 @@ use ratatui::{
 };
 use std::io::{self, Write};
 
-/// Prefix for `App::error_message` when `Config::try_save` fails in `save_alerts` (§18.14.2).
+/// Prefix for `AppError::ConfigSave` / status line when `Config::try_save` fails in `save_alerts` (§18.14.2).
 pub(crate) const ALERTS_SAVE_ERROR_PREFIX: &str = "Failed to save alerts:";
 
 const MAX_ALERT_FIELD_LEN: usize = 24;
@@ -76,9 +77,9 @@ fn ring_terminal_bell() {
 pub(crate) fn alerts_tab_banner_active(app: &App) -> bool {
     app.alerts_save_retry_pending
         || app
-            .error_message
+            .error_message()
             .as_deref()
-            .is_some_and(|m| m.starts_with(ALERTS_SAVE_ERROR_PREFIX))
+            .is_some_and(|m| m.contains(ALERTS_SAVE_ERROR_PREFIX))
 }
 
 #[cfg(feature = "desktop-notify")]
@@ -620,17 +621,16 @@ impl App {
         match self.config.try_save() {
             Ok(()) => {
                 self.alerts_save_retry_pending = false;
-                if self
-                    .error_message
-                    .as_deref()
-                    .is_some_and(|m| m.starts_with(ALERTS_SAVE_ERROR_PREFIX))
-                {
-                    self.error_message = None;
-                }
+                self.clear_alerts_save_runtime_error_after_recovery();
             }
             Err(e) => {
                 self.alerts_save_retry_pending = true;
-                self.error_message = Some(format!("{ALERTS_SAVE_ERROR_PREFIX} {e}"));
+                self.surface_runtime_error(
+                    Tab::Alerts,
+                    ErrorSourceDomain::Alerts,
+                    AppError::ConfigSave(format!("{ALERTS_SAVE_ERROR_PREFIX} {e}")),
+                    true,
+                );
             }
         }
     }

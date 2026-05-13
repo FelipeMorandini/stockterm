@@ -1,3 +1,4 @@
+mod app_error;
 #[allow(clippy::module_inception)]
 pub mod app;
 mod open_url;
