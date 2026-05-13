@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13).
 
 ## Issues #7, #8, #9 — M4: Charts (candlesticks, viewport, time ranges)
 
@@ -338,6 +338,62 @@ _Manual validation passed 2026-05-11._
 | Yahoo session vs after-hours | maintainer | 2026-05-11 | Pass |
 | Polygon optional smoke | maintainer | 2026-05-11 | Pass |
 | Symbol switch updates OHLCV | maintainer | 2026-05-11 | Pass |
+
+---
+
+## Issue #53 — Yahoo batched quotes (single primary `v7` request)
+
+**Scope:**
+
+- [Issue #53](https://github.com/FelipeMorandini/stockterm/issues/53) — With **`provider: "yahoo"`**, quote refresh for the deduplicated symbol set (watchlist + active symbol + portfolio tickers per **`collect_symbols_for_quote_fetch`**) uses **one primary** **`v7/finance/quote`** HTTP round-trip per batch (or chunked sequential GETs per [`docs/SPEC.md`](SPEC.md) §9.15.5), instead of **N** parallel per-symbol **`get_quote`** calls. **Polygon** path unchanged (**bounded parallel `get_quote`**).
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §9.15.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0; §9.15.7 unit tests for multi-symbol **`v7`** JSON present and green.
+
+### Manual — Yahoo multi-symbol watchlist + portfolio
+
+**Prep:** In **`~/.stockterm.json`**, set **`"provider": "yahoo"`**. Add **at least four** distinct liquid symbols to **`watchlist`** (e.g. **AAPL**, **MSFT**, **GOOGL**, **SPY**). Add **one** portfolio holding for a fifth symbol not in the watchlist (e.g. **NVDA**). Restart **`cargo run --release`**.
+
+1. Open **Stock View**; wait at least **two** full **`refresh_rate`** cycles (or trigger refresh with **Enter** if implemented).  
+   **Pass:** Watchlist **Price** / **Change** columns populate for **all** rows; active symbol detail matches the selected row; no sustained **“No quote”** for symbols that previously worked on the pre–#53 build.
+
+2. Switch **`j`/`k`** across watchlist rows.  
+   **Pass:** Detail pane updates per symbol; values remain plausible (same-day sanity as Issue #2).
+
+3. Open **Portfolio** tab (or split view per your layout).  
+   **Pass:** Portfolio row for the extra symbol shows a current price when quotes succeed; alerts / status bar show **no** new unexplained error class.
+
+### Manual — Fallback smoke (optional but recommended)
+
+1. Add an **unusual** or thin symbol that historically returns empty **`v7`** rows but recovers via **`v8`** (per §17 — if you have a known example from prior testing, use it; otherwise skip).  
+   **Pass:** After refresh, either a plausible quote or a **clear** per-symbol error — **no panic**, **no** blank app.
+
+### Manual — Polygon regression
+
+1. Set **`"provider": "polygon"`** with a valid **`api_key`**; use a **two-row** watchlist + one portfolio symbol. Restart, wait for quotes.  
+   **Pass:** Same functional behavior as before #53; bounded concurrency unchanged from an operator perspective (no obvious stall vs Yahoo-only change).
+
+### Sign-off — Issue #53
+
+_Manual validation passed 2026-05-13._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-13 | Pass |
+| Yahoo ≥4 watchlist + 1 portfolio symbol | maintainer | 2026-05-13 | Pass |
+| Row switch / detail pane | maintainer | 2026-05-13 | Pass |
+| Polygon smoke (2+ symbols) | maintainer | 2026-05-13 | Pass |
 
 ---
 

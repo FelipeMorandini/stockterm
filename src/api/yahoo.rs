@@ -1,8 +1,13 @@
 //! Yahoo Finance (unofficial) [`MarketDataProvider`](crate::api::provider::MarketDataProvider).
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
 use serde::Deserialize;
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 use urlencoding::encode;
 
 use crate::api::error::{ProviderError, ProviderResult};
@@ -101,7 +106,7 @@ struct V7QuoteWireError {
     code: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 struct V7QuoteItem {
     symbol: Option<String>,
@@ -125,42 +130,22 @@ fn v7_volume_as_f64(v: Option<&serde_json::Value>) -> f64 {
         .unwrap_or(0.0)
 }
 
-/// Maps Yahoo **`v7/finance/quote`** payload into [`TickerResponse`] (one synthetic bar).
-///
-/// | Yahoo field | `TickerResult` |
-/// |-------------|----------------|
-/// | `regularMarketOpen` | **`o`** (else `regularMarketPreviousClose`, else **`c`**) |
-/// | `regularMarketDayHigh` | **`h`** (else **`c`**) |
-/// | `regularMarketDayLow` | **`l`** (else **`c`**) |
-/// | `regularMarketPrice` | **`c`** (required for a successful row) |
-/// | `regularMarketVolume` | **`v`** |
-/// | `regularMarketTime` (Unix **seconds**) | **`t`** = ms |
-fn v7_envelope_to_ticker(env: &V7QuoteEnvelope, requested: &str) -> ProviderResult<TickerResponse> {
-    if let Some(err) = &env.quote_response.error {
-        let msg = err
-            .description
-            .clone()
-            .or_else(|| err.code.clone())
-            .unwrap_or_else(|| "Yahoo quote error".to_string());
-        return Err(ProviderError::ApiMessage(msg));
+fn empty_v7_ticker_response() -> TickerResponse {
+    TickerResponse {
+        ticker: String::new(),
+        results: vec![],
+        status: "OK".to_string(),
+        error: None,
     }
-    let Some(items) = env.quote_response.result.as_ref() else {
-        return Ok(TickerResponse {
-            ticker: String::new(),
-            results: vec![],
-            status: "OK".to_string(),
-            error: None,
-        });
-    };
-    let Some(q) = items.first() else {
-        return Ok(TickerResponse {
-            ticker: String::new(),
-            results: vec![],
-            status: "OK".to_string(),
-            error: None,
-        });
-    };
+}
 
+/// Normalize a Yahoo **`symbol`** field for batch lookup (Issue #53 / SPEC §9.15.3).
+fn normalize_v7_symbol_key(s: &str) -> String {
+    s.trim().to_uppercase()
+}
+
+/// Maps one **`V7QuoteItem`** into [`TickerResponse`] (one synthetic bar). See table in [`v7_envelope_to_ticker`].
+fn v7_item_to_ticker_response(q: &V7QuoteItem, requested: &str) -> ProviderResult<TickerResponse> {
     let close = q.regular_market_price.ok_or_else(|| {
         ProviderError::ApiMessage(format!("No regularMarketPrice for {}", requested))
     })?;
@@ -195,6 +180,188 @@ fn v7_envelope_to_ticker(env: &V7QuoteEnvelope, requested: &str) -> ProviderResu
         status: "OK".to_string(),
         error: None,
     })
+}
+
+/// Maps Yahoo **`v7/finance/quote`** payload into [`TickerResponse`] (one synthetic bar).
+///
+/// | Yahoo field | `TickerResult` |
+/// |-------------|----------------|
+/// | `regularMarketOpen` | **`o`** (else `regularMarketPreviousClose`, else **`c`**) |
+/// | `regularMarketDayHigh` | **`h`** (else **`c`**) |
+/// | `regularMarketDayLow` | **`l`** (else **`c`**) |
+/// | `regularMarketPrice` | **`c`** (required for a successful row) |
+/// | `regularMarketVolume` | **`v`** |
+/// | `regularMarketTime` (Unix **seconds**) | **`t`** = ms |
+fn v7_envelope_to_ticker(env: &V7QuoteEnvelope, requested: &str) -> ProviderResult<TickerResponse> {
+    if let Some(err) = &env.quote_response.error {
+        let msg = err
+            .description
+            .clone()
+            .or_else(|| err.code.clone())
+            .unwrap_or_else(|| "Yahoo quote error".to_string());
+        return Err(ProviderError::ApiMessage(msg));
+    }
+    let Some(items) = env.quote_response.result.as_ref() else {
+        return Ok(empty_v7_ticker_response());
+    };
+    let Some(q) = items.first() else {
+        return Ok(empty_v7_ticker_response());
+    };
+
+    v7_item_to_ticker_response(q, requested)
+}
+
+/// Last index wins if Yahoo returns duplicate **`symbol`** rows.
+fn v7_rows_by_symbol_key(items: &[V7QuoteItem]) -> HashMap<String, usize> {
+    let mut m = HashMap::new();
+    for (i, it) in items.iter().enumerate() {
+        if let Some(sym) = it.symbol.as_ref() {
+            m.insert(normalize_v7_symbol_key(sym), i);
+        }
+    }
+    m
+}
+
+/// Max length of the full **`v7/finance/quote`** request URL (Issue #53 / SPEC §9.15.5).
+pub(crate) const YAHOO_V7_QUOTE_SYMBOLS_MAX_URL_BYTES: usize = 3000;
+
+fn chunk_symbols_for_v7_quote_url_with_budget(symbols: &[String], max_url_bytes: usize) -> Vec<Vec<String>> {
+    let base_len = format!("{}/v7/finance/quote?symbols=", QUERY1).len();
+    let mut chunks: Vec<Vec<String>> = Vec::new();
+    let mut cur: Vec<String> = Vec::new();
+    // Length of `sym1,sym2,...` (encoded) for symbols in `cur`.
+    let mut cur_query_len: usize = 0;
+
+    for s in symbols {
+        let enc_len = encode(s.as_str()).len();
+        let extra = if cur.is_empty() {
+            enc_len
+        } else {
+            enc_len + 1
+        };
+        let new_total = cur_query_len + extra;
+        if base_len + new_total <= max_url_bytes {
+            cur.push(s.clone());
+            cur_query_len = new_total;
+            continue;
+        }
+        if !cur.is_empty() {
+            chunks.push(std::mem::take(&mut cur));
+            cur_query_len = 0;
+        }
+        // Retry `s` on empty `cur` (fall through to one-symbol oversized path or fit).
+        if base_len + enc_len > max_url_bytes {
+            chunks.push(vec![s.clone()]);
+            continue;
+        }
+        cur.push(s.clone());
+        cur_query_len = enc_len;
+    }
+    if !cur.is_empty() {
+        chunks.push(cur);
+    }
+    chunks
+}
+
+fn chunk_symbols_for_v7_quote_url(symbols: &[String]) -> Vec<Vec<String>> {
+    chunk_symbols_for_v7_quote_url_with_budget(symbols, YAHOO_V7_QUOTE_SYMBOLS_MAX_URL_BYTES)
+}
+
+async fn yahoo_quote_v7_batch_chunk(chunk: &[String]) -> ProviderResult<V7QuoteEnvelope> {
+    let joined = chunk
+        .iter()
+        .map(|s| encode(s.as_str()).to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let url = format!("{}/v7/finance/quote?symbols={}", QUERY1, joined);
+    let text = fetch_text(&url).await?;
+    serde_json::from_str(&text).map_err(ProviderError::from)
+}
+
+/// Issue #53 / SPEC §9.15 — one primary **`v7`** GET per URL-size chunk, then per-symbol
+/// [`yahoo_latest_quote`] for misses **or** when batched **`v7`** is unusable (HTTP errors
+/// such as **401**, parse failures, or **`quoteResponse.error`**), so **`v8`** chart fallback
+/// still applies the same way as pre-batch single-symbol quotes.
+pub(crate) async fn yahoo_latest_quotes_for_symbols(
+    symbols: &[String],
+    max_concurrent_fallbacks: usize,
+) -> (HashMap<String, TickerResponse>, Vec<(String, ProviderError)>) {
+    let mut quotes = HashMap::new();
+    let mut errors: Vec<(String, ProviderError)> = Vec::new();
+
+    if symbols.is_empty() {
+        return (quotes, errors);
+    }
+
+    let chunks = chunk_symbols_for_v7_quote_url(symbols);
+    let mut pending_fallback: Vec<String> = Vec::new();
+
+    for chunk in &chunks {
+        match yahoo_quote_v7_batch_chunk(chunk).await {
+            Ok(env) => {
+                if env.quote_response.error.is_some() {
+                    // Batched `v7` sometimes returns an in-JSON error (or a shape we treat as
+                    // unusable). Per-symbol [`yahoo_latest_quote`] still tries `v7` then `v8`,
+                    // matching pre–Issue #53 behavior when single-symbol `v7` is blocked.
+                    pending_fallback.extend(chunk.iter().cloned());
+                    continue;
+                }
+
+                let items = env.quote_response.result.unwrap_or_default();
+                let index = v7_rows_by_symbol_key(&items);
+                for sym in chunk {
+                    let key = normalize_v7_symbol_key(sym);
+                    match index.get(&key).copied() {
+                        Some(idx) => match v7_item_to_ticker_response(&items[idx], sym) {
+                            Ok(t) if !t.results.is_empty() => {
+                                quotes.insert(sym.clone(), t);
+                            }
+                            Ok(_) | Err(_) => pending_fallback.push(sym.clone()),
+                        },
+                        None => pending_fallback.push(sym.clone()),
+                    }
+                }
+            }
+            Err(_) => {
+                // HTTP failures (e.g. 401 on multi-symbol `v7`) or JSON parse errors: Yahoo
+                // may reject batched `v7` while `v8` chart still works per symbol.
+                pending_fallback.extend(chunk.iter().cloned());
+            }
+        }
+    }
+
+    let sem = Arc::new(Semaphore::new(max_concurrent_fallbacks.max(1)));
+    let mut set = JoinSet::new();
+    for sym in pending_fallback {
+        let sem = sem.clone();
+        set.spawn(async move {
+            let _permit = sem.acquire().await.ok();
+            let res = yahoo_latest_quote(&sym).await;
+            (sym, res)
+        });
+    }
+
+    while let Some(joined) = set.join_next().await {
+        match joined {
+            Ok((sym, Ok(mut data))) => {
+                if let Some(msg) = data.api_error_message() {
+                    errors.push((sym, ProviderError::ApiMessage(msg)));
+                    continue;
+                }
+                if data.ticker.is_empty() {
+                    data.ticker = sym.clone();
+                }
+                quotes.insert(sym, data);
+            }
+            Ok((sym, Err(e))) => errors.push((sym, e)),
+            Err(e) => errors.push((
+                String::new(),
+                ProviderError::Transport(format!("task join: {e}")),
+            )),
+        }
+    }
+
+    (quotes, errors)
 }
 
 async fn yahoo_quote_v7(symbol: &str) -> ProviderResult<TickerResponse> {
@@ -879,6 +1046,66 @@ struct StreamProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn v7_batch_maps_rows_by_symbol_out_of_order() {
+        let json = r#"{
+            "quoteResponse": {
+                "result": [
+                    {
+                        "symbol": "MSFT",
+                        "regularMarketPrice": 400.0,
+                        "regularMarketOpen": 399.0,
+                        "regularMarketDayHigh": 401.0,
+                        "regularMarketDayLow": 398.0,
+                        "regularMarketVolume": 1000,
+                        "regularMarketTime": 1700000001
+                    },
+                    {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 195.5,
+                        "regularMarketOpen": 194.0,
+                        "regularMarketDayHigh": 196.25,
+                        "regularMarketDayLow": 193.5,
+                        "regularMarketVolume": 52800000,
+                        "regularMarketTime": 1700000000
+                    }
+                ],
+                "error": null
+            }
+        }"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
+        let items = env.quote_response.result.as_ref().expect("result");
+        let index = v7_rows_by_symbol_key(items);
+        let requested = ["AAPL", "MSFT"];
+        for sym in requested {
+            let idx = index
+                .get(&normalize_v7_symbol_key(sym))
+                .copied()
+                .expect("row");
+            let tr = v7_item_to_ticker_response(&items[idx], sym).expect("map");
+            assert_eq!(tr.ticker.to_uppercase(), sym.to_uppercase());
+            let bar = tr.latest_result().expect("bar");
+            if sym == "AAPL" {
+                assert!((bar.c - 195.5).abs() < 1e-9);
+            } else {
+                assert!((bar.c - 400.0).abs() < 1e-9);
+            }
+        }
+    }
+
+    #[test]
+    fn v7_chunk_splits_when_url_budget_small() {
+        let syms: Vec<String> = (0..40).map(|i| format!("SYM{i}")).collect();
+        let chunks = chunk_symbols_for_v7_quote_url_with_budget(&syms, 120);
+        assert!(
+            chunks.len() >= 2,
+            "expected multiple chunks with tiny budget, got {}",
+            chunks.len()
+        );
+        let flat: Vec<_> = chunks.iter().flatten().collect();
+        assert_eq!(flat.len(), syms.len());
+    }
 
     #[test]
     fn v7_envelope_maps_regular_market_fields() {
