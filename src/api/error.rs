@@ -20,6 +20,31 @@ pub enum ProviderError {
     Transport(String),
 }
 
+impl Clone for ProviderError {
+    fn clone(&self) -> Self {
+        match self {
+            ProviderError::Timeout => ProviderError::Timeout,
+            ProviderError::Http {
+                status,
+                url,
+                body_snippet,
+            } => ProviderError::Http {
+                status: *status,
+                url: url.clone(),
+                body_snippet: body_snippet.clone(),
+            },
+            ProviderError::RateLimited { retry_after } => ProviderError::RateLimited {
+                retry_after: *retry_after,
+            },
+            ProviderError::Json(e) => {
+                ProviderError::ApiMessage(format!("Invalid JSON response: {e}"))
+            }
+            ProviderError::ApiMessage(s) => ProviderError::ApiMessage(s.clone()),
+            ProviderError::Transport(s) => ProviderError::Transport(s.clone()),
+        }
+    }
+}
+
 pub type ProviderResult<T> = Result<T, ProviderError>;
 
 /// Omit query string so Polygon `apiKey=…` (and other secrets) never appear in UI/error strings.

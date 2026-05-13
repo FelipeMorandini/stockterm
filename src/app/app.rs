@@ -1,7 +1,12 @@
+use crate::api::error::ProviderError;
 use crate::api::http::maybe_debug_http_delay;
 use crate::api::market_provider_for;
 use crate::api::HistoricalQuery;
 use crate::app::alerts::ALERTS_SAVE_ERROR_PREFIX;
+use crate::app::app_error::{
+    push_error_log, persistence_for_app_error, ActiveErrorState, AppError, ErrorLogEntry,
+    ErrorPersistence, ErrorSourceDomain, LastFailedFetch, ERROR_TRANSIENT_TTL,
+};
 use crate::app::charts::{viewport_zoom_in, viewport_zoom_out, ChartDisplayMode, ChartViewport};
 use crate::app::event::{spawn_event_thread, Event};
 use crate::app::handlers::handle_event;
@@ -18,7 +23,7 @@ use ratatui::backend::Backend;
 use ratatui::widgets::{ListState, TableState};
 use ratatui::Terminal;
 use futures_util::future::FutureExt;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io;
 use std::panic::AssertUnwindSafe;
 use std::time::{Duration, Instant};
@@ -26,7 +31,7 @@ use tokio::sync::mpsc::{error::SendError, UnboundedSender};
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
     StockView,
     Portfolio,
@@ -113,21 +118,21 @@ pub enum FetchDone {
     Stock {
         generation: u64,
         quotes: HashMap<String, TickerResponse>,
-        errors: Vec<String>,
+        errors: Vec<(String, ProviderError)>,
     },
     Historical {
         symbol: String,
         time_range: TimeRange,
-        result: Result<HistoricalResponse, String>,
+        result: Result<HistoricalResponse, ProviderError>,
     },
     News {
         symbol: String,
-        result: Result<NewsResponse, String>,
+        result: Result<NewsResponse, ProviderError>,
     },
     Search {
         generation: u64,
         query: String,
-        result: Result<SymbolSearchResponse, String>,
+        result: Result<SymbolSearchResponse, ProviderError>,
     },
 }
 
@@ -156,7 +161,14 @@ pub struct App {
     pub alerts: Vec<Alert>,
     pub alerts_state: TableState,
     pub active_tab: Tab,
-    pub error_message: Option<String>,
+    /// Issue #20 / §20 — surfaced runtime error (status bar); `error_message()` exposes line text.
+    pub(crate) active_runtime_error: Option<ActiveErrorState>,
+    /// Config load failure at startup (banner); distinct from runtime errors (§20.7).
+    pub startup_error: Option<AppError>,
+    pub error_log: VecDeque<ErrorLogEntry>,
+    pub error_log_overlay_open: bool,
+    pub error_log_scroll: usize,
+    pub last_failed_fetch: LastFailedFetch,
     pub search_query: String,
     pub search_table_state: TableState,
     pub search_request_generation: u64,
@@ -245,7 +257,7 @@ async fn run_stock_quote_batch(
         match joined {
             Ok((sym, Ok(mut data))) => {
                 if let Some(msg) = data.api_error_message() {
-                    errors.push(format!("{sym}: {msg}"));
+                    errors.push((sym, ProviderError::ApiMessage(msg)));
                     continue;
                 }
                 if data.ticker.is_empty() {
@@ -253,8 +265,11 @@ async fn run_stock_quote_batch(
                 }
                 quotes.insert(sym, data);
             }
-            Ok((sym, Err(e))) => errors.push(format!("{sym}: {e}")),
-            Err(e) => errors.push(format!("task join: {e}")),
+            Ok((sym, Err(e))) => errors.push((sym, e)),
+            Err(e) => errors.push((
+                String::new(),
+                ProviderError::Transport(format!("task join: {e}")),
+            )),
         }
     }
 
@@ -267,7 +282,15 @@ async fn run_stock_quote_batch(
 
 impl App {
     pub fn new() -> App {
-        let config = Config::load();
+        let (config, startup_error) = match Config::try_load() {
+            Ok(c) => (c, None),
+            Err(e) => (
+                Config::default(),
+                Some(AppError::ConfigSave(format!(
+                    "Config load failed: {e}"
+                ))),
+            ),
+        };
         let portfolio = config.portfolio.clone();
         let alerts = config.alerts.clone();
 
@@ -310,7 +333,12 @@ impl App {
             alerts,
             alerts_state: TableState::default(),
             active_tab: Tab::StockView,
-            error_message: None,
+            active_runtime_error: None,
+            startup_error,
+            error_log: VecDeque::new(),
+            error_log_overlay_open: false,
+            error_log_scroll: 0,
+            last_failed_fetch: LastFailedFetch::None,
             search_query: String::new(),
             search_table_state: TableState::default(),
             search_request_generation: 0,
@@ -349,6 +377,96 @@ impl App {
         }
 
         app
+    }
+
+    /// Status-line text for active runtime error (Issue #103 checks this string).
+    pub fn error_message(&self) -> Option<String> {
+        self.active_runtime_error
+            .as_ref()
+            .map(|a| a.display_line())
+    }
+
+    pub(crate) fn surface_runtime_error(
+        &mut self,
+        tab: Tab,
+        domain: ErrorSourceDomain,
+        err: AppError,
+        push_one_log_line: bool,
+    ) {
+        if push_one_log_line {
+            push_error_log(
+                &mut self.error_log,
+                tab,
+                err.category(),
+                err.status_line(),
+            );
+        }
+        let persistence = persistence_for_app_error(&err);
+        self.active_runtime_error = Some(ActiveErrorState::new(
+            err,
+            persistence,
+            Instant::now(),
+            domain,
+        ));
+    }
+
+    fn preserves_alerts_save_banner(&self) -> bool {
+        self.active_runtime_error.as_ref().is_some_and(|a| {
+            matches!(&a.error, AppError::ConfigSave(s) if s.starts_with(ALERTS_SAVE_ERROR_PREFIX))
+        })
+    }
+
+    pub(crate) fn clear_alerts_save_runtime_error_after_recovery(&mut self) {
+        if self.preserves_alerts_save_banner() {
+            self.active_runtime_error = None;
+        }
+    }
+
+    pub(crate) fn clear_active_runtime_unless_alerts_save(&mut self) {
+        if !self.preserves_alerts_save_banner() {
+            self.active_runtime_error = None;
+        }
+    }
+
+    fn tick_runtime_error_ttl(&mut self) {
+        let Some(active) = &self.active_runtime_error else {
+            return;
+        };
+        if active.persistence != ErrorPersistence::Transient {
+            return;
+        }
+        if active.shown_since.elapsed() >= ERROR_TRANSIENT_TTL {
+            self.active_runtime_error = None;
+        }
+    }
+
+    /// §20.5 — `Ctrl+R` user retry (bypasses throttle once per domain).
+    pub fn retry_last_failed_fetch(&mut self) {
+        match &self.last_failed_fetch {
+            LastFailedFetch::StockQuoteBatch => {
+                self.last_stock_network_poll = None;
+                self.request_immediate_stock_poll();
+            }
+            LastFailedFetch::Historical => {
+                self.last_charts_network_poll = None;
+                if !self.hist_refresh_inflight {
+                    self.try_spawn_historical_fetch();
+                }
+            }
+            LastFailedFetch::News { .. } => {
+                self.last_news_network_poll = None;
+                if !self.news_refresh_inflight {
+                    self.try_spawn_news_fetch();
+                }
+            }
+            LastFailedFetch::Search { .. } => {
+                if !self.search_refresh_inflight && !self.search_query.trim().is_empty() {
+                    self.search_debounce_deadline = Some(Instant::now());
+                    self.try_spawn_search_tick();
+                }
+            }
+            LastFailedFetch::None => {}
+        }
     }
 
     fn provider_ready(&self) -> bool {
@@ -428,7 +546,12 @@ impl App {
         }
 
         if !self.provider_ready() {
-            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
+            self.surface_runtime_error(
+                self.active_tab,
+                ErrorSourceDomain::Stock,
+                AppError::Internal(MISSING_API_KEY_FOR_POLYGON_MSG.to_string()),
+                true,
+            );
             self.ticker_data = None;
             return;
         }
@@ -448,7 +571,10 @@ impl App {
                 Err(_) => FetchDone::Stock {
                     generation,
                     quotes: HashMap::new(),
-                    errors: vec!["quote batch task panicked".to_string()],
+                    errors: vec![(
+                        String::new(),
+                        ProviderError::ApiMessage("quote batch task panicked".into()),
+                    )],
                 },
             };
             if let Err(e) = tx.send(done) {
@@ -462,7 +588,12 @@ impl App {
         });
     }
 
-    fn apply_stock_fetch_done(&mut self, generation: u64, quotes: HashMap<String, TickerResponse>, errors: Vec<String>) {
+    fn apply_stock_fetch_done(
+        &mut self,
+        generation: u64,
+        quotes: HashMap<String, TickerResponse>,
+        errors: Vec<(String, ProviderError)>,
+    ) {
         // Stale batch: a newer `stock_fetch_generation` means another batch is authoritative; keep
         // `stock_refresh_inflight` unchanged (still true if a newer batch is in flight). SPEC §16.2.1.
         if generation != self.stock_fetch_generation {
@@ -478,16 +609,46 @@ impl App {
 
         self.ticker_data = self.watchlist_quotes.get(&self.symbol).cloned();
 
-        if self.ticker_data.is_none() && !errors.is_empty() {
-            self.error_message = Some(errors.join("; "));
-        } else if !errors.is_empty() {
-            self.error_message = Some(format!("Some quotes failed: {}", errors.join("; ")));
-        } else if !self
-            .error_message
-            .as_deref()
-            .is_some_and(|m| m.starts_with(ALERTS_SAVE_ERROR_PREFIX))
-        {
-            self.error_message = None;
+        if !errors.is_empty() {
+            self.last_failed_fetch = LastFailedFetch::StockQuoteBatch;
+            for (sym, pe) in &errors {
+                let ae = AppError::Provider(pe.clone());
+                let line = if sym.is_empty() {
+                    ae.status_line()
+                } else {
+                    format!("{sym}: {}", pe)
+                };
+                push_error_log(&mut self.error_log, self.active_tab, ae.category(), line);
+            }
+            let primary = if self.ticker_data.is_none() && errors.len() == 1 {
+                AppError::Provider(errors[0].1.clone())
+            } else if self.ticker_data.is_none() {
+                AppError::Internal(
+                    errors
+                        .iter()
+                        .map(|(s, e)| format!("{s}: {e}"))
+                        .collect::<Vec<_>>()
+                        .join("; "),
+                )
+            } else {
+                AppError::Internal(format!(
+                    "Some quotes failed: {}",
+                    errors
+                        .iter()
+                        .map(|(s, e)| format!("{s}: {e}"))
+                        .collect::<Vec<_>>()
+                        .join("; ")
+                ))
+            };
+            self.surface_runtime_error(
+                Tab::StockView,
+                ErrorSourceDomain::Stock,
+                primary,
+                false,
+            );
+        } else if !self.preserves_alerts_save_banner() {
+            self.active_runtime_error = None;
+            self.last_failed_fetch = LastFailedFetch::None;
         }
 
         for item in &mut self.portfolio {
@@ -523,7 +684,12 @@ impl App {
         }
 
         if !self.provider_ready() {
-            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
+            self.surface_runtime_error(
+                Tab::Charts,
+                ErrorSourceDomain::Charts,
+                AppError::Internal(MISSING_API_KEY_FOR_POLYGON_MSG.to_string()),
+                true,
+            );
             self.historical_data = None;
             return;
         }
@@ -550,10 +716,7 @@ impl App {
                 polygon_timespan: params.polygon_timespan,
             };
             let provider = market_provider_for(cfg.provider);
-            let result = provider
-                .get_historical(&sym, &hq, &cfg)
-                .await
-                .map_err(|e| e.to_string());
+            let result = provider.get_historical(&sym, &hq, &cfg).await;
             if let Err(e) = tx.send(FetchDone::Historical {
                 symbol: sym,
                 time_range: tr,
@@ -585,7 +748,12 @@ impl App {
         }
 
         if !self.provider_ready() {
-            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
+            self.surface_runtime_error(
+                Tab::News,
+                ErrorSourceDomain::News,
+                AppError::Internal(MISSING_API_KEY_FOR_POLYGON_MSG.to_string()),
+                true,
+            );
             self.news_data = None;
             return;
         }
@@ -600,7 +768,7 @@ impl App {
         let recovery_tx = self.inflight_recovery_tx.clone();
         tokio::spawn(async move {
             let provider = market_provider_for(cfg.provider);
-            let result = provider.get_news(&sym, &cfg).await.map_err(|e| e.to_string());
+            let result = provider.get_news(&sym, &cfg).await;
             if let Err(e) = tx.send(FetchDone::News {
                 symbol: sym,
                 result,
@@ -623,6 +791,7 @@ impl App {
             Tab::Search => self.try_spawn_search_tick(),
             _ => {}
         }
+        self.tick_runtime_error_ttl();
     }
 
     /// Call after `search_query` mutates (typing); schedules debounced API call on Search tab.
@@ -641,7 +810,13 @@ impl App {
         self.search_table_state.select(None);
         self.search_debounce_deadline = None;
         self.search_request_generation = self.search_request_generation.wrapping_add(1);
-        self.error_message = None;
+        if self
+            .active_runtime_error
+            .as_ref()
+            .is_some_and(|a| a.source_domain == ErrorSourceDomain::Search)
+        {
+            self.active_runtime_error = None;
+        }
     }
 
     fn try_spawn_search_tick(&mut self) {
@@ -651,7 +826,12 @@ impl App {
             return;
         }
         if !self.provider_ready() {
-            self.error_message = Some(MISSING_API_KEY_FOR_POLYGON_MSG.to_string());
+            self.surface_runtime_error(
+                Tab::Search,
+                ErrorSourceDomain::Search,
+                AppError::Internal(MISSING_API_KEY_FOR_POLYGON_MSG.to_string()),
+                true,
+            );
             return;
         }
         let Some(deadline) = self.search_debounce_deadline else {
@@ -682,7 +862,7 @@ impl App {
         let recovery_tx = self.inflight_recovery_tx.clone();
         tokio::spawn(async move {
             let provider = market_provider_for(cfg.provider);
-            let result = provider.search_symbols(&query, &cfg).await.map_err(|e| e.to_string());
+            let result = provider.search_symbols(&query, &cfg).await;
             if let Err(e) = tx.send(FetchDone::Search {
                 generation,
                 query,
@@ -820,9 +1000,16 @@ impl App {
             return;
         };
         if let Err(e) = open_article_url(&item.article_url) {
-            self.error_message = Some(format!("Could not open URL: {e}"));
-        } else {
-            self.error_message = None;
+            self.surface_runtime_error(
+                Tab::News,
+                ErrorSourceDomain::NewsOpenUrl,
+                AppError::Internal(format!("Could not open URL: {e}")),
+                true,
+            );
+        } else if self.active_runtime_error.as_ref().is_some_and(|a| {
+            a.source_domain == ErrorSourceDomain::NewsOpenUrl
+        }) {
+            self.active_runtime_error = None;
         }
     }
 
@@ -880,9 +1067,18 @@ impl App {
                 }
                 self.config.refresh_rate = v;
                 if let Err(e) = self.config.try_save() {
-                    self.error_message = Some(format!("Failed to save settings: {e}"));
+                    self.surface_runtime_error(
+                        Tab::Settings,
+                        ErrorSourceDomain::Settings,
+                        AppError::ConfigSave(format!("Failed to save settings: {e}")),
+                        true,
+                    );
                 } else {
-                    self.error_message = None;
+                    if self.active_runtime_error.as_ref().is_some_and(|a| {
+                        a.source_domain == ErrorSourceDomain::Settings
+                    }) {
+                        self.active_runtime_error = None;
+                    }
                     self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
                 }
             }
@@ -894,9 +1090,18 @@ impl App {
                 };
                 self.config.default_symbol = sym;
                 if let Err(e) = self.config.try_save() {
-                    self.error_message = Some(format!("Failed to save settings: {e}"));
+                    self.surface_runtime_error(
+                        Tab::Settings,
+                        ErrorSourceDomain::Settings,
+                        AppError::ConfigSave(format!("Failed to save settings: {e}")),
+                        true,
+                    );
                 } else {
-                    self.error_message = None;
+                    if self.active_runtime_error.as_ref().is_some_and(|a| {
+                        a.source_domain == ErrorSourceDomain::Settings
+                    }) {
+                        self.active_runtime_error = None;
+                    }
                     self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
                 }
             }
@@ -922,9 +1127,18 @@ impl App {
         self.config.notifications_enabled = !self.config.notifications_enabled;
         if let Err(e) = self.config.try_save() {
             self.config.notifications_enabled = !self.config.notifications_enabled;
-            self.error_message = Some(format!("Failed to save settings: {e}"));
+            self.surface_runtime_error(
+                Tab::Settings,
+                ErrorSourceDomain::Settings,
+                AppError::ConfigSave(format!("Failed to save settings: {e}")),
+                true,
+            );
         } else {
-            self.error_message = None;
+            if self.active_runtime_error.as_ref().is_some_and(|a| {
+                a.source_domain == ErrorSourceDomain::Settings
+            }) {
+                self.active_runtime_error = None;
+            }
             self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
         }
     }
@@ -972,10 +1186,23 @@ impl App {
                             &symbol,
                         );
                         self.historical_data = Some(data);
-                        self.error_message = None;
+                        if matches!(self.last_failed_fetch, LastFailedFetch::Historical) {
+                            self.last_failed_fetch = LastFailedFetch::None;
+                        }
+                        if self.active_runtime_error.as_ref().is_some_and(|a| {
+                            a.source_domain == ErrorSourceDomain::Charts
+                        }) {
+                            self.clear_active_runtime_unless_alerts_save();
+                        }
                     }
                     Err(err) => {
-                        self.error_message = Some(format!("Error fetching historical data: {err}"));
+                        self.last_failed_fetch = LastFailedFetch::Historical;
+                        self.surface_runtime_error(
+                            Tab::Charts,
+                            ErrorSourceDomain::Charts,
+                            AppError::Provider(err),
+                            true,
+                        );
                         if self.historical_data.is_none() {
                             self.chart_viewport = ChartViewport::default();
                         }
@@ -992,7 +1219,14 @@ impl App {
                     Ok(data) => {
                         let n = data.results.len();
                         self.news_data = Some(data);
-                        self.error_message = None;
+                        if matches!(self.last_failed_fetch, LastFailedFetch::News { .. }) {
+                            self.last_failed_fetch = LastFailedFetch::None;
+                        }
+                        if self.active_runtime_error.as_ref().is_some_and(|a| {
+                            a.source_domain == ErrorSourceDomain::News
+                        }) {
+                            self.clear_active_runtime_unless_alerts_save();
+                        }
                         if n == 0 {
                             self.news_list_state.select(None);
                         } else {
@@ -1005,7 +1239,15 @@ impl App {
                         }
                     }
                     Err(err) => {
-                        self.error_message = Some(format!("Error fetching news: {err}"));
+                        self.last_failed_fetch = LastFailedFetch::News {
+                            symbol: symbol.clone(),
+                        };
+                        self.surface_runtime_error(
+                            Tab::News,
+                            ErrorSourceDomain::News,
+                            AppError::Provider(err),
+                            true,
+                        );
                         self.news_data = None;
                         self.news_list_state.select(None);
                     }
@@ -1034,7 +1276,14 @@ impl App {
                 match result {
                     Ok(data) => {
                         self.search_results = Some(data);
-                        self.error_message = None;
+                        if matches!(self.last_failed_fetch, LastFailedFetch::Search { .. }) {
+                            self.last_failed_fetch = LastFailedFetch::None;
+                        }
+                        if self.active_runtime_error.as_ref().is_some_and(|a| {
+                            a.source_domain == ErrorSourceDomain::Search
+                        }) {
+                            self.clear_active_runtime_unless_alerts_save();
+                        }
                         let n = self
                             .search_results
                             .as_ref()
@@ -1052,7 +1301,16 @@ impl App {
                         }
                     }
                     Err(e) => {
-                        self.error_message = Some(format!("Error searching symbols: {e}"));
+                        self.last_failed_fetch = LastFailedFetch::Search {
+                            query: query.clone(),
+                            generation,
+                        };
+                        self.surface_runtime_error(
+                            Tab::Search,
+                            ErrorSourceDomain::Search,
+                            AppError::Provider(e),
+                            true,
+                        );
                         self.search_results = None;
                         self.search_table_state.select(None);
                     }
@@ -1135,9 +1393,16 @@ impl App {
         self.symbol = sym;
         self.config.watchlist = self.watchlist.clone();
         if let Err(e) = self.config.try_save() {
-            self.error_message = Some(format!("Failed to save watchlist: {e}"));
-        } else {
-            self.error_message = None;
+            self.surface_runtime_error(
+                Tab::StockView,
+                ErrorSourceDomain::Portfolio,
+                AppError::ConfigSave(format!("Failed to save watchlist: {e}")),
+                true,
+            );
+        } else if self.active_runtime_error.as_ref().is_some_and(|a| {
+            a.source_domain == ErrorSourceDomain::Portfolio
+        }) {
+            self.active_runtime_error = None;
         }
         self.watchlist_state.select(Some(self.watchlist.len().saturating_sub(1)));
         if !same_ticker_case_only {
@@ -1157,9 +1422,16 @@ impl App {
         self.watchlist_quotes.retain(|k, _| self.watchlist.contains(k));
         self.config.watchlist = self.watchlist.clone();
         if let Err(e) = self.config.try_save() {
-            self.error_message = Some(format!("Failed to save watchlist: {e}"));
-        } else {
-            self.error_message = None;
+            self.surface_runtime_error(
+                Tab::StockView,
+                ErrorSourceDomain::Portfolio,
+                AppError::ConfigSave(format!("Failed to save watchlist: {e}")),
+                true,
+            );
+        } else if self.active_runtime_error.as_ref().is_some_and(|a| {
+            a.source_domain == ErrorSourceDomain::Portfolio
+        }) {
+            self.active_runtime_error = None;
         }
 
         if self.watchlist.is_empty() {
@@ -1226,7 +1498,11 @@ impl App {
             self.time_range = tr;
             self.historical_data = None;
             self.chart_viewport = ChartViewport::default();
-            self.error_message = None;
+            if self.active_runtime_error.as_ref().is_some_and(|a| {
+                a.source_domain == ErrorSourceDomain::Charts
+            }) {
+                self.active_runtime_error = None;
+            }
         }
         self.request_immediate_charts_poll();
         if !changed {
@@ -1344,7 +1620,12 @@ impl App {
             Err(e) => {
                 self.portfolio = backup;
                 self.config.portfolio = self.portfolio.clone();
-                self.error_message = Some(e.to_string());
+                self.surface_runtime_error(
+                    Tab::Portfolio,
+                    ErrorSourceDomain::Portfolio,
+                    AppError::ConfigSave(e.to_string()),
+                    true,
+                );
                 false
             }
         }
@@ -1376,7 +1657,12 @@ impl App {
             Err(e) => {
                 self.portfolio = backup;
                 self.config.portfolio = self.portfolio.clone();
-                self.error_message = Some(e.to_string());
+                self.surface_runtime_error(
+                    Tab::Portfolio,
+                    ErrorSourceDomain::Portfolio,
+                    AppError::ConfigSave(e.to_string()),
+                    true,
+                );
                 false
             }
         }
@@ -1439,7 +1725,7 @@ mod tests {
 
         let mut app = App::new();
         app.symbol.clear();
-        app.error_message = None;
+        app.active_runtime_error = None;
         app.portfolio_dialog = Some(PortfolioAddDialog {
             shares_buffer: "1".into(),
             price_buffer: "1".into(),
@@ -1454,7 +1740,7 @@ mod tests {
             .and_then(|d| d.inline_error.as_deref())
             .unwrap_or("");
         assert!(!msg.is_empty(), "expected inline_error");
-        assert!(app.error_message.is_none());
+        assert!(app.active_runtime_error.is_none());
     }
 }
 

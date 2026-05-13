@@ -1,5 +1,7 @@
 use crate::app::alerts::draw_alerts;
+use crate::app::app_error::startup_banner_style;
 use crate::app::charts::draw_charts;
+use crate::app::layout::centered_rect;
 use crate::app::portfolio::draw_portfolio;
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::MarketProviderKind;
@@ -9,7 +11,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table, Tabs},
+    widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Tabs},
     Frame,
     Terminal,
 };
@@ -20,11 +22,13 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
     terminal.draw(|f| {
         let size = f.size();
 
+        let startup_h = u16::from(app.startup_error.is_some()) * 2;
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints(
                 [
                     Constraint::Length(3),
+                    Constraint::Length(startup_h),
                     Constraint::Min(0),
                     Constraint::Length(1),
                 ]
@@ -58,19 +62,112 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
 
         f.render_widget(tabs, chunks[0]);
 
-        match app.active_tab {
-            Tab::StockView => draw_stock_view(f, app, chunks[1]),
-            Tab::Portfolio => draw_portfolio(f, app, chunks[1]),
-            Tab::Alerts => draw_alerts(f, app, chunks[1]),
-            Tab::Search => draw_search(f, app, chunks[1]),
-            Tab::News => draw_news(f, app, chunks[1]),
-            Tab::Charts => draw_charts(f, app, chunks[1]),
-            Tab::Settings => draw_settings(f, app, chunks[1]),
+        if startup_h > 0 {
+            draw_startup_config_banner(f, app, chunks[1]);
         }
 
-        draw_status_bar(f, app, chunks[2]);
+        let body = chunks[2];
+        let status_area = chunks[3];
+
+        match app.active_tab {
+            Tab::StockView => draw_stock_view(f, app, body),
+            Tab::Portfolio => draw_portfolio(f, app, body),
+            Tab::Alerts => draw_alerts(f, app, body),
+            Tab::Search => draw_search(f, app, body),
+            Tab::News => draw_news(f, app, body),
+            Tab::Charts => draw_charts(f, app, body),
+            Tab::Settings => draw_settings(f, app, body),
+        }
+
+        draw_status_bar(f, app, status_area);
+
+        if app.error_log_overlay_open {
+            draw_error_log_overlay(f, app, size);
+        }
     })?;
     Ok(())
+}
+
+fn draw_startup_config_banner(f: &mut Frame, app: &App, area: Rect) {
+    let Some(ref err) = app.startup_error else {
+        return;
+    };
+    let style = startup_banner_style();
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title("Config error")
+        .style(style);
+    let line = Line::from(vec![Span::styled(err.status_line(), style)]);
+    f.render_widget(Paragraph::new(line).block(block), area);
+}
+
+fn error_log_tab_label(tab: Tab) -> &'static str {
+    match tab {
+        Tab::StockView => "Stock",
+        Tab::Portfolio => "Port",
+        Tab::Alerts => "Alerts",
+        Tab::Search => "Search",
+        Tab::News => "News",
+        Tab::Charts => "Charts",
+        Tab::Settings => "Sets",
+    }
+}
+
+fn draw_error_log_overlay(f: &mut Frame, app: &mut App, full: Rect) {
+    let popup = centered_rect(full, 78, 70);
+    f.render_widget(Clear, popup);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title("Recent errors")
+        .border_style(Style::default().fg(Color::Yellow));
+    let inner = block.inner(popup);
+    f.render_widget(block, popup);
+
+    let footer_h = 2u16;
+    let list_h = inner.height.saturating_sub(footer_h);
+    let visible = list_h.max(1) as usize;
+    let total = app.error_log.len();
+    let max_scroll = total.saturating_sub(visible);
+    app.error_log_scroll = app.error_log_scroll.min(max_scroll);
+
+    let entries: Vec<_> = app.error_log.iter().collect();
+    let window: Vec<ListItem> = entries
+        .iter()
+        .skip(app.error_log_scroll)
+        .take(visible)
+        .map(|e| {
+            let t = e.when.format("%H:%M:%S").to_string();
+            let tab_s = error_log_tab_label(e.tab);
+            let cat = e.category.as_prefix().trim_end_matches(' ');
+            let row = format!("{t} {tab_s:>6} {cat} {}", truncate_visual(&e.line, 96));
+            ListItem::new(Line::from(Span::raw(row)))
+        })
+        .collect();
+
+    let list = List::new(window).style(Style::default().fg(Color::White));
+    let list_area = Rect {
+        x: inner.x,
+        y: inner.y,
+        width: inner.width,
+        height: list_h,
+    };
+    f.render_widget(list, list_area);
+
+    let footer_y = inner.y + list_h;
+    let footer_area = Rect {
+        x: inner.x,
+        y: footer_y,
+        width: inner.width,
+        height: footer_h,
+    };
+    let footer = Paragraph::new(Line::from(vec![
+        Span::styled(
+            "Esc close · j/↓ k/↑ scroll · PgUp/PgDn",
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]));
+    f.render_widget(footer, footer_area);
 }
 
 fn resolve_quote(app: &App) -> Option<&TickerResponse> {
@@ -289,9 +386,9 @@ fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect) {
         ];
 
         f.render_widget(Paragraph::new(text).block(block), area);
-    } else if let Some(error) = &app.error_message {
+    } else if let Some(error) = app.error_message().as_deref() {
         let text = vec![Line::from(vec![Span::styled(
-            error.as_str(),
+            error,
             Style::default().fg(Color::Red),
         )])];
         f.render_widget(Paragraph::new(text).block(block), area);
@@ -586,8 +683,8 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
-    let status = if let Some(error) = &app.error_message {
-        Line::from(vec![Span::styled(error.as_str(), Style::default().fg(Color::Red))])
+    let status = if let Some(error) = app.error_message() {
+        Line::from(vec![Span::styled(error, Style::default().fg(Color::Red))])
     } else if app.active_tab == Tab::Search && app.search_refresh_inflight {
         Line::from(vec![Span::styled(
             "Searching…",
@@ -604,7 +701,7 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
             Style::default().fg(Color::Cyan),
         )])
     } else {
-        match app.active_tab {
+        let mut line = match app.active_tab {
             Tab::StockView => Line::from(vec![
                 Span::raw("q quit · Tab tabs · "),
                 Span::styled("A–Z", Style::default().fg(Color::Yellow)),
@@ -646,7 +743,15 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
             _ => Line::from(vec![Span::raw(
                 "q quit · Tab tabs · see Stock View for watchlist keys",
             )]),
-        }
+        };
+        line.spans.extend([
+            Span::raw(" · "),
+            Span::styled("^E", Style::default().fg(Color::Yellow)),
+            Span::raw(" error log · "),
+            Span::styled("^R", Style::default().fg(Color::Yellow)),
+            Span::raw(" retry"),
+        ]);
+        line
     };
 
     let paragraph = Paragraph::new(status);

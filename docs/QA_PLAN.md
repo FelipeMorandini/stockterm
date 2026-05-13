@@ -708,6 +708,8 @@ _Automated §19.8 coverage in `cargo test`; **manual** steps below still require
 
 - [GitHub Issue #20](https://github.com/FelipeMorandini/stockterm/issues/20) — **`AppError`** + **`UiErrorCategory`** prefixes on the status line; **`retry in Ns`** hint for **`ProviderError::RateLimited`**; ring buffer (**20**) with overlay; **retry** last failed fetch for the active tab domain; **transient** errors auto-clear (**10 s** TTL or success); **sticky** errors until resolved; **startup** vs **runtime** visual distinction.
 
+**Follow-up issues (post-ship `/audit` scratchpad):** [#120](https://github.com/FelipeMorandini/stockterm/issues/120) (unify error-log overlay visible rows for scroll vs draw), [#121](https://github.com/FelipeMorandini/stockterm/issues/121) (avoid mutating `error_log_scroll` inside draw), [#122](https://github.com/FelipeMorandini/stockterm/issues/122) (document `ProviderError::Clone` / `Json` mapping), [#123](https://github.com/FelipeMorandini/stockterm/issues/123) (`q` quit vs overlay — product/QA).
+
 **Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §20. **HTTP behavior** matches [`docs/SPEC.md`](SPEC.md) §19 / Issue #18 (`ProviderError`, retries).
 
 **Binding note (SPEC §20.1):** [Issue #20](https://github.com/FelipeMorandini/stockterm/issues/20) suggests plain **`e`** / **`r`**; Stock View and Search use plain letters for symbol/query input. Manual steps below use **`Ctrl+E`** (error log) and **`Ctrl+R`** (retry) as the **canonical** chords. **Pass** = behavior matches §20.1, not bare **`e`**/**`r`** on Stock View.
