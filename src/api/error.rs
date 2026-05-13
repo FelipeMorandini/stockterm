@@ -15,11 +15,34 @@ pub enum ProviderError {
     RateLimited {
         retry_after: Option<Duration>,
     },
+    /// JSON deserialization failure.
+    ///
+    /// **Caveat (Issue #122 / SPEC §20.15.3):** this variant is *not*
+    /// preserved across [`Clone`]. [`serde_json::Error`] is not [`Clone`], so
+    /// `<ProviderError as Clone>::clone` lossily maps it to
+    /// [`ProviderError::ApiMessage`] with body `"Invalid JSON response: {e}"`.
+    /// Callers that want to branch on parse failure MUST do so on the *first*
+    /// observation of the error (before it is moved into
+    /// [`crate::app::FetchDone`], [`crate::app::app_error::AppError::Provider`],
+    /// or any field that may be cloned later).
+    ///
+    /// The pre-clone parse-failure path renders as `[parse]` on the status
+    /// line ([`crate::app::app_error::category_from_provider`]); the post-clone
+    /// surface renders as `[api]` and is `Sticky` (per
+    /// [`crate::app::app_error::persistence_for_provider`]).
+    ///
+    /// If a future caller requires structured JSON-failure data to survive
+    /// cloning, switch the variant to `Json(std::sync::Arc<serde_json::Error>)`
+    /// (or equivalent). That is an opt-in, breaking-API change tracked
+    /// separately from Issue #122.
     Json(serde_json::Error),
     ApiMessage(String),
     Transport(String),
 }
 
+/// Lossy [`Clone`] for the [`ProviderError::Json`] arm: see that variant's
+/// docs for the rationale and the `Arc<serde_json::Error>` follow-up. All
+/// other variants are deep-cloned faithfully (Issue #122 / SPEC §20.15.3).
 impl Clone for ProviderError {
     fn clone(&self) -> Self {
         match self {
@@ -129,5 +152,28 @@ mod tests {
             body_snippet: Some("access denied".to_string()),
         };
         assert!(e.to_string().contains("access denied"));
+    }
+
+    /// Issue #122 / SPEC §20.15.3 — `<ProviderError as Clone>::clone` lossily
+    /// maps the [`ProviderError::Json`] arm to [`ProviderError::ApiMessage`].
+    /// Locks the contract documented on the `Json` variant so future code
+    /// does not regress (e.g. a refactor to `Arc<serde_json::Error>` would
+    /// flip this assertion and is an intentional, breaking-API change).
+    #[test]
+    fn clone_of_json_becomes_api_message() {
+        let json_err = serde_json::from_str::<u32>("not a number").unwrap_err();
+        let original = ProviderError::Json(json_err);
+        assert!(matches!(original, ProviderError::Json(_)));
+
+        let cloned = original.clone();
+        match cloned {
+            ProviderError::ApiMessage(s) => {
+                assert!(
+                    s.starts_with("Invalid JSON response: "),
+                    "post-clone message body: {s:?}"
+                );
+            }
+            other => panic!("expected ApiMessage after clone, got {other:?}"),
+        }
     }
 }

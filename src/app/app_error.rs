@@ -102,6 +102,14 @@ impl AppError {
     }
 }
 
+/// Status-bar category for a [`ProviderError`].
+///
+/// Note (Issue #122 / SPEC §20.15.3): the [`UiErrorCategory::Api`] arm via
+/// [`ProviderError::ApiMessage`] silently includes any *cloned*
+/// [`ProviderError::Json`] errors — `<ProviderError as Clone>::clone` lossily
+/// maps the `Json` arm to `ApiMessage`. See [`ProviderError::Json`] for the
+/// post-clone contract; classify parse failures on the first observation
+/// (before cloning into [`AppError::Provider`]) if `[parse]` is required.
 pub fn category_from_provider(pe: &ProviderError) -> UiErrorCategory {
     match pe {
         ProviderError::Timeout | ProviderError::Transport(_) => UiErrorCategory::Net,
@@ -126,16 +134,13 @@ pub enum ErrorPersistence {
 }
 
 pub fn persistence_for_app_error(err: &AppError) -> ErrorPersistence {
+    // SPEC §20.6 — `AppError::ConfigSave` and every `AppError::Internal` flavor
+    // (including the `Polygon provider requires …` config-shape error) are
+    // currently `Sticky`; only `Provider` differentiates `Transient` vs
+    // `Sticky` (see `persistence_for_provider`).
     match err {
         AppError::Provider(pe) => persistence_for_provider(pe),
-        AppError::ConfigSave(_) => ErrorPersistence::Sticky,
-        AppError::Internal(s) => {
-            if s.starts_with("Polygon provider requires") {
-                ErrorPersistence::Sticky
-            } else {
-                ErrorPersistence::Sticky
-            }
-        }
+        AppError::ConfigSave(_) | AppError::Internal(_) => ErrorPersistence::Sticky,
     }
 }
 

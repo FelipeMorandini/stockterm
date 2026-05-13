@@ -2237,4 +2237,271 @@ After maintainer approval of §20, implementation may proceed per `.cursor/rules
 ### 20.14 Implementation record
 
 - **Status:** **Implemented** in-tree — `AppError` / `ActiveErrorState`, `error_message()` status line, `startup_error` banner, `error_log` + `Ctrl+E` overlay (`draw_error_log_overlay`), `Ctrl+R` → `retry_last_failed_fetch`, transient TTL tick, `LastFailedFetch` wiring in fetch paths; alerts/portfolio save paths use `surface_runtime_error`.
-- **Tracking:** [Issue #20](https://github.com/FelipeMorandini/stockterm/issues/20).
+- **Tracking:** [Issue #20](https://github.com/FelipeMorandini/stockterm/issues/20). **Pull request:** [#124](https://github.com/FelipeMorandini/stockterm/pull/124).
+
+### 20.15 Issues #120, #121, #122, #123 — Error log overlay & `ProviderError::Clone` post-ship polish
+
+**Sources (post-ship `/audit` 2026-05-12 of [PR #124](https://github.com/FelipeMorandini/stockterm/pull/124)):**
+
+- [GitHub Issue #120](https://github.com/FelipeMorandini/stockterm/issues/120) — error log overlay: unify visible-row count for keyboard scroll bound (today: fixed **`ERROR_LOG_OVERLAY_VISIBLE_ROWS = 12`** in [`src/app/handlers.rs`](../src/app/handlers.rs)) with the value used by [`src/app/ui.rs`](../src/app/ui.rs) `draw_error_log_overlay` (today: derived from **`inner.height - footer_h`** of the live layout). After a terminal resize, **`j`/`k`** can disagree with what was painted until the next frame.
+- [GitHub Issue #121](https://github.com/FelipeMorandini/stockterm/issues/121) — error log overlay: **`draw_error_log_overlay`** mutates **`app.error_log_scroll`** when clamping to **`max_scroll`**. Render must not mutate scroll state; clamp must live with input.
+- [GitHub Issue #122](https://github.com/FelipeMorandini/stockterm/issues/122) — document or narrow **`ProviderError::Clone`** **`Json` → `ApiMessage`** mapping in [`src/api/error.rs`](../src/api/error.rs). Today **`Clone`** turns **`Json(serde_json::Error)`** into **`ApiMessage(format!("Invalid JSON response: {e}"))`** so any code matching on **`ProviderError::Json`** *after a clone* will silently miss the variant.
+- [GitHub Issue #123](https://github.com/FelipeMorandini/stockterm/issues/123) — UX: while **`error_log_overlay_open`**, **`handle_event`** routes to overlay-only keys, so **`q`** does not quit until the user closes the overlay with **Esc**. Decision needed: treat **`q`** as always-quit, or document **Esc**-first.
+
+**Depends on:** §20.1 (global **`Ctrl+E`** / **`Ctrl+R`** + overlay key routing), §20.4 (**`error_log` ring + overlay**), §19.3 (**`ProviderError`** taxonomy). **Related:** [Issue #103](https://github.com/FelipeMorandini/stockterm/issues/103) (older scratch coordination).
+
+#### 20.15.1 Issue #120 — Single source of truth for overlay visible rows
+
+**Problem.** [`src/app/handlers.rs`](../src/app/handlers.rs) clamps **`error_log_scroll`** with the constant **`ERROR_LOG_OVERLAY_VISIBLE_ROWS = 12`**:
+
+```rust
+let max_scroll = total.saturating_sub(
+    ERROR_LOG_OVERLAY_VISIBLE_ROWS.min(total.max(1)),
+);
+```
+
+…while [`src/app/ui.rs`](../src/app/ui.rs) `draw_error_log_overlay` uses the live layout:
+
+```rust
+let footer_h = 2u16;
+let list_h = inner.height.saturating_sub(footer_h);
+let visible = list_h.max(1) as usize;
+```
+
+On any terminal where `inner.height - footer_h ≠ 12` (which is essentially every non-default size after the **70%** popup constant in `centered_rect`), the input bound and the painted window disagree.
+
+**Implementation (Rust):**
+
+1. **`src/app/app.rs`** — add a new field on `App`:
+
+   ```rust
+   /// Issue #120 — last layout-derived row count of the error log overlay's
+   /// list area (excludes border + footer). Updated by `draw_error_log_overlay`
+   /// every frame the overlay is open; consumed by overlay key handlers in
+   /// `handlers.rs`. Defaults to `1` (a safe, non-zero floor) when the overlay
+   /// has never been drawn at the current size.
+   pub(crate) error_log_visible_rows: usize,
+   ```
+
+   Initialize to **`1`** in `App::new` (alongside the existing **`error_log_scroll: 0`**).
+
+2. **`src/app/app.rs`** — add a small helper:
+
+   ```rust
+   /// Issue #120 / #121 — clamp `error_log_scroll` against the most recently
+   /// rendered visible-row count and the current `error_log` length. Idempotent;
+   /// safe to call from input handlers and on overlay open/toggle.
+   pub(crate) fn clamp_error_log_scroll(&mut self) {
+       let total = self.error_log.len();
+       let visible = self.error_log_visible_rows.max(1);
+       let max_scroll = total.saturating_sub(visible);
+       if self.error_log_scroll > max_scroll {
+           self.error_log_scroll = max_scroll;
+       }
+   }
+   ```
+
+3. **`src/app/handlers.rs`** — replace the file-private constant with computation against the stored value, and call `clamp_error_log_scroll` after each scroll mutation:
+
+   ```rust
+   // Remove ERROR_LOG_OVERLAY_VISIBLE_ROWS. Keep ERROR_LOG_OVERLAY_PAGE_ROWS
+   // as the *default* page step; derive an adaptive page step at small heights
+   // so PgDn never overshoots a tiny visible window.
+   const ERROR_LOG_OVERLAY_PAGE_ROWS: usize = 10;
+
+   fn overlay_page_rows(app: &App) -> usize {
+       // One row of context overlap, like vim's Ctrl-D/F.
+       let visible = app.error_log_visible_rows.max(1);
+       ERROR_LOG_OVERLAY_PAGE_ROWS.min(visible.saturating_sub(1).max(1))
+   }
+   ```
+
+   Inside `handle_error_log_overlay_keys`:
+
+   - **Function-entry clamp (canonical pattern, round-2 audit refinement):** Call `app.clamp_error_log_scroll()` *first*, before the `match key` block. This guarantees every overlay input acts on a value freshly clamped against the most recent layout-derived `error_log_visible_rows` published by `draw_error_log_overlay`. Without this, a recent terminal **resize-larger** (which shrinks `max_scroll` but not `error_log_scroll`, since draw is scroll-read-only per §20.15.2) would leave `k` / `PageUp` "dead" for many key presses — `saturating_sub` would walk down a stale field while the local-clamp in draw masks the staleness for *rendering* only.
+   - On **`j`/`Down`**: `app.error_log_scroll = app.error_log_scroll.saturating_add(1); app.clamp_error_log_scroll();` (post-mutation clamp left in place as defense-in-depth; idempotent.)
+   - On **`k`/`Up`**: `app.error_log_scroll = app.error_log_scroll.saturating_sub(1);` (entry-clamp covers the upper bound; `saturating_sub` covers the lower bound.)
+   - On **`PageDown`**: `app.error_log_scroll = app.error_log_scroll.saturating_add(overlay_page_rows(app)); app.clamp_error_log_scroll();`
+   - On **`PageUp`**: `app.error_log_scroll = app.error_log_scroll.saturating_sub(overlay_page_rows(app));`
+
+4. **`src/app/handlers.rs`** — when **`Ctrl+E`** *opens* the overlay (today the toggle in `handle_event`), call `app.clamp_error_log_scroll()` right after `app.error_log_overlay_open = !app.error_log_overlay_open;` so a stale `error_log_scroll` (e.g., from a long log earlier this session before ring evictions) does not paint past `max_scroll` on the first frame.
+
+5. **First-frame contract.** Until the overlay's *first* draw, `error_log_visible_rows` retains its initialized value of **`1`** (or whatever the previous open of the overlay observed). Pressing **`j`** before the first frame can therefore advance by at most one row; the next draw immediately re-clamps via §20.15.2 read-only logic. This is the documented one-frame staleness window — acceptable per §20.4 ("pure render + input" branch).
+
+**Async / threading:** None — overlay key handling and draw both run on the UI loop.
+
+#### 20.15.2 Issue #121 — Render must not mutate `error_log_scroll`
+
+**Problem.** [`src/app/ui.rs`](../src/app/ui.rs) `draw_error_log_overlay` currently writes:
+
+```rust
+app.error_log_scroll = app.error_log_scroll.min(max_scroll);
+```
+
+This makes draw a side-effecting function of state, complicating future `ratatui::backend::TestBackend` snapshot tests (M7) and bypassing the input-side single source of truth from §20.15.1.
+
+**Implementation (Rust):**
+
+1. **`src/app/ui.rs`** — `draw_error_log_overlay` becomes **read-only with respect to scroll**:
+
+   ```rust
+   fn draw_error_log_overlay(f: &mut Frame, app: &mut App, full: Rect) {
+       // ... existing block / inner / footer layout ...
+       let visible = list_h.max(1) as usize;
+
+       // Issue #120 — publish the *layout-derived* visible row count for the
+       // input handlers in `handlers.rs`; `error_log_scroll` itself is NOT
+       // touched here (Issue #121).
+       app.error_log_visible_rows = visible;
+
+       let total = app.error_log.len();
+       let max_scroll = total.saturating_sub(visible);
+       let scroll = app.error_log_scroll.min(max_scroll); // local read clamp
+       // ... use `scroll` (not `app.error_log_scroll`) in `.skip(scroll).take(visible)` ...
+   }
+   ```
+
+   Rationale: writing the *layout metadata* (`error_log_visible_rows`) on each frame is necessary plumbing for §20.15.1 and is **not** scroll state. Writing `error_log_scroll` is scroll state and is forbidden in draw.
+
+2. **`src/app/app.rs`** — provide the `clamp_error_log_scroll()` helper from §20.15.1 and *also* call it in any path that **shrinks** the log (today: only the ring eviction in `push_error_log`; if a future "Clear log" action lands, that path must call `clamp_error_log_scroll` too — note in code).
+
+3. **No QA-visible behavior change** for operators when the bound from §20.15.1 already matches the live layout — pass criterion is "behavior unchanged for operators" (Issue #121 acceptance).
+
+**Async / threading:** None.
+
+#### 20.15.3 Issue #122 — Document `ProviderError::Clone` Json mapping
+
+**Problem.** [`src/api/error.rs`](../src/api/error.rs) `impl Clone for ProviderError` lossily maps the `Json(serde_json::Error)` arm to `ApiMessage`:
+
+```rust
+ProviderError::Json(e) => {
+    ProviderError::ApiMessage(format!("Invalid JSON response: {e}"))
+}
+```
+
+This is required because `serde_json::Error` is **not** `Clone`, and `FetchDone` / `AppError::Provider(ProviderError)` *must* be `Clone` (e.g., to surface the same error in both `active_runtime_error` and `error_log`). The post-clone surface is therefore an `ApiMessage`, which today maps to **`[api]`** + `Sticky` (see [`src/app/app_error.rs`](../src/app/app_error.rs) `category_from_provider` / `persistence_for_provider`).
+
+**Decision (this slice):** Keep current behavior (no `Arc<serde_json::Error>` rework yet), but make the contract explicit so future code does not silently regress.
+
+**Implementation (Rust, doc-only behavior; no logic change):**
+
+1. **`src/api/error.rs`** — add Rustdoc `///` comments above:
+
+   - The `Json(serde_json::Error)` variant declaration:
+
+     ```rust
+     /// JSON deserialization failure. **Caveat:** this variant is *not*
+     /// preserved across `Clone`. `serde_json::Error` is not `Clone`, so
+     /// `<ProviderError as Clone>::clone` lossily maps it to
+     /// [`ProviderError::ApiMessage`] with body `"Invalid JSON response: {e}"`.
+     /// Callers that want to branch on parse failure MUST do so on the *first*
+     /// observation of the error (before it is moved into `FetchDone`,
+     /// `AppError::Provider`, or any field that may be cloned later).
+     /// The pre-clone parse-failure path renders as **`[parse]`** on the
+     /// status line ([`crate::app::app_error::category_from_provider`]); the
+     /// post-clone surface renders as **`[api]`** + sticky.
+     Json(serde_json::Error),
+     ```
+
+   - The `impl Clone for ProviderError` block:
+
+     ```rust
+     /// Lossy `Clone` for the JSON arm: see [`ProviderError::Json`] for the
+     /// rationale. All other variants are deep-cloned faithfully. If a future
+     /// caller requires structured JSON-failure data to survive cloning,
+     /// switch the variant to `Json(std::sync::Arc<serde_json::Error>)` (or
+     /// equivalent) — that is an opt-in, breaking-API change tracked
+     /// separately from Issue #122.
+     impl Clone for ProviderError { ... }
+     ```
+
+2. **`src/app/app_error.rs`** — add a one-line `///` to `category_from_provider` noting that `ApiMessage` arms include any *cloned* `Json` errors per [`crate::api::error::ProviderError::Json`]. This keeps `[api]` mapping consistent and auditable.
+
+3. **No new unit test** is required by the Issue #122 acceptance ("docs updated; no silent surprises in new match arms"). A `#[test]` that constructs `ProviderError::Json(serde_json::from_str::<u8>("not a number").unwrap_err())`, `clone()`s it, and asserts `matches!(cloned, ProviderError::ApiMessage(_))` is **recommended** as a cheap regression guard for the documented contract; place under `#[cfg(test)] mod tests` next to the existing `Display` tests.
+
+**Crate / files:** [`src/api/error.rs`](../src/api/error.rs) (docs + optional test); [`src/app/app_error.rs`](../src/app/app_error.rs) (doc only).
+
+#### 20.15.4 Issue #123 — `q` should quit while error log overlay is open
+
+**Decision.** **Adopt Option 1 from the issue body:** treat **`q`** as always-quit, handled *before* the overlay early-return, mirroring the global handling of **`Ctrl+E`** (toggle) and **`Ctrl+R`** (retry). Rationale:
+
+- Consistency with the rest of the app: every modeless overlay/dialog in [`src/app/portfolio.rs`](../src/app/portfolio.rs) (add) and [`src/app/alerts.rs`](../src/app/alerts.rs) (add) only swallow text-input keys, not the global quit.
+- The `[Issue #123]` body lists "Treat **q** as always quit" as the first option; product preference is fewer Esc-then-q drills.
+- `Esc` retains its current meaning ("close overlay") — symmetric with `SettingsEdit` text-buffer Esc.
+
+**Implementation (Rust):**
+
+1. **`src/app/handlers.rs`** — in `handle_event`, *before* the existing `Ctrl+E` / `Ctrl+R` global block (or grouped immediately after them), add a global match:
+
+   ```rust
+   if matches!(
+       key,
+       KeyEvent {
+           code: KeyCode::Char('q'),
+           modifiers: KeyModifiers::NONE,
+           ..
+       }
+   ) {
+       app.should_quit = true;
+       return;
+   }
+   ```
+
+   - This must fire *whether or not* the overlay is open.
+   - **`Shift+Q`** / **`Ctrl+Q`** are deliberately **not** handled here (no behavior change vs today).
+   - Inside `handle_error_log_overlay_keys`, the existing match arms on `Esc` / `j` / `k` / `PageUp` / `PageDown` are unchanged — `q` no longer reaches that function.
+
+2. **`src/app/handlers.rs`** — remove the now-dead bare-`q` arm from the post-overlay `match key` block (the global handler claimed it). All other tab-handler `q` typing is **already** unreachable for plain `q` (Stock View typed `q` would be lowercased then uppercased to `Q`; with the global handler, plain `q` quits and `Shift+Q` continues to insert as today).
+
+3. **Stock View typing regression check.** Stock View `handle_stock_view_keys` matches `KeyEvent { code: KeyCode::Char(c), modifiers, .. } if c.is_ascii_alphabetic() && letter_key_plain(modifiers)` and pushes `c.to_ascii_uppercase()`. Plain `q` previously hit the `KeyCode::Char('q'), modifiers: NONE` arm in the top-level match (quit), so this is **not** a regression — typing `q` into the symbol buffer is already *not* possible today. Document this in the QA cross-check (§QA — Manual — Issue #123 regression).
+
+4. **Search tab.** `search_query_char(c)` returns true for ASCII alphanumerics; `q` *would* have been appendable today *if* it weren't already swallowed by the top-level quit handler. The global `q`-quit preserves this behavior — typing `q` while on Search continues to quit, not to append `Q` to the query. (If product later wants alphabetic search to include `q`, that requires a separate decision and SPEC update — out of scope for #123.)
+
+**Crate / files:** [`src/app/handlers.rs`](../src/app/handlers.rs) only.
+
+**Async / threading:** None.
+
+#### 20.15.5 Crate / module summary
+
+| Issue | Primary touch |
+|-------|----------------|
+| #120 | [`src/app/app.rs`](../src/app/app.rs) — new `error_log_visible_rows` field + `clamp_error_log_scroll()` helper; [`src/app/handlers.rs`](../src/app/handlers.rs) — drop fixed visible-rows constant, derive page step. |
+| #121 | [`src/app/ui.rs`](../src/app/ui.rs) — `draw_error_log_overlay` becomes scroll-read-only; publishes `error_log_visible_rows` only. |
+| #122 | [`src/api/error.rs`](../src/api/error.rs) — Rustdoc on `Json` variant + `Clone` impl; optional clone-mapping `#[test]`. [`src/app/app_error.rs`](../src/app/app_error.rs) — one-line doc on `category_from_provider`. |
+| #123 | [`src/app/handlers.rs`](../src/app/handlers.rs) — global plain-`q` quit branch before overlay early-return; remove redundant bare-`q` arm in tab dispatch. |
+
+#### 20.15.6 Automated verification
+
+- **`cargo build --release`**, **`cargo clippy -- -D warnings`**, **`cargo test`** with default features and **`--no-default-features`**.
+- **New unit tests (recommended, in [`src/app/app.rs`](../src/app/app.rs) `#[cfg(test)] mod tests` or a new `mod overlay_tests`):**
+  - `clamp_error_log_scroll` is idempotent and respects `error_log_visible_rows`:
+    1. Push **30** entries to `app.error_log` (cap is **20**; expect 20 retained).
+    2. Set `app.error_log_visible_rows = 5;` and `app.error_log_scroll = 99;` → call `clamp_error_log_scroll()` → expect `app.error_log_scroll == 15` (`20 - 5`).
+    3. Set `app.error_log_visible_rows = 100;` → `clamp_error_log_scroll()` → expect `app.error_log_scroll == 0`.
+    4. Empty log + `error_log_visible_rows = 1` → `error_log_scroll` clamps to **0** (no underflow).
+- **Optional unit test in [`src/api/error.rs`](../src/api/error.rs):** `clone_of_json_becomes_api_message` — see §20.15.3 step 3.
+- **No new `wiremock` integration** — HTTP semantics unchanged.
+
+#### 20.15.7 Out of scope
+
+- Replacing `ProviderError::Json(serde_json::Error)` with `Arc<serde_json::Error>` (deferred; would require auditing every match arm; Issue #122 explicitly lists this as an alternative future path).
+- `ratatui::backend::TestBackend` snapshot test for the overlay (deferred to M7 testing milestone — §20.15.2 is a *prerequisite* for that work).
+- Persisting overlay open/scroll across sessions.
+- Adding a "Clear error log" action.
+- A keymap config for `q` vs `Esc` (no `Config` schema change).
+
+#### 20.15.8 Approval
+
+After maintainer approval of §20.15, implementation may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and [`docs/QA_PLAN.md`](QA_PLAN.md) (Issues #120, #121, #122, #123 section).
+
+#### 20.15.9 Implementation record
+
+- **Status:** Implemented (2026-05-12). **`cargo build --release`**, **`cargo clippy -- -D warnings`** (default + **`--no-default-features`**), and **`cargo test`** (75 passing on both feature configurations). Manual sign-off: [`docs/QA_PLAN.md`](QA_PLAN.md) "Issues #120, #121, #122, #123" — **pending operator**.
+- **Code:**
+  - **#120:** [`src/app/app.rs`](../src/app/app.rs) — new `App.error_log_visible_rows: usize` (init `1`) + `pub(crate) fn clamp_error_log_scroll(&mut self)` helper. [`src/app/handlers.rs`](../src/app/handlers.rs) — dropped `ERROR_LOG_OVERLAY_VISIBLE_ROWS = 12`; added adaptive `overlay_page_rows(&App)` (clamped to `min(10, visible.saturating_sub(1).max(1))`); clamp on **`Ctrl+E`** open.
+  - **#121:** [`src/app/ui.rs`](../src/app/ui.rs) — `draw_error_log_overlay` is now scroll-read-only (publishes `error_log_visible_rows` from layout; uses a *local* `let scroll = app.error_log_scroll.min(max_scroll);` for `.skip(...)`).
+  - **Round-2 audit follow-up (function-entry clamp):** [`src/app/handlers.rs`](../src/app/handlers.rs) `handle_error_log_overlay_keys` — calls `app.clamp_error_log_scroll()` *before* the input `match`, fixing dead `k` / `PageUp` after a terminal resize-larger (the local-clamp in draw masks staleness for rendering only).
+  - **#122:** [`src/api/error.rs`](../src/api/error.rs) — Rustdoc on `ProviderError::Json` (lossy-clone caveat + `[parse]` → `[api]` consequence + deferred `Arc<serde_json::Error>` follow-up) and on `impl Clone for ProviderError`. [`src/app/app_error.rs`](../src/app/app_error.rs) — one-line `///` on `category_from_provider`; collapsed pre-existing `if_same_then_else` lint in `persistence_for_app_error` (semantics-preserving).
+  - **#123:** [`src/app/handlers.rs`](../src/app/handlers.rs) — global plain-`q` quit branch placed *before* the overlay early-return; redundant bare-`q` arm removed from tab dispatch. **`Esc`** still closes the overlay; **`Ctrl+R`** still retries while overlay is open.
+- **Tests:** Five new helper unit tests in [`src/app/app.rs`](../src/app/app.rs) `mod tests` (`clamp_error_log_scroll_clamps_to_total_minus_visible`, `..._visible_exceeds_total_resets_to_zero`, `..._empty_log_no_underflow`, `..._is_idempotent`, `error_log_visible_rows_initial_floor_is_nonzero`). Two scenario regression tests (`push_error_log_then_clamp_keeps_bottom_anchored`, `resize_larger_does_not_strand_k_against_stale_scroll` — drives `handle_event` end-to-end). One `Clone`-contract guard in [`src/api/error.rs`](../src/api/error.rs) (`clone_of_json_becomes_api_message`).
+- **Tracking:** [Issue #120](https://github.com/FelipeMorandini/stockterm/issues/120), [Issue #121](https://github.com/FelipeMorandini/stockterm/issues/121), [Issue #122](https://github.com/FelipeMorandini/stockterm/issues/122), [Issue #123](https://github.com/FelipeMorandini/stockterm/issues/123). **Pull request:** to be linked after open.
