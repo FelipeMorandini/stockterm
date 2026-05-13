@@ -127,14 +127,20 @@ fn draw_error_log_overlay(f: &mut Frame, app: &mut App, full: Rect) {
     let footer_h = 2u16;
     let list_h = inner.height.saturating_sub(footer_h);
     let visible = list_h.max(1) as usize;
+
+    // Issue #120 / SPEC §20.15.1 — publish the layout-derived visible-row count
+    // for the overlay key handlers in `handlers.rs`. This is layout metadata,
+    // not scroll state. Scroll itself is read-only here per Issue #121.
+    app.error_log_visible_rows = visible;
+
     let total = app.error_log.len();
     let max_scroll = total.saturating_sub(visible);
-    app.error_log_scroll = app.error_log_scroll.min(max_scroll);
+    let scroll = app.error_log_scroll.min(max_scroll);
 
     let entries: Vec<_> = app.error_log.iter().collect();
     let window: Vec<ListItem> = entries
         .iter()
-        .skip(app.error_log_scroll)
+        .skip(scroll)
         .take(visible)
         .map(|e| {
             let t = e.when.format("%H:%M:%S").to_string();

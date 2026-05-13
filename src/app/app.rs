@@ -168,6 +168,14 @@ pub struct App {
     pub error_log: VecDeque<ErrorLogEntry>,
     pub error_log_overlay_open: bool,
     pub error_log_scroll: usize,
+    /// Issue #120 / SPEC §20.15.1 — last layout-derived row count of the error
+    /// log overlay's list area (excludes border + footer). Updated by
+    /// `draw_error_log_overlay` every frame the overlay is open; consumed by
+    /// `handle_error_log_overlay_keys` in [`crate::app::handlers`] to clamp
+    /// `error_log_scroll` against the *painted* viewport. Defaults to `1` (a
+    /// safe non-zero floor) until the first frame is drawn at the current
+    /// terminal size.
+    pub error_log_visible_rows: usize,
     pub last_failed_fetch: LastFailedFetch,
     pub search_query: String,
     pub search_table_state: TableState,
@@ -338,6 +346,7 @@ impl App {
             error_log: VecDeque::new(),
             error_log_overlay_open: false,
             error_log_scroll: 0,
+            error_log_visible_rows: 1,
             last_failed_fetch: LastFailedFetch::None,
             search_query: String::new(),
             search_table_state: TableState::default(),
@@ -400,6 +409,11 @@ impl App {
                 err.category(),
                 err.status_line(),
             );
+            // SPEC §20.15.2 — ring eviction shrinks the log, so re-clamp the
+            // overlay scroll. Without this, a user scrolled to the bottom of
+            // the overlay sees a "dead `k`" once after each new push (Issue
+            // #120 / #121 audit follow-up).
+            self.clamp_error_log_scroll();
         }
         let persistence = persistence_for_app_error(&err);
         self.active_runtime_error = Some(ActiveErrorState::new(
@@ -408,6 +422,21 @@ impl App {
             Instant::now(),
             domain,
         ));
+    }
+
+    /// Issue #120 / #121 / SPEC §20.15.1 — clamp [`Self::error_log_scroll`]
+    /// against the most recently rendered visible-row count and the current
+    /// [`Self::error_log`] length. Idempotent; safe to call from input
+    /// handlers and on overlay open/toggle. Render code in
+    /// [`crate::app::ui`] must NOT mutate `error_log_scroll`; it only
+    /// publishes [`Self::error_log_visible_rows`] each frame.
+    pub(crate) fn clamp_error_log_scroll(&mut self) {
+        let total = self.error_log.len();
+        let visible = self.error_log_visible_rows.max(1);
+        let max_scroll = total.saturating_sub(visible);
+        if self.error_log_scroll > max_scroll {
+            self.error_log_scroll = max_scroll;
+        }
     }
 
     fn preserves_alerts_save_banner(&self) -> bool {
@@ -620,6 +649,11 @@ impl App {
                 };
                 push_error_log(&mut self.error_log, self.active_tab, ae.category(), line);
             }
+            // SPEC §20.15.2 — ring eviction (one per push above the cap)
+            // shrinks the log; re-clamp once after the batch so a user
+            // scrolled to the bottom of the overlay does not observe a
+            // "dead `k`" key (Issue #120 / #121 audit follow-up).
+            self.clamp_error_log_scroll();
             let primary = if self.ticker_data.is_none() && errors.len() == 1 {
                 AppError::Provider(errors[0].1.clone())
             } else if self.ticker_data.is_none() {
@@ -1687,6 +1721,197 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{normalize_symbol, search_result_matches_current, App};
+    use crate::app::app_error::{push_error_log, ErrorLogEntry, UiErrorCategory, ERROR_LOG_CAP};
+    use crate::app::Tab;
+    use std::collections::VecDeque;
+
+    fn fill_error_log(app: &mut App, n: usize) {
+        for i in 0..n {
+            push_error_log(
+                &mut app.error_log,
+                Tab::StockView,
+                UiErrorCategory::Int,
+                format!("msg{i}"),
+            );
+        }
+    }
+
+    /// Issue #120 / SPEC §20.15.6 — clamp brings out-of-range scroll back to
+    /// `total - visible` when there are more entries than visible rows.
+    #[test]
+    fn clamp_error_log_scroll_clamps_to_total_minus_visible() {
+        let mut app = App::new();
+        fill_error_log(&mut app, 30);
+        // Ring caps at 20.
+        assert_eq!(app.error_log.len(), ERROR_LOG_CAP);
+
+        app.error_log_visible_rows = 5;
+        app.error_log_scroll = 99;
+        app.clamp_error_log_scroll();
+        assert_eq!(app.error_log_scroll, ERROR_LOG_CAP - 5);
+    }
+
+    /// Issue #120 / SPEC §20.15.6 — when the visible viewport can show every
+    /// entry, scroll snaps to 0 (no off-the-end window).
+    #[test]
+    fn clamp_error_log_scroll_visible_exceeds_total_resets_to_zero() {
+        let mut app = App::new();
+        fill_error_log(&mut app, 5);
+        app.error_log_visible_rows = 100;
+        app.error_log_scroll = 4;
+        app.clamp_error_log_scroll();
+        assert_eq!(app.error_log_scroll, 0);
+    }
+
+    /// Issue #120 / SPEC §20.15.6 — empty log + tiny viewport must not
+    /// underflow `usize` arithmetic.
+    #[test]
+    fn clamp_error_log_scroll_empty_log_no_underflow() {
+        let mut app = App::new();
+        app.error_log = VecDeque::new();
+        app.error_log_visible_rows = 1;
+        app.error_log_scroll = 7;
+        app.clamp_error_log_scroll();
+        assert_eq!(app.error_log_scroll, 0);
+    }
+
+    /// Issue #121 / SPEC §20.15.6 — calling `clamp_error_log_scroll` twice in
+    /// a row produces no further change (idempotent helper safe to invoke
+    /// from both input handlers and the `Ctrl+E` open path).
+    #[test]
+    fn clamp_error_log_scroll_is_idempotent() {
+        let mut app = App::new();
+        fill_error_log(&mut app, 12);
+        app.error_log_visible_rows = 4;
+        app.error_log_scroll = 50;
+        app.clamp_error_log_scroll();
+        let first = app.error_log_scroll;
+        app.clamp_error_log_scroll();
+        assert_eq!(app.error_log_scroll, first);
+        assert_eq!(first, 12 - 4);
+    }
+
+    /// Issue #120 / #121 / SPEC §20.15.2 (audit follow-up) — when the user is
+    /// scrolled to the bottom of the overlay and a new error pushes (the ring
+    /// evicts the oldest entry), `clamp_error_log_scroll` must keep the
+    /// scroll anchored to the new bottom so the next `k` press actually
+    /// moves the visible window. Regression guard for the dead-key bug.
+    #[test]
+    fn push_error_log_then_clamp_keeps_bottom_anchored() {
+        let mut app = App::new();
+        // Exactly fill the ring so the next push triggers an eviction.
+        fill_error_log(&mut app, ERROR_LOG_CAP);
+        assert_eq!(app.error_log.len(), ERROR_LOG_CAP);
+
+        let visible = 5;
+        app.error_log_visible_rows = visible;
+        let bottom = ERROR_LOG_CAP - visible;
+        app.error_log_scroll = bottom;
+
+        // Simulate a single new error landing through the App-level helper:
+        // mimics the `surface_runtime_error` / `apply_stock_fetch_done` flow.
+        push_error_log(
+            &mut app.error_log,
+            Tab::StockView,
+            UiErrorCategory::Int,
+            "newest".into(),
+        );
+        app.clamp_error_log_scroll();
+
+        // Total stays at CAP; the new bottom is unchanged numerically, and
+        // crucially `error_log_scroll` is still a valid `max_scroll` (not
+        // stale by +1), so the next `k` press will scroll up by exactly one
+        // row instead of being a no-op.
+        assert_eq!(app.error_log.len(), ERROR_LOG_CAP);
+        let max_scroll = app.error_log.len() - visible;
+        assert!(
+            app.error_log_scroll <= max_scroll,
+            "scroll {} should be <= max_scroll {}",
+            app.error_log_scroll,
+            max_scroll
+        );
+
+        // Simulate the input handler's `k` step.
+        app.error_log_scroll = app.error_log_scroll.saturating_sub(1);
+        assert_eq!(
+            app.error_log_scroll,
+            max_scroll - 1,
+            "first `k` after eviction must move the window up by exactly one row"
+        );
+    }
+
+    /// Issue #120 / #121 / SPEC §20.15.1 (round-2 audit follow-up) — terminal
+    /// resize-larger shrinks the layout-derived `max_scroll` but not
+    /// `error_log_scroll`. Without an entry-clamp in
+    /// `handle_error_log_overlay_keys`, the next `k` press is a no-op (the
+    /// local-clamp in `draw_error_log_overlay` masks the staleness for
+    /// *rendering* only, while the input handler's `saturating_sub` operates
+    /// on the stale field). This test would have failed against the
+    /// pre-round-2 implementation. Drives `handle_event` end-to-end so the
+    /// `q`-quit / `Ctrl+E` / overlay-routing layers stay covered.
+    #[test]
+    fn resize_larger_does_not_strand_k_against_stale_scroll() {
+        use crate::app::handlers::handle_event;
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let mut app = App::new();
+        fill_error_log(&mut app, ERROR_LOG_CAP);
+
+        // Pre-resize: small viewport, user scrolled to the bottom.
+        let pre_visible = 5;
+        app.error_log_visible_rows = pre_visible;
+        app.error_log_scroll = ERROR_LOG_CAP - pre_visible;
+        app.error_log_overlay_open = true;
+
+        // Simulate `draw_error_log_overlay` running at a *larger* terminal
+        // size: it publishes the new `error_log_visible_rows` but, per Issue
+        // #121, must NOT touch `error_log_scroll`. We mimic that here.
+        let post_visible = 18;
+        app.error_log_visible_rows = post_visible;
+        let post_max_scroll = ERROR_LOG_CAP - post_visible;
+        assert_eq!(post_max_scroll, 2, "test arithmetic sanity");
+
+        // One `k` keystroke through the real input pipeline.
+        handle_event(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::NONE),
+        );
+
+        assert!(
+            app.error_log_scroll <= post_max_scroll,
+            "scroll {} must be <= post-resize max_scroll {}",
+            app.error_log_scroll,
+            post_max_scroll,
+        );
+        assert_eq!(
+            app.error_log_scroll,
+            post_max_scroll - 1,
+            "first `k` after resize-larger must scroll up by exactly one painted row"
+        );
+        // Sanity: `q` quit and other globals didn't fire.
+        assert!(!app.should_quit);
+        assert!(app.error_log_overlay_open);
+    }
+
+    /// Issue #120 / SPEC §20.15.1 — `error_log_visible_rows` defaults to a
+    /// non-zero floor so the very first key press after `Ctrl+E` cannot
+    /// divide-by-zero or trip a `saturating_sub` to a misleading value.
+    #[test]
+    fn error_log_visible_rows_initial_floor_is_nonzero() {
+        let app = App::new();
+        assert!(app.error_log_visible_rows >= 1);
+        // Sanity: if a future refactor lowers the floor, the helper still
+        // treats `0` as `1` to preserve the contract.
+        let mut app2 = app;
+        app2.error_log_visible_rows = 0;
+        let mut e: VecDeque<ErrorLogEntry> = VecDeque::new();
+        push_error_log(&mut e, Tab::StockView, UiErrorCategory::Int, "x".into());
+        app2.error_log = e;
+        app2.error_log_scroll = 5;
+        app2.clamp_error_log_scroll();
+        // total = 1, visible_rows treated as 1 → max_scroll = 0.
+        assert_eq!(app2.error_log_scroll, 0);
+    }
 
     #[test]
     fn normalize_symbol_trims_and_uppercases() {

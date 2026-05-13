@@ -6,8 +6,29 @@ use crate::models::time_range::TimeRange;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub fn handle_event(app: &mut App, key: KeyEvent) {
+    // Issue #123 / SPEC §20.15.4 — plain `q` is a global quit chord, even when
+    // the error log overlay is open. Handled before the overlay early-return
+    // for parity with the global `Ctrl+E` / `Ctrl+R` chords below.
+    if matches!(
+        key,
+        KeyEvent {
+            code: KeyCode::Char('q'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        }
+    ) {
+        app.should_quit = true;
+        return;
+    }
+
     if key.code == KeyCode::Char('e') && key.modifiers == KeyModifiers::CONTROL {
         app.error_log_overlay_open = !app.error_log_overlay_open;
+        // Issue #120 / SPEC §20.15.1 — clamp on open so a stale `error_log_scroll`
+        // (e.g. from an earlier session before ring evictions) does not paint
+        // past `max_scroll` on the first frame.
+        if app.error_log_overlay_open {
+            app.clamp_error_log_scroll();
+        }
         return;
     }
     if key.code == KeyCode::Char('r') && key.modifiers == KeyModifiers::CONTROL {
@@ -21,13 +42,6 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
     }
 
     match key {
-        KeyEvent {
-            code: KeyCode::Char('q'),
-            modifiers: KeyModifiers::NONE,
-            ..
-        } => {
-            app.should_quit = true;
-        }
         KeyEvent {
             code: KeyCode::Tab,
             ..
@@ -78,15 +92,31 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
     }
 }
 
-const ERROR_LOG_OVERLAY_VISIBLE_ROWS: usize = 12;
+/// Default page step for `PageUp` / `PageDown` in the error log overlay
+/// (SPEC §20.15.1). At small terminal heights the *effective* step is
+/// adaptively reduced so paging never overshoots the painted viewport — see
+/// [`overlay_page_rows`].
 const ERROR_LOG_OVERLAY_PAGE_ROWS: usize = 10;
 
+/// Issue #120 / SPEC §20.15.1 — adaptive page step. One row of context
+/// overlap (vim's `Ctrl-D`/`Ctrl-F` convention) keeps users oriented at small
+/// terminal heights; clamped to the most recent layout-derived visible-row
+/// count published by `draw_error_log_overlay` in `ui.rs`.
+fn overlay_page_rows(app: &App) -> usize {
+    let visible = app.error_log_visible_rows.max(1);
+    ERROR_LOG_OVERLAY_PAGE_ROWS.min(visible.saturating_sub(1).max(1))
+}
+
 fn handle_error_log_overlay_keys(app: &mut App, key: KeyEvent) {
-    let total = app.error_log.len();
-    let max_scroll = total.saturating_sub(
-        ERROR_LOG_OVERLAY_VISIBLE_ROWS
-            .min(total.max(1)),
-    );
+    // Issue #120 / #121 / SPEC §20.15.1 (round-2 audit follow-up) — re-clamp
+    // on every overlay input so a recent terminal resize-larger (which shrinks
+    // the layout-derived `max_scroll` but not `error_log_scroll`) does not
+    // strand `k` / `PageUp` against a stale field. Without this entry-clamp,
+    // the local-clamp in `draw_error_log_overlay` (Issue #121, scroll-read-only)
+    // masks the staleness for *rendering* only, leaving subsequent
+    // `saturating_sub`s acting on a value far above the painted bottom and
+    // producing a "dead key" for many presses. Idempotent + O(1).
+    app.clamp_error_log_scroll();
 
     match key {
         KeyEvent {
@@ -106,7 +136,8 @@ fn handle_error_log_overlay_keys(app: &mut App, key: KeyEvent) {
             modifiers: KeyModifiers::NONE,
             ..
         } => {
-            app.error_log_scroll = (app.error_log_scroll + 1).min(max_scroll);
+            app.error_log_scroll = app.error_log_scroll.saturating_add(1);
+            app.clamp_error_log_scroll();
         }
         KeyEvent {
             code: KeyCode::Char('k'),
@@ -125,16 +156,17 @@ fn handle_error_log_overlay_keys(app: &mut App, key: KeyEvent) {
             modifiers: KeyModifiers::NONE,
             ..
         } => {
-            app.error_log_scroll = (app.error_log_scroll + ERROR_LOG_OVERLAY_PAGE_ROWS).min(max_scroll);
+            let step = overlay_page_rows(app);
+            app.error_log_scroll = app.error_log_scroll.saturating_add(step);
+            app.clamp_error_log_scroll();
         }
         KeyEvent {
             code: KeyCode::PageUp,
             modifiers: KeyModifiers::NONE,
             ..
         } => {
-            app.error_log_scroll = app
-                .error_log_scroll
-                .saturating_sub(ERROR_LOG_OVERLAY_PAGE_ROWS);
+            let step = overlay_page_rows(app);
+            app.error_log_scroll = app.error_log_scroll.saturating_sub(step);
         }
         _ => {}
     }

@@ -800,6 +800,133 @@ _Automated §19.8 coverage in `cargo test`; **manual** steps below still require
 
 ---
 
+## Issues #120, #121, #122, #123 — Error log overlay & `ProviderError::Clone` post-ship polish
+
+**Scope:**
+
+- [GitHub Issue #120](https://github.com/FelipeMorandini/stockterm/issues/120) — error log overlay: unify visible-row count for keyboard scroll bound vs the live layout used by `draw_error_log_overlay`; **`j`/`k`** must never scroll past the last *painted* row at any terminal height after resize.
+- [GitHub Issue #121](https://github.com/FelipeMorandini/stockterm/issues/121) — `draw_error_log_overlay` must not mutate `error_log_scroll`; clamp lives with input + `App::clamp_error_log_scroll()` helper. Operator behavior unchanged.
+- [GitHub Issue #122](https://github.com/FelipeMorandini/stockterm/issues/122) — document `ProviderError::Clone` mapping of `Json(serde_json::Error)` → `ApiMessage` so future code does not silently miss the `Json` variant after a clone.
+- [GitHub Issue #123](https://github.com/FelipeMorandini/stockterm/issues/123) — UX: plain **`q`** quits the app even while the error log overlay is open (Option 1 from the issue body).
+
+**Prerequisite:** [PR #124](https://github.com/FelipeMorandini/stockterm/pull/124) (Issue #20) merged or in tree; [`docs/SPEC.md`](SPEC.md) §20 + §20.15 implementation matches.
+
+### Automated (local)
+
+1. From the repo root, with default features:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   And, for the lean build (no desktop notifications):
+
+   ```bash
+   cargo clippy --no-default-features -- -D warnings
+   cargo test --no-default-features
+   ```
+
+   **Pass:** All exit **0**. New unit tests per [`docs/SPEC.md`](SPEC.md) §20.15.6 are present:
+   - `clamp_error_log_scroll` clamps against `error_log_visible_rows` (4 cases listed in §20.15.6).
+   - Optional: `clone_of_json_becomes_api_message` regression test in [`src/api/error.rs`](../src/api/error.rs).
+
+2. Verify [`src/app/handlers.rs`](../src/app/handlers.rs) no longer defines `ERROR_LOG_OVERLAY_VISIBLE_ROWS` (or, if retained as a *default page step* derivation, the constant is `ERROR_LOG_OVERLAY_PAGE_ROWS` only). Verify [`src/app/ui.rs`](../src/app/ui.rs) `draw_error_log_overlay` does **not** assign to `app.error_log_scroll` (read-only with respect to scroll; only `app.error_log_visible_rows` is published).
+
+### Manual — Issue #120 (visible-row parity across resize)
+
+> Use `tput cols && tput lines` in another shell to see the current terminal size before resizing. Most terminal emulators expose drag-resize.
+
+1. Launch `cargo run --release`. Generate ≥ **15** distinct error log entries (e.g., set bogus symbol on Stock View and press Enter repeatedly with network off; or hammer Search with a host that 429s). Press **`Ctrl+E`** to open the overlay.
+   - **Pass:** Overlay shows the most recent rows; **`j`/`k`** scroll one row at a time within the painted window; the bottom row visible in the viewport is the last reachable row via **`j`**.
+2. Drag the terminal **shorter** so only ~**4** list rows fit (overlay still open).
+   - **Pass:** **`j`** stops at the last *painted* row; no off-by-one scroll past the bottom; no blank rows above the painted window after pressing **`k`** repeatedly back to the top.
+3. Drag the terminal **taller** (overlay still open).
+   - **Pass:** The visible window grows on the next frame; **`j`** can now reach further; no entries are skipped.
+4. Press **`PageDown`** then **`PageUp`**.
+   - **Pass:** Page step ≤ visible rows minus one (no overshoot at small heights); **`PageUp`** returns to the top without underflow.
+5. Close overlay (**Esc**), trigger more errors so the ring evicts the oldest, re-open with **`Ctrl+E`**.
+   - **Pass:** `error_log_scroll` is clamped on open; no rendering past the new `max_scroll`.
+
+### Manual — Issue #121 (draw is read-only for scroll)
+
+> This is a code-contract item; QA mostly confirms no regression for the operator.
+
+1. Repeat the **Issue #120** flow at default terminal size.
+   - **Pass:** **`j`/`k`/`PageUp`/`PageDown`/`Esc`** behave identically to the pre-#121 baseline (no extra repaints, no flicker, no "first key after open is ignored").
+2. Spot-check that overlay open → resize → key → resize → key sequence does **not** wedge `error_log_scroll` at a stale value (i.e., scrolling resumes correctly after each resize).
+   - **Pass:** Each resize → next key combination scrolls within the freshly painted window.
+
+### Manual — Issue #122 (`ProviderError::Clone` documented contract)
+
+> Doc-only item; verification is by code review and an optional regression test.
+
+1. **Code review** of [`src/api/error.rs`](../src/api/error.rs):
+   - **Pass:** The `Json(serde_json::Error)` variant has a `///` doc explicitly stating the lossy `Clone` mapping to `ApiMessage` and the **`[parse]`** vs **`[api]`** prefix consequence.
+   - **Pass:** The `impl Clone for ProviderError` block has a `///` doc above it pointing at the `Json` variant doc and noting the `Arc<serde_json::Error>` alternative as an opt-in future change.
+2. **Code review** of [`src/app/app_error.rs`](../src/app/app_error.rs) `category_from_provider`:
+   - **Pass:** A one-line `///` notes that `ApiMessage` arms include cloned `Json` errors.
+3. (Optional) Run the recommended unit test:
+
+   ```bash
+   cargo test -p stockterm clone_of_json_becomes_api_message
+   ```
+
+   **Pass:** Test passes; cloned `ProviderError::Json` is observed as `ProviderError::ApiMessage(_)` with body containing `"Invalid JSON response:"`.
+
+4. **Cross-check status line behavior** (sanity):
+   - Provoke a JSON parse failure path (if reachable without code changes — e.g., HTML response from Yahoo where JSON was expected).
+   - **Pass:** First surface renders **`[parse]`** on the status line. Subsequent re-display from `error_log` still classifies the same row as `[parse]` (because the original category was captured in `ErrorLogEntry.category` at push time — see §20.4 / [`src/app/app_error.rs`](../src/app/app_error.rs) `push_error_log`). If the same error is re-cloned and re-classified post-clone (rare path), it would render as **`[api]`** — that is the documented post-clone surface.
+
+### Manual — Issue #123 (`q` quits while overlay open)
+
+1. Launch `cargo run --release`. Press **`Ctrl+E`** to open the error log overlay (it's fine if the log is empty — overlay still draws).
+2. Press plain **`q`** (no modifiers).
+   - **Pass:** App quits immediately. Terminal is restored (raw mode disabled, alt screen left). No need to press **Esc** first.
+3. Restart the app. Open the overlay (**`Ctrl+E`**). Press **`Esc`**.
+   - **Pass:** Overlay closes; app **does not** quit (Esc retains its overlay-close meaning).
+4. With overlay open, press **`Ctrl+R`**.
+   - **Pass:** Retry triggers for the active tab's last failed fetch (regression check; the `Ctrl+R` global path still fires before the overlay early-return).
+5. With overlay open, press **`Ctrl+E`** again.
+   - **Pass:** Overlay closes (toggle); plain text-input keys are **not** routed to any tab handler while the overlay was open (no symbol typing, etc.).
+
+### Regression — Stock View / Search letter typing
+
+1. **Stock View:** Switch to Stock View tab. Type **`a`** **`a`** **`p`** **`l`**.
+   - **Pass:** Symbol buffer reads `AAPL`. Pressing plain **`q`** quits (this matches pre-#123 behavior — `q` was always quit on Stock View; no new regression).
+2. **Search:** Switch to Search tab. Type **`a`** **`p`** **`p`** **`l`**.
+   - **Pass:** Search query reads `APPL` (uppercased). Pressing plain **`q`** quits — `q` is **not** appended to the query (matches pre-#123 behavior; documented in [`docs/SPEC.md`](SPEC.md) §20.15.4 step 4).
+3. **Settings → Refresh rate edit mode:** Open Settings, Enter on the Refresh rate row. Type digits.
+   - **Pass:** Editing accepts digits; plain **`q`** is *not* a digit, so per `handle_settings_events` it is ignored inside the edit branch — confirm app does **not** quit while inside Settings text edit mode (the global `q`-quit fires *before* tab dispatch, so… **actually expect: app quits**). 
+   - **Pass criterion (as designed):** App quits on plain `q` even inside Settings text-edit mode (Esc cancels edit only when *not* quitting). If product later wants edit-mode-protected `q`, file a follow-up issue — out of scope for #123.
+
+### Regression — Issue #20 (spot)
+
+1. Confirm `Ctrl+E` overlay still lists timestamps, tab labels, category prefixes, and last lines as before.
+2. Confirm `Ctrl+R` retry per-tab still works on Stock View, Charts, News, Search after a forced failure (per Issue #20 sign-off).
+3. Confirm transient errors (timeout / transport) still auto-clear after the **10 s** TTL (§20.6) and sticky errors persist.
+
+### Sign-off — Issues #120, #121, #122, #123
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests (default features) | | | |
+| Automated build / clippy / tests (`--no-default-features`) | | | |
+| New `clamp_error_log_scroll` unit tests present (§20.15.6) | | | |
+| Issue #120 — visible-row parity across terminal resize | | | |
+| Issue #120 — `PageUp`/`PageDown` adaptive page step at small heights | | | |
+| Issue #121 — `draw_error_log_overlay` does not write `error_log_scroll` (code review) | | | |
+| Issue #121 — operator behavior unchanged (resize + scroll spot-check) | | | |
+| Issue #122 — Rustdoc on `ProviderError::Json` + `Clone` impl present | | | |
+| Issue #122 — optional clone-mapping regression test passes | | | |
+| Issue #123 — plain `q` quits with overlay open | | | |
+| Issue #123 — `Esc` still closes overlay (does not quit) | | | |
+| Issue #123 — `Ctrl+R` still retries while overlay is open | | | |
+| Regression — Issue #20 overlay + retry + TTL spot-check | | | |
+
+---
+
 ## Issues #29, #5, #11, #12 — M3: Search, News, Settings
 
 **Scope:**
