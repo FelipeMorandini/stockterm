@@ -5,6 +5,7 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use super::theme::Theme;
+use std::collections::HashMap;
 use crate::models::alerts::Alert;
 use crate::models::portfolio::PortfolioItem;
 use thiserror::Error;
@@ -33,6 +34,7 @@ pub enum MarketProviderKind {
 /// | `notifications_enabled` | Desktop toasts for alerts. Default: `true`. |
 /// | `last_tab` | Last focused tab id (`stock_view`, `portfolio`, …). Default: omitted. |
 /// | `last_symbol` | Last active ticker (uppercase) when `watchlist` was empty at launch. Default: omitted. |
+/// | `keymap` | Optional chord → action overrides (see **README** “Keymap” and [`keymap`](crate::config::keymap)). Default: omitted → built-in defaults. |
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
@@ -56,6 +58,9 @@ pub struct Config {
     /// Last active symbol (normalized) when restoring session; used when `watchlist` is empty (Issue #19 / §22).
     #[serde(default)]
     pub last_symbol: Option<String>,
+    /// Optional keyboard overrides: JSON object mapping **chord** string → **action** name (PascalCase).
+    #[serde(default)]
+    pub keymap: Option<HashMap<String, String>>,
 }
 
 fn default_notifications_enabled() -> bool {
@@ -76,6 +81,7 @@ impl Default for Config {
             notifications_enabled: default_notifications_enabled(),
             last_tab: None,
             last_symbol: None,
+            keymap: None,
         }
     }
 }
@@ -200,6 +206,23 @@ mod tests {
         let c: Config = serde_json::from_str(j).expect("parse");
         assert!(c.last_tab.is_none());
         assert!(c.last_symbol.is_none());
+    }
+
+    #[test]
+    fn serde_keymap_defaults_when_omitted() {
+        let j = r#"{"portfolio":[],"watchlist":[],"refresh_rate":0,"api_key":"","alerts":[],"default_symbol":"","provider":"yahoo"}"#;
+        let c: Config = serde_json::from_str(j).expect("parse");
+        assert!(c.keymap.is_none());
+    }
+
+    #[test]
+    fn serde_keymap_parses_object() {
+        let j = r#"{"portfolio":[],"watchlist":[],"refresh_rate":0,"api_key":"","alerts":[],"default_symbol":"","provider":"yahoo","keymap":{"colon":"Quit"}}"#;
+        let c: Config = serde_json::from_str(j).expect("parse");
+        assert_eq!(
+            c.keymap.as_ref().unwrap().get("colon").map(String::as_str),
+            Some("Quit")
+        );
     }
 
     #[test]

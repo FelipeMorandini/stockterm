@@ -1869,4 +1869,74 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 
 ---
 
-**After implementation:** Run the relevant QA sections (#44, #3, and/or **#16**) and record results in the sign-off tables before merge.
+## Issue #13 — Configurable keymap (`~/.stockterm.json`)
+
+**Scope:** [GitHub Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13) — user-editable **chord → action** map with baked-in defaults matching the pre-ship tree; invalid JSON keymap entries fall back to defaults; global and per-tab handlers resolve **`Action`** instead of ad-hoc `KeyCode` literals for covered bindings.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §24.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0; unit tests for **chord parse**, **serde `Action`**, **`ResolvedKeymap` merge / duplicate handling**, and **default keymap regression** samples per §24.7 are present and green.
+
+### Manual — Default keymap regression (no `keymap` field)
+
+**Prep:** Backup **`~/.stockterm.json`**. Use a copy **without** a **`keymap`** key (or with **`"keymap": null`**) per §24.4.
+
+1. Launch **`cargo run --release`**. Press **`q`**.  
+   **Pass:** App exits (unchanged global quit).
+
+2. Relaunch. Press **`Tab`** / **`Shift+Tab`** several times across **Stock View**, **Portfolio**, **Charts**, **Alerts**, **Search**, **News**, **Settings**.  
+   **Pass:** Tab order matches pre–#13 behavior; no stuck focus.
+
+3. **Stock View:** **`w`** add symbol to watchlist (if not present), **`x`** or **`Shift+d`** remove, **`j`**/**`k`** or arrows move selection, **`Enter`** refetch, **`Backspace`** on symbol buffer, type **`MSFT`** with **`letter_key_plain`** behavior per §8.  
+   **Pass:** Same UX as before keymap work.
+
+4. **Charts:** **`1`–`4`**, **`+`**/**`-`**, **`0`**, **`h`**/**`l`**/**arrows**, **`c`**.  
+   **Pass:** Range, zoom, pan, candle toggle unchanged.
+
+5. **Portfolio:** **`a`** add dialog, **`Tab`** / **`Shift+Tab`** fields, **`Esc`**, **`j`**/**`k`**, **`/`** filter (§23), **`d`** remove flow.  
+   **Pass:** Unchanged.
+
+6. **Alerts:** **`a`**/**`d`**, arrows, dialog keys.  
+   **Pass:** Unchanged.
+
+7. Trigger **error log overlay** (e.g. **`Ctrl+e`** if still the default binding after §24). Exercise **Esc**, **list scroll**, **jump keys** per shipped overlay.  
+   **Pass:** If overlay keys are keymap-driven in the implementation, defaults match prior behavior; if overlay handling remains hard-coded per **§24.5** (implementation choice), document in QA notes — still **Pass** if behavior unchanged.
+
+### Manual — Remap `Quit` (Issue #13 acceptance)
+
+**Prep:** Edit **`~/.stockterm.json`** per README §Keymap / §24.3 — bind **`Quit`** to **`:`** (exact chord string per shipped grammar, e.g. `char::` or `semicolon` — follow README at ship time).
+
+1. Save JSON; launch **`cargo run --release`**. Press **`:`** (with **`NONE`** modifiers unless README says otherwise).  
+   **Pass:** App quits; **`q`** no longer quits **unless** the default map still assigns **`q`** (document merge rule: if user override **replaces** default quit, **`q`** may type into symbol buffer on Stock View — expected per §24.5).
+
+2. Relaunch with **invalid** **`keymap`** (unknown action name **or** malformed chord).  
+   **Pass:** App starts; status or startup banner shows a clear **`keymap:`**-style hint; **all** actions behave as **default** map (§24.2).
+
+### Manual — One remapped tab key (spot check)
+
+1. Remap **`NextTab`** from **`Tab`** to another chord documented as supported (e.g. **`ctrl+n`**) — only if product tests modifier chords.  
+   **Pass:** New chord advances tab; old **`Tab`** either does nothing for tab switch **or** is documented as still bound — behavior matches README.
+
+### Sign-off — Issue #13
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests + keymap unit tests | | | |
+| Default map: `q`, Tab, Stock View, Charts, Portfolio, Alerts | | | |
+| Remap `Quit` to `:` (or ship-time equivalent) | | | |
+| Invalid keymap → fallback + message | | | |
+| README keymap section matches parser | | | |
+
+---
+
+**After implementation:** Run the relevant QA sections (#44, #3, **#16**, and/or **#13**) and record results in the sign-off tables before merge.

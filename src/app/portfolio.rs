@@ -1,9 +1,12 @@
+#![allow(clippy::collapsible_match, clippy::needless_return)]
+
 use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
 use crate::app::table_filter::filter_title_suffix;
 use crate::app::{normalize_symbol, App, PortfolioAddField, Tab};
+use crate::config::keymap::{Action, BindingLayer};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -390,37 +393,46 @@ pub(crate) fn try_commit_portfolio_dialog(app: &mut App) {
 }
 
 fn handle_portfolio_dialog_keys(app: &mut App, key: KeyEvent) {
-    use KeyCode::*;
-
-    match key.code {
-        Esc => {
-            app.portfolio_dialog = None;
-        }
-        Char(';') if key.modifiers == KeyModifiers::NONE => {
-            cycle_portfolio_dialog_focus(app, true);
-        }
-        Backspace if key.modifiers == KeyModifiers::NONE => {
-            if let Some(d) = app.portfolio_dialog.as_mut() {
-                d.inline_error = None;
-                let buf = match d.focused {
-                    PortfolioAddField::Shares => &mut d.shares_buffer,
-                    PortfolioAddField::Price => &mut d.price_buffer,
-                };
-                buf.pop();
+    if let Some(a) = app
+        .resolved_keymap
+        .action(BindingLayer::PortfolioDialog, &key)
+    {
+        match a {
+            Action::PortfolioDialogEsc if key.modifiers == KeyModifiers::NONE => {
+                app.portfolio_dialog = None;
+                return;
             }
-        }
-        Enter if key.modifiers == KeyModifiers::NONE => {
-            if let Some(d) = app.portfolio_dialog.as_mut() {
-                d.inline_error = None;
-                match d.focused {
-                    PortfolioAddField::Shares => d.focused = PortfolioAddField::Price,
-                    PortfolioAddField::Price => try_commit_portfolio_dialog(app),
+            Action::PortfolioDialogFocusNext if key.modifiers == KeyModifiers::NONE => {
+                cycle_portfolio_dialog_focus(app, true);
+                return;
+            }
+            Action::PortfolioDialogBackspace if key.modifiers == KeyModifiers::NONE => {
+                if let Some(d) = app.portfolio_dialog.as_mut() {
+                    d.inline_error = None;
+                    let buf = match d.focused {
+                        PortfolioAddField::Shares => &mut d.shares_buffer,
+                        PortfolioAddField::Price => &mut d.price_buffer,
+                    };
+                    buf.pop();
                 }
+                return;
             }
+            Action::PortfolioDialogEnter if key.modifiers == KeyModifiers::NONE => {
+                if let Some(d) = app.portfolio_dialog.as_mut() {
+                    d.inline_error = None;
+                    match d.focused {
+                        PortfolioAddField::Shares => d.focused = PortfolioAddField::Price,
+                        PortfolioAddField::Price => try_commit_portfolio_dialog(app),
+                    }
+                }
+                return;
+            }
+            _ => {}
         }
-        Char(c)
-            if key.modifiers == KeyModifiers::NONE && (c.is_ascii_digit() || c == '.') =>
-        {
+    }
+
+    if let KeyCode::Char(c) = key.code {
+        if key.modifiers == KeyModifiers::NONE && (c.is_ascii_digit() || c == '.') {
             if let Some(d) = app.portfolio_dialog.as_mut() {
                 d.inline_error = None;
                 let buf = match d.focused {
@@ -430,47 +442,49 @@ fn handle_portfolio_dialog_keys(app: &mut App, key: KeyEvent) {
                 let _ = append_numeric_char(buf, c);
             }
         }
-        _ => {}
     }
 }
 
 fn handle_portfolio_remove_armed_keys(app: &mut App, key: KeyEvent) {
-    match key.code {
-        KeyCode::Esc => {
-            app.portfolio_remove_armed = false;
-        }
-        KeyCode::Char(c)
-            if letter_key_plain(key.modifiers) && c.eq_ignore_ascii_case(&'n') =>
-        {
-            app.portfolio_remove_armed = false;
-        }
-        KeyCode::Char(c)
-            if letter_key_plain(key.modifiers)
-                && (c.eq_ignore_ascii_case(&'d') || c.eq_ignore_ascii_case(&'y')) =>
-        {
-            if let Some(selected_f) = app.portfolio_state.selected() {
-                let filtered = app.portfolio_filter_indices();
-                if selected_f < filtered.len() {
-                    let actual = filtered[selected_f];
-                    if app.remove_from_portfolio(actual) {
+    if let Some(a) = app
+        .resolved_keymap
+        .action(BindingLayer::PortfolioRemoveArmed, &key)
+    {
+        match a {
+            Action::PortfolioRemoveCancel => {
+                app.portfolio_remove_armed = false;
+                return;
+            }
+            Action::PortfolioRemoveDecline => {
+                app.portfolio_remove_armed = false;
+                return;
+            }
+            Action::PortfolioRemoveConfirm => {
+                if let Some(selected_f) = app.portfolio_state.selected() {
+                    let filtered = app.portfolio_filter_indices();
+                    if selected_f < filtered.len() {
+                        let actual = filtered[selected_f];
+                        if app.remove_from_portfolio(actual) {
+                            app.portfolio_remove_armed = false;
+                        }
+                    } else {
                         app.portfolio_remove_armed = false;
                     }
                 } else {
                     app.portfolio_remove_armed = false;
                 }
-            } else {
-                app.portfolio_remove_armed = false;
+                return;
             }
+            Action::PortfolioRowUp => {
+                portfolio_move_up(app);
+                return;
+            }
+            Action::PortfolioRowDown => {
+                portfolio_move_down(app);
+                return;
+            }
+            _ => {}
         }
-        KeyCode::Up => portfolio_move_up(app),
-        KeyCode::Down => portfolio_move_down(app),
-        KeyCode::Char(c) if letter_key_plain(key.modifiers) && c.eq_ignore_ascii_case(&'j') => {
-            portfolio_move_down(app);
-        }
-        KeyCode::Char(c) if letter_key_plain(key.modifiers) && c.eq_ignore_ascii_case(&'k') => {
-            portfolio_move_up(app);
-        }
-        _ => {}
     }
 }
 
@@ -489,84 +503,60 @@ pub fn handle_portfolio_events(app: &mut App, key: KeyEvent) {
         return;
     }
 
-    match key {
-        KeyEvent {
-            code: KeyCode::Char('/'),
-            modifiers: KeyModifiers::NONE,
-            ..
-        } => {
-            app.filter_input_mode = true;
-        }
-        KeyEvent {
-            code: KeyCode::Char(c),
-            ..
-        } if letter_key_plain(key.modifiers) && c.eq_ignore_ascii_case(&'a') => {
-            if normalize_symbol(&app.symbol).is_none() {
-                app.surface_runtime_error(
-                    Tab::Portfolio,
-                    ErrorSourceDomain::Portfolio,
-                    AppError::Internal(
-                        "Set a ticker on Stock View first (or press Enter on a holding).".to_string(),
-                    ),
-                    true,
-                );
-                return;
+    if let Some(a) = app.resolved_keymap.action(BindingLayer::Portfolio, &key) {
+        match a {
+            Action::PortfolioFilterToggle if key.modifiers == KeyModifiers::NONE => {
+                app.filter_input_mode = true;
             }
-            app.portfolio_remove_armed = false;
-            app.portfolio_dialog = Some(crate::app::PortfolioAddDialog::default());
-            app.clear_active_runtime_unless_alerts_save();
-        }
-        KeyEvent {
-            code: KeyCode::Char(c),
-            ..
-        } if letter_key_plain(key.modifiers) && c.eq_ignore_ascii_case(&'d') => {
-            if app.portfolio.is_empty() {
-                return;
+            Action::PortfolioAdd if letter_key_plain(key.modifiers) => {
+                if normalize_symbol(&app.symbol).is_none() {
+                    app.surface_runtime_error(
+                        Tab::Portfolio,
+                        ErrorSourceDomain::Portfolio,
+                        AppError::Internal(
+                            "Set a ticker on Stock View first (or press Enter on a holding)."
+                                .to_string(),
+                        ),
+                        true,
+                    );
+                    return;
+                }
+                app.portfolio_remove_armed = false;
+                app.portfolio_dialog = Some(crate::app::PortfolioAddDialog::default());
+                app.clear_active_runtime_unless_alerts_save();
             }
-            if app.portfolio_state.selected().is_none() {
-                app.portfolio_state.select(Some(0));
+            Action::PortfolioRemoveArm if letter_key_plain(key.modifiers) => {
+                if app.portfolio.is_empty() {
+                    return;
+                }
+                if app.portfolio_state.selected().is_none() {
+                    app.portfolio_state.select(Some(0));
+                }
+                app.portfolio_remove_armed = true;
             }
-            app.portfolio_remove_armed = true;
-        }
-        KeyEvent {
-            code: KeyCode::Up,
-            ..
-        } => portfolio_move_up(app),
-        KeyEvent {
-            code: KeyCode::Down,
-            ..
-        } => portfolio_move_down(app),
-        KeyEvent {
-            code: KeyCode::Char(c),
-            ..
-        } if letter_key_plain(key.modifiers) && c.eq_ignore_ascii_case(&'j') => {
-            portfolio_move_down(app);
-        }
-        KeyEvent {
-            code: KeyCode::Char(c),
-            ..
-        } if letter_key_plain(key.modifiers) && c.eq_ignore_ascii_case(&'k') => {
-            portfolio_move_up(app);
-        }
-        KeyEvent {
-            code: KeyCode::Enter,
-            modifiers: KeyModifiers::NONE,
-            ..
-        } => {
-            if let Some(selected_f) = app.portfolio_state.selected() {
-                let filtered = app.portfolio_filter_indices();
-                if selected_f < filtered.len() {
-                    let idx = filtered[selected_f];
-                    app.symbol = app.portfolio[idx].symbol.clone();
-                    app.on_active_symbol_changed_for_charts();
-                    app.notify_symbol_changed_for_news();
-                    app.sync_watchlist_selection_to_symbol();
-                    app.request_immediate_stock_poll();
-                    app.active_tab = Tab::StockView;
+            Action::PortfolioRowUp => {
+                portfolio_move_up(app);
+            }
+            Action::PortfolioRowDown => {
+                portfolio_move_down(app);
+            }
+            Action::PortfolioEnterStock if key.modifiers == KeyModifiers::NONE => {
+                if let Some(selected_f) = app.portfolio_state.selected() {
+                    let filtered = app.portfolio_filter_indices();
+                    if selected_f < filtered.len() {
+                        let idx = filtered[selected_f];
+                        app.symbol = app.portfolio[idx].symbol.clone();
+                        app.on_active_symbol_changed_for_charts();
+                        app.notify_symbol_changed_for_news();
+                        app.sync_watchlist_selection_to_symbol();
+                        app.request_immediate_stock_poll();
+                        app.active_tab = Tab::StockView;
+                    }
                 }
             }
+            _ => {}
         }
-        _ => {}
+        return;
     }
 }
 

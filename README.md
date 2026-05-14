@@ -19,8 +19,29 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 | `notifications_enabled` | boolean | `true` | Desktop toasts for alert fires (bell always rings). |
 | `last_tab` | string or omitted | omitted | Last tab: `stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `settings` (Issue #19 / §22). |
 | `last_symbol` | string or omitted | omitted | Last active ticker when `watchlist` was empty at launch (normalized). |
+| `keymap` | object or omitted | omitted | Optional chord → action overrides (see **Keymap** below; Issue #13 / [`docs/SPEC.md`](docs/SPEC.md) §24). |
 
-## Security — API keys
+### Keymap (`keymap` field)
+
+Optional JSON object: each key is a **chord** string, each value is an **`Action`** name in **PascalCase** (for example `"Quit"`, `"StockRowDown"`). Overrides replace the default binding for that action **within its layer** (Stock View, Charts, Search, …); see [`src/config/keymap.rs`](src/config/keymap.rs) for the full default table and [`BindingLayer`](src/config/keymap.rs) rules.
+
+**Chord grammar** (ASCII, case-insensitive except `char:` payload):
+
+- Combine with **`+`**: `shift`, `ctrl` (or `control`), `alt` — e.g. `ctrl+e`, `shift+d`.
+- **Named keys**: `tab`, `backtab`, `esc`, `enter`, `backspace`, `up`, `down`, `left`, `right`, `pageup`, `pagedown`, `colon`, `semicolon`, `slash`, **`plus`** (the `+` key — use this token because a raw `+` would split the parser), **`minus`**.
+- **One ASCII character**: either a single visible character (`q`, `1`, `/`, …) or `char:x` for a single character `x` (useful when `x` is `:` / `;` / etc.).
+- **Invalid** `keymap` (unknown action name, unknown chord, or conflicting chord assignment): startup shows a line starting with **`keymap:`** and the built-in defaults are used for the whole map.
+- **Shift+Tab:** terminals may send `BackTab` with `SHIFT`, plain `BackTab`, or `Tab` with `SHIFT` only. StockTerm tries those variants when resolving `Action::GlobalBackTab` and dialog `BackTab` bindings (see `chord_lookup_candidates` in [`src/config/keymap.rs`](src/config/keymap.rs)).
+
+**Example** — bind quit to `:` (colon key):
+
+```json
+"keymap": {
+  "colon": "Quit"
+}
+```
+
+To discover exact **`Action`** names, see the `Action` enum in [`src/config/keymap.rs`](src/config/keymap.rs) (serde renames match PascalCase JSON).
 
 The Polygon **`api_key`** is stored **in plaintext** inside **`~/.stockterm.json`**. If **`api_key`** is empty, StockTerm uses a non-empty **`STOCKTERM_API_KEY`** environment variable instead (resolution: [`Config::effective_api_key`](https://github.com/FelipeMorandini/stockterm/blob/main/src/config/config.rs)). Treat the config file like a secret: use restrictive file permissions where your OS supports them (for example **`chmod 600 ~/.stockterm.json`** on Unix), do not commit real keys to git, and avoid pasting keys into logs or screenshots. Yahoo mode does not require a key.
 
