@@ -2,6 +2,7 @@ use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
+use crate::app::table_filter::filter_title_suffix;
 use crate::app::{normalize_symbol, App, PortfolioAddField, Tab};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
@@ -77,25 +78,27 @@ fn append_numeric_char(buf: &mut String, c: char) -> bool {
 }
 
 fn portfolio_move_up(app: &mut App) {
-    if app.portfolio.is_empty() {
+    let f = app.portfolio_filter_indices();
+    if f.is_empty() {
         return;
     }
     match app.portfolio_state.selected() {
         None => app
             .portfolio_state
-            .select(Some(app.portfolio.len().saturating_sub(1))),
+            .select(Some(f.len().saturating_sub(1))),
         Some(i) if i > 0 => app.portfolio_state.select(Some(i - 1)),
         _ => {}
     }
 }
 
 fn portfolio_move_down(app: &mut App) {
-    if app.portfolio.is_empty() {
+    let f = app.portfolio_filter_indices();
+    if f.is_empty() {
         return;
     }
     match app.portfolio_state.selected() {
         None => app.portfolio_state.select(Some(0)),
-        Some(i) if i < app.portfolio.len().saturating_sub(1) => {
+        Some(i) if i < f.len().saturating_sub(1) => {
             app.portfolio_state.select(Some(i + 1));
         }
         _ => {}
@@ -202,59 +205,78 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
             .style(theme.canvas().add_modifier(Modifier::BOLD))
             .height(1);
 
-        let rows = app.portfolio.iter().map(|item| {
-            let current_price = item.current_price.unwrap_or(0.0);
-            let market_value = current_price * item.shares;
-            let profit_loss = market_value - (item.purchase_price * item.shares);
-            let pl_percent = if item.purchase_price > 0.0 {
-                (profit_loss / (item.purchase_price * item.shares)) * 100.0
-            } else {
-                0.0
-            };
+        let holdings_title = format!("Holdings{}", filter_title_suffix(&app.filter_query));
 
-            let pl_color = if profit_loss >= 0.0 {
-                theme.positive
-            } else {
-                theme.negative
-            };
+        let filtered_idx = app.portfolio_filter_indices();
+        if filtered_idx.is_empty() {
+            let empty = Line::from(vec![Span::styled(
+                "No symbols match filter — press Esc to clear.",
+                theme.fg_border(),
+            )]);
+            let table = Paragraph::new(empty).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(holdings_title)
+                    .style(theme.canvas())
+                    .border_style(border_st),
+            );
+            f.render_widget(table, table_chunk);
+        } else {
+            let rows = filtered_idx.iter().map(|&idx| {
+                let item = &app.portfolio[idx];
+                let current_price = item.current_price.unwrap_or(0.0);
+                let market_value = current_price * item.shares;
+                let profit_loss = market_value - (item.purchase_price * item.shares);
+                let pl_percent = if item.purchase_price > 0.0 {
+                    (profit_loss / (item.purchase_price * item.shares)) * 100.0
+                } else {
+                    0.0
+                };
 
-            let cells = [
-                Cell::from(item.symbol.clone()),
-                Cell::from(format!("{:.2}", item.shares)),
-                Cell::from(format!("${:.2}", item.purchase_price)),
-                Cell::from(format!("${:.2}", current_price)),
-                Cell::from(format!("${:.2}", market_value)),
-                Cell::from(format!("${:.2}", profit_loss)).style(theme.fg_color(pl_color)),
-                Cell::from(format!("{:.2}%", pl_percent)).style(theme.fg_color(pl_color)),
-            ];
+                let pl_color = if profit_loss >= 0.0 {
+                    theme.positive
+                } else {
+                    theme.negative
+                };
 
-            Row::new(cells).height(1).style(theme.canvas())
-        });
+                let cells = [
+                    Cell::from(item.symbol.clone()),
+                    Cell::from(format!("{:.2}", item.shares)),
+                    Cell::from(format!("${:.2}", item.purchase_price)),
+                    Cell::from(format!("${:.2}", current_price)),
+                    Cell::from(format!("${:.2}", market_value)),
+                    Cell::from(format!("${:.2}", profit_loss)).style(theme.fg_color(pl_color)),
+                    Cell::from(format!("{:.2}%", pl_percent)).style(theme.fg_color(pl_color)),
+                ];
 
-        let table = Table::new(
-            rows,
-            [
-                Constraint::Length(8),
-                Constraint::Length(8),
-                Constraint::Length(10),
-                Constraint::Length(10),
-                Constraint::Length(10),
-                Constraint::Length(10),
-                Constraint::Length(10),
-            ],
-        )
-        .header(header)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Holdings")
-                .style(theme.canvas())
-                .border_style(border_st),
-        )
-        .highlight_style(selected_style)
-        .highlight_symbol("> ");
+                Row::new(cells).height(1).style(theme.canvas())
+            });
 
-        f.render_stateful_widget(table, table_chunk, &mut app.portfolio_state);
+            let table = Table::new(
+                rows,
+                [
+                    Constraint::Length(8),
+                    Constraint::Length(8),
+                    Constraint::Length(10),
+                    Constraint::Length(10),
+                    Constraint::Length(10),
+                    Constraint::Length(10),
+                    Constraint::Length(10),
+                ],
+            )
+            .header(header)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(holdings_title)
+                    .style(theme.canvas())
+                    .border_style(border_st),
+            )
+            .highlight_style(selected_style)
+            .highlight_symbol("> ");
+
+            f.render_stateful_widget(table, table_chunk, &mut app.portfolio_state);
+        }
 
         if app.portfolio_remove_armed {
             let hint = Paragraph::new(Line::from(vec![Span::styled(
@@ -426,8 +448,14 @@ fn handle_portfolio_remove_armed_keys(app: &mut App, key: KeyEvent) {
             if letter_key_plain(key.modifiers)
                 && (c.eq_ignore_ascii_case(&'d') || c.eq_ignore_ascii_case(&'y')) =>
         {
-            if let Some(selected) = app.portfolio_state.selected() {
-                if app.remove_from_portfolio(selected) {
+            if let Some(selected_f) = app.portfolio_state.selected() {
+                let filtered = app.portfolio_filter_indices();
+                if selected_f < filtered.len() {
+                    let actual = filtered[selected_f];
+                    if app.remove_from_portfolio(actual) {
+                        app.portfolio_remove_armed = false;
+                    }
+                } else {
                     app.portfolio_remove_armed = false;
                 }
             } else {
@@ -457,7 +485,18 @@ pub fn handle_portfolio_events(app: &mut App, key: KeyEvent) {
         return;
     }
 
+    if app.consume_filter_input_key(&key) {
+        return;
+    }
+
     match key {
+        KeyEvent {
+            code: KeyCode::Char('/'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => {
+            app.filter_input_mode = true;
+        }
         KeyEvent {
             code: KeyCode::Char(c),
             ..
@@ -514,9 +553,11 @@ pub fn handle_portfolio_events(app: &mut App, key: KeyEvent) {
             modifiers: KeyModifiers::NONE,
             ..
         } => {
-            if let Some(selected) = app.portfolio_state.selected() {
-                if selected < app.portfolio.len() {
-                    app.symbol = app.portfolio[selected].symbol.clone();
+            if let Some(selected_f) = app.portfolio_state.selected() {
+                let filtered = app.portfolio_filter_indices();
+                if selected_f < filtered.len() {
+                    let idx = filtered[selected_f];
+                    app.symbol = app.portfolio[idx].symbol.clone();
                     app.on_active_symbol_changed_for_charts();
                     app.notify_symbol_changed_for_news();
                     app.sync_watchlist_selection_to_symbol();

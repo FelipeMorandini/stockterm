@@ -11,6 +11,7 @@ mod layout;
 pub mod charts;
 pub mod portfolio;
 pub mod alerts;
+mod table_filter;
 
 pub use self::app::{
     normalize_symbol, AlertAddDialog, AlertAddField, App, FetchDone, PortfolioAddDialog,

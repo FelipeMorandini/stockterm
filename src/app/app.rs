@@ -248,6 +248,10 @@ pub struct App {
     pub alerts_save_retry_pending: bool,
     /// Issue #14 / SPEC §21.5 — Settings Theme row: preset ring before **Enter** saves.
     pub settings_theme_draft: ThemePreset,
+    /// Issue #16 / SPEC §23 — substring filter (Portfolio + Stock View); cleared on tab switch.
+    pub filter_query: String,
+    /// Issue #16 — true after `/` until Enter (commit) or Esc (clear).
+    pub filter_input_mode: bool,
 }
 
 const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
@@ -467,6 +471,8 @@ impl App {
             alert_add_dialog: None,
             alerts_save_retry_pending: false,
             settings_theme_draft,
+            filter_query: String::new(),
+            filter_input_mode: false,
         };
 
         if !app.portfolio.is_empty() {
@@ -695,6 +701,98 @@ impl App {
     fn clear_portfolio_tab_transient(&mut self) {
         self.portfolio_dialog = None;
         self.portfolio_remove_armed = false;
+    }
+
+    /// Issue #16 / SPEC §23 — reset filter on any tab change.
+    fn clear_table_filter(&mut self) {
+        self.filter_query.clear();
+        self.filter_input_mode = false;
+    }
+
+    pub(crate) fn watchlist_filter_indices(&self) -> Vec<usize> {
+        crate::app::table_filter::filter_symbol_indices(&self.watchlist, &self.filter_query)
+    }
+
+    pub(crate) fn portfolio_filter_indices(&self) -> Vec<usize> {
+        crate::app::table_filter::filter_row_indices(self.portfolio.len(), |i| {
+            self.portfolio[i].symbol.as_str()
+        }, &self.filter_query)
+    }
+
+    pub(crate) fn clamp_portfolio_filter_selection(&mut self) {
+        let f = self.portfolio_filter_indices();
+        if f.is_empty() {
+            self.portfolio_state.select(None);
+            return;
+        }
+        let max_i = f.len() - 1;
+        let new_sel = self
+            .portfolio_state
+            .selected()
+            .map(|s| s.min(max_i))
+            .unwrap_or(0);
+        self.portfolio_state.select(Some(new_sel));
+    }
+
+    pub(crate) fn clamp_watchlist_filter_selection(&mut self) {
+        let f = self.watchlist_filter_indices();
+        if f.is_empty() {
+            self.watchlist_state.select(None);
+            return;
+        }
+        let max_i = f.len() - 1;
+        let new_sel = self
+            .watchlist_state
+            .selected()
+            .map(|s| s.min(max_i))
+            .unwrap_or(0);
+        self.watchlist_state.select(Some(new_sel));
+    }
+
+    fn clamp_both_filter_selections(&mut self) {
+        self.clamp_portfolio_filter_selection();
+        self.clamp_watchlist_filter_selection();
+    }
+
+    /// Issue #16 — while `filter_input_mode`, consumes keys for editing; returns true if handled.
+    pub(crate) fn consume_filter_input_key(&mut self, key: &crossterm::event::KeyEvent) -> bool {
+        use crossterm::event::{KeyCode, KeyModifiers};
+        if !self.filter_input_mode {
+            return false;
+        }
+        match key.code {
+            KeyCode::Esc if key.modifiers == KeyModifiers::NONE => {
+                self.filter_query.clear();
+                self.filter_input_mode = false;
+                self.clamp_both_filter_selections();
+                true
+            }
+            KeyCode::Enter if key.modifiers == KeyModifiers::NONE => {
+                self.filter_input_mode = false;
+                self.clamp_both_filter_selections();
+                true
+            }
+            KeyCode::Backspace if key.modifiers == KeyModifiers::NONE => {
+                self.filter_query.pop();
+                self.clamp_both_filter_selections();
+                true
+            }
+            KeyCode::Char('/') if key.modifiers == KeyModifiers::NONE => {
+                if self.filter_query.is_empty() {
+                    self.filter_input_mode = false;
+                }
+                self.clamp_both_filter_selections();
+                true
+            }
+            KeyCode::Char(c) if key.modifiers == KeyModifiers::NONE && c.is_ascii_alphanumeric() => {
+                if self.filter_query.len() < crate::app::table_filter::MAX_FILTER_QUERY_LEN {
+                    self.filter_query.push(c);
+                }
+                self.clamp_both_filter_selections();
+                true
+            }
+            _ => true,
+        }
     }
 
     /// User-driven refresh (Enter, portfolio jump, etc.). Coalesces if a batch is already running.
@@ -1628,9 +1726,29 @@ impl Default for App {
 }
 
 impl App {
+    /// Aligns watchlist table selection with `symbol`. When the active filter matches no rows but
+    /// the watchlist is non-empty, clears selection and leaves `symbol` unchanged (detail pane may
+    /// still show a typed ticker not on the watchlist).
     pub fn sync_watchlist_selection_to_symbol(&mut self) {
-        if let Some(pos) = self.watchlist.iter().position(|s| s == &self.symbol) {
-            self.watchlist_state.select(Some(pos));
+        let f = self.watchlist_filter_indices();
+        if f.is_empty() {
+            self.watchlist_state.select(None);
+            return;
+        }
+        if let Some(full_idx) = self.watchlist.iter().position(|s| s == &self.symbol) {
+            if let Some(sel) = f.iter().position(|&i| i == full_idx) {
+                self.watchlist_state.select(Some(sel));
+                return;
+            }
+        }
+        // Symbol not visible under the current filter — align highlight + active symbol to first match.
+        self.watchlist_state.select(Some(0));
+        let actual = f[0];
+        if self.symbol != self.watchlist[actual] {
+            self.symbol = self.watchlist[actual].clone();
+            self.on_active_symbol_changed_for_charts();
+            self.notify_symbol_changed_for_news();
+            self.persist_session_to_disk();
         }
     }
 
@@ -1658,7 +1776,16 @@ impl App {
         }) {
             self.active_runtime_error = None;
         }
-        self.watchlist_state.select(Some(self.watchlist.len().saturating_sub(1)));
+        let f = self.watchlist_filter_indices();
+        let new_last = self.watchlist.len().saturating_sub(1);
+        if f.is_empty() {
+            self.watchlist_state.select(None);
+        } else if let Some(sel) = f.iter().position(|&i| i == new_last) {
+            self.watchlist_state.select(Some(sel));
+        } else {
+            // New row is not in the current filtered view — keep `symbol` as the added ticker.
+            self.watchlist_state.select(None);
+        }
         if !same_ticker_case_only {
             self.on_active_symbol_changed_for_charts();
         }
@@ -1666,13 +1793,18 @@ impl App {
     }
 
     pub fn remove_selected_watchlist_row(&mut self) {
-        let Some(selected) = self.watchlist_state.selected() else {
+        let Some(sel_f) = self.watchlist_state.selected() else {
             return;
         };
-        if selected >= self.watchlist.len() {
+        let f = self.watchlist_filter_indices();
+        if sel_f >= f.len() {
             return;
         }
-        self.watchlist.remove(selected);
+        let actual = f[sel_f];
+        if actual >= self.watchlist.len() {
+            return;
+        }
+        self.watchlist.remove(actual);
         self.watchlist_quotes.retain(|k, _| self.watchlist.contains(k));
         self.config.watchlist = self.watchlist.clone();
         if let Err(e) = self.try_save_config_with_session() {
@@ -1691,9 +1823,17 @@ impl App {
         if self.watchlist.is_empty() {
             self.watchlist_state.select(None);
         } else {
-            let ni = selected.min(self.watchlist.len() - 1);
-            self.watchlist_state.select(Some(ni));
-            self.symbol = self.watchlist[ni].clone();
+            let f2 = self.watchlist_filter_indices();
+            if f2.is_empty() {
+                self.watchlist_state.select(None);
+                // Filter matches no rows but tickers remain — keep `symbol` in the watchlist.
+                self.symbol = self.watchlist[0].clone();
+                self.persist_session_to_disk();
+            } else {
+                let ni = sel_f.min(f2.len().saturating_sub(1));
+                self.watchlist_state.select(Some(ni));
+                self.symbol = self.watchlist[f2[ni]].clone();
+            }
         }
 
         self.ticker_data = self
@@ -1707,38 +1847,44 @@ impl App {
     }
 
     pub fn watchlist_select_prev(&mut self) {
-        if self.watchlist.is_empty() {
+        let f = self.watchlist_filter_indices();
+        if f.is_empty() {
             return;
         }
         match self.watchlist_state.selected() {
             None => self
                 .watchlist_state
-                .select(Some(self.watchlist.len().saturating_sub(1))),
+                .select(Some(f.len().saturating_sub(1))),
             Some(i) if i > 0 => self.watchlist_state.select(Some(i - 1)),
             _ => {}
         }
         if let Some(i) = self.watchlist_state.selected() {
-            self.symbol = self.watchlist[i].clone();
-            self.on_active_symbol_changed_for_charts();
+            if i < f.len() {
+                self.symbol = self.watchlist[f[i]].clone();
+                self.on_active_symbol_changed_for_charts();
+            }
         }
         self.notify_symbol_changed_for_news();
         self.persist_session_to_disk();
     }
 
     pub fn watchlist_select_next(&mut self) {
-        if self.watchlist.is_empty() {
+        let f = self.watchlist_filter_indices();
+        if f.is_empty() {
             return;
         }
         match self.watchlist_state.selected() {
             None => self.watchlist_state.select(Some(0)),
-            Some(i) if i < self.watchlist.len().saturating_sub(1) => {
+            Some(i) if i < f.len().saturating_sub(1) => {
                 self.watchlist_state.select(Some(i + 1));
             }
             _ => {}
         }
         if let Some(i) = self.watchlist_state.selected() {
-            self.symbol = self.watchlist[i].clone();
-            self.on_active_symbol_changed_for_charts();
+            if i < f.len() {
+                self.symbol = self.watchlist[f[i]].clone();
+                self.on_active_symbol_changed_for_charts();
+            }
         }
         self.notify_symbol_changed_for_news();
         self.persist_session_to_disk();
@@ -1824,6 +1970,7 @@ impl App {
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
         }
+        self.clear_table_filter();
         self.persist_session_to_disk();
     }
 
@@ -1841,6 +1988,7 @@ impl App {
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
         }
+        self.clear_table_filter();
         self.persist_session_to_disk();
     }
 
@@ -1870,8 +2018,20 @@ impl App {
         self.config.portfolio = self.portfolio.clone();
         match self.try_save_config_with_session() {
             Ok(()) => {
-                if !self.portfolio.is_empty() && self.portfolio_state.selected().is_none() {
-                    self.portfolio_state.select(Some(self.portfolio.len() - 1));
+                if !self.portfolio.is_empty() {
+                    let f = self.portfolio_filter_indices();
+                    if !f.is_empty() {
+                        let pos = f
+                            .iter()
+                            .position(|&i| {
+                                normalize_symbol(&self.portfolio[i].symbol).as_deref()
+                                    == Some(sym.as_str())
+                            })
+                            .unwrap_or(f.len().saturating_sub(1));
+                        self.portfolio_state.select(Some(pos));
+                    }
+                } else {
+                    self.portfolio_state.select(None);
                 }
                 true
             }
@@ -1900,16 +2060,7 @@ impl App {
         self.config.portfolio = self.portfolio.clone();
         match self.try_save_config_with_session() {
             Ok(()) => {
-                if self.portfolio.is_empty() {
-                    self.portfolio_state.select(None);
-                } else if let Some(mut sel) = self.portfolio_state.selected() {
-                    if index < sel {
-                        sel -= 1;
-                    } else if index == sel {
-                        sel = sel.min(self.portfolio.len() - 1);
-                    }
-                    self.portfolio_state.select(Some(sel));
-                }
+                self.clamp_portfolio_filter_selection();
                 true
             }
             Err(e) => {

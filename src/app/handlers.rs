@@ -513,19 +513,30 @@ fn handle_settings_events(app: &mut App, key: KeyEvent) {
 }
 
 fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
+    if app.consume_filter_input_key(&key) {
+        return;
+    }
+
     match key {
+        KeyEvent {
+            code: KeyCode::Char('/'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => {
+            app.filter_input_mode = true;
+        }
         KeyEvent {
             code: KeyCode::Char('w'),
             modifiers,
             ..
-        } if letter_key_plain(modifiers) => {
+        } if letter_key_plain(modifiers) && !app.filter_input_mode => {
             app.add_current_to_watchlist();
         }
         KeyEvent {
             code: KeyCode::Char('x'),
             modifiers,
             ..
-        } if letter_key_plain(modifiers) => {
+        } if letter_key_plain(modifiers) && !app.filter_input_mode => {
             app.remove_selected_watchlist_row();
         }
         KeyEvent {
@@ -534,7 +545,8 @@ fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
             ..
         } if c.eq_ignore_ascii_case(&'d')
             && modifiers.contains(KeyModifiers::SHIFT)
-            && letter_key_plain(modifiers) =>
+            && letter_key_plain(modifiers)
+            && !app.filter_input_mode =>
         {
             app.remove_selected_watchlist_row();
         }
@@ -542,47 +554,50 @@ fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
             code: KeyCode::Char('j'),
             modifiers,
             ..
-        } if letter_key_plain(modifiers) => {
+        } if letter_key_plain(modifiers) && !app.filter_input_mode => {
             app.watchlist_select_next();
         }
         KeyEvent {
             code: KeyCode::Down,
             ..
-        } => {
+        } if !app.filter_input_mode => {
             app.watchlist_select_next();
         }
         KeyEvent {
             code: KeyCode::Char('k'),
             modifiers,
             ..
-        } if letter_key_plain(modifiers) => {
+        } if letter_key_plain(modifiers) && !app.filter_input_mode => {
             app.watchlist_select_prev();
         }
         KeyEvent {
             code: KeyCode::Up,
             ..
-        } => {
+        } if !app.filter_input_mode => {
             app.watchlist_select_prev();
         }
         KeyEvent {
             code: KeyCode::Char(c),
             modifiers,
             ..
-        } if c.is_ascii_alphabetic() && letter_key_plain(modifiers) => {
+        } if c.is_ascii_alphabetic()
+            && letter_key_plain(modifiers)
+            && !app.filter_input_mode =>
+        {
             app.symbol.push(c.to_ascii_uppercase());
         }
         KeyEvent {
             code: KeyCode::Backspace,
             modifiers: KeyModifiers::NONE,
             ..
-        } => {
+        } if !app.filter_input_mode => {
             app.symbol.pop();
         }
         KeyEvent {
             code: KeyCode::Enter,
             modifiers: KeyModifiers::NONE,
             ..
-        } => {
+        } if !app.filter_input_mode => {
             app.should_fetch_ticker = true;
         }
         _ => {}

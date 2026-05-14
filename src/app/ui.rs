@@ -3,6 +3,7 @@ use crate::app::charts::draw_charts;
 use crate::app::layout::centered_rect;
 use crate::app::portfolio::draw_portfolio;
 use crate::app::styles::ResolvedTheme;
+use crate::app::table_filter::filter_title_suffix;
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::MarketProviderKind;
 use crate::models::ticker::TickerResponse;
@@ -226,15 +227,37 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
             )]),
             Line::from(vec![
                 Span::styled("w", rt.fg_border()),
-                Span::styled(" to add it. ", rt.canvas()),
+                Span::styled(" to add. ", rt.canvas()),
                 Span::styled("j", rt.fg_border()),
-                Span::styled("/", rt.canvas()),
+                Span::styled("/", rt.fg_border()),
                 Span::styled("k", rt.fg_border()),
-                Span::styled(" or arrows move selection.", rt.canvas()),
+                Span::styled(" or arrows move rows; ", rt.canvas()),
+                Span::styled("/", rt.fg_border()),
+                Span::styled(" filters symbols (Portfolio tab too).", rt.canvas()),
             ]),
         ];
         let block = Block::default()
             .title("Watchlist")
+            .borders(Borders::ALL)
+            .style(rt.canvas())
+            .border_style(Style::default().fg(rt.border).bg(rt.background));
+        f.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
+
+    let wl_title = format!(
+        "Watchlist (w add, x/D remove, j/k navigate){}",
+        filter_title_suffix(&app.filter_query)
+    );
+
+    let filtered_idx = app.watchlist_filter_indices();
+    if filtered_idx.is_empty() {
+        let text = vec![Line::from(vec![Span::styled(
+            "No symbols match filter — Esc clears filter.",
+            rt.fg_border(),
+        )])];
+        let block = Block::default()
+            .title(wl_title)
             .borders(Borders::ALL)
             .style(rt.canvas())
             .border_style(Style::default().fg(rt.border).bg(rt.background));
@@ -250,7 +273,8 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
         .style(rt.canvas().add_modifier(Modifier::BOLD))
         .height(1);
 
-    let rows = app.watchlist.iter().map(|sym| {
+    let rows = filtered_idx.iter().map(|&idx| {
+        let sym = &app.watchlist[idx];
         let row_style = rt.canvas();
         let (last_s, chg_s, pct_s, vol_s, chg_color) =
             match app.watchlist_quotes.get(sym).and_then(|r| r.latest_result()) {
@@ -315,7 +339,7 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
     .block(
         Block::default()
             .borders(Borders::ALL)
-            .title("Watchlist (w add, x/D remove, j/k navigate)")
+            .title(wl_title)
             .style(rt.canvas())
             .border_style(Style::default().fg(rt.border).bg(rt.background)),
     )
