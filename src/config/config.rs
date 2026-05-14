@@ -18,6 +18,21 @@ pub enum MarketProviderKind {
     Polygon,
 }
 
+/// `~/.stockterm.json` — persisted preferences, portfolio, watchlist, alerts, and session hints.
+///
+/// | Field | Role |
+/// |-------|------|
+/// | `portfolio` | Holdings (symbol, shares, cost). Default: empty. |
+/// | `watchlist` | Stock View symbols (uppercase). Default: empty. |
+/// | `refresh_rate` | Quote poll interval (seconds; app may enforce a minimum). Default: `0` → app default. |
+/// | `api_key` | Polygon API key (optional if `STOCKTERM_API_KEY` is set). Default: empty. |
+/// | `alerts` | Price alerts. Default: empty. |
+/// | `default_symbol` | Startup symbol when `watchlist` is empty. Default: empty → app uses `AAPL`. |
+/// | `theme` | Optional theme preset + hex overrides (see §21). Default: `null`. |
+/// | `provider` | `yahoo` or `polygon`. Default: `yahoo`. |
+/// | `notifications_enabled` | Desktop toasts for alerts. Default: `true`. |
+/// | `last_tab` | Last focused tab id (`stock_view`, `portfolio`, …). Default: omitted. |
+/// | `last_symbol` | Last active ticker (uppercase) when `watchlist` was empty at launch. Default: omitted. |
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
@@ -35,6 +50,12 @@ pub struct Config {
     /// Desktop toast when a price alert fires (bell always rings per SPEC §18.5).
     #[serde(default = "default_notifications_enabled")]
     pub notifications_enabled: bool,
+    /// Last focused tab (`stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `settings`).
+    #[serde(default)]
+    pub last_tab: Option<String>,
+    /// Last active symbol (normalized) when restoring session; used when `watchlist` is empty (Issue #19 / §22).
+    #[serde(default)]
+    pub last_symbol: Option<String>,
 }
 
 fn default_notifications_enabled() -> bool {
@@ -53,6 +74,8 @@ impl Default for Config {
             theme: None,
             provider: MarketProviderKind::default(),
             notifications_enabled: default_notifications_enabled(),
+            last_tab: None,
+            last_symbol: None,
         }
     }
 }
@@ -154,6 +177,14 @@ mod tests {
         let j = r#"{"portfolio":[],"watchlist":[],"refresh_rate":0,"api_key":"","alerts":[],"default_symbol":"","provider":"polygon"}"#;
         let c: Config = serde_json::from_str(j).expect("parse");
         assert_eq!(c.provider, MarketProviderKind::Polygon);
+    }
+
+    #[test]
+    fn serde_last_tab_last_symbol_default_when_omitted() {
+        let j = r#"{"portfolio":[],"watchlist":[],"refresh_rate":0,"api_key":"","alerts":[],"default_symbol":"","provider":"yahoo"}"#;
+        let c: Config = serde_json::from_str(j).expect("parse");
+        assert!(c.last_tab.is_none());
+        assert!(c.last_symbol.is_none());
     }
 
 }

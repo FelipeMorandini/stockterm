@@ -641,7 +641,7 @@ impl App {
 
     fn save_alerts(&mut self) {
         self.config.alerts = self.alerts.clone();
-        match self.config.try_save() {
+        match self.try_save_config_with_session() {
             Ok(()) => {
                 self.alerts_save_retry_pending = false;
                 self.clear_alerts_save_runtime_error_after_recovery();

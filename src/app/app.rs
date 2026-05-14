@@ -12,7 +12,7 @@ use crate::app::event::{spawn_event_thread, Event};
 use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
 use crate::config::theme::{PaletteRgb, Theme, ThemePreset};
-use crate::config::{Config, MarketProviderKind};
+use crate::config::{Config, ConfigError, MarketProviderKind};
 use crate::models::alerts::{Alert, AlertCondition};
 use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
@@ -41,6 +41,34 @@ pub enum Tab {
     News,
     Charts,
     Settings,
+}
+
+impl Tab {
+    /// Stable ids in `~/.stockterm.json` (`last_tab`) — Issue #19 / §22.
+    pub(crate) fn as_config_str(self) -> &'static str {
+        match self {
+            Tab::StockView => "stock_view",
+            Tab::Portfolio => "portfolio",
+            Tab::Alerts => "alerts",
+            Tab::Search => "search",
+            Tab::News => "news",
+            Tab::Charts => "charts",
+            Tab::Settings => "settings",
+        }
+    }
+
+    pub(crate) fn from_config_str(s: &str) -> Option<Self> {
+        Some(match s.trim() {
+            "stock_view" | "StockView" => Tab::StockView,
+            "portfolio" | "Portfolio" => Tab::Portfolio,
+            "alerts" | "Alerts" => Tab::Alerts,
+            "search" | "Search" => Tab::Search,
+            "news" | "News" => Tab::News,
+            "charts" | "Charts" => Tab::Charts,
+            "settings" | "Settings" => Tab::Settings,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -240,6 +268,21 @@ pub fn normalize_symbol(s: &str) -> Option<String> {
     Some(t.to_uppercase())
 }
 
+fn quote_error_digest_for_merge(err: &AppError) -> String {
+    match err {
+        AppError::Provider(pe) => pe.to_string(),
+        AppError::Internal(s) | AppError::ConfigSave(s) => s.clone(),
+    }
+}
+
+/// Alerts-disk failure prefix for §22.2 merge; strip a prior quote tail after ` · ` before re-merge.
+fn alerts_disk_failure_head_for_quote_merge(full: &str) -> &str {
+    if !full.starts_with(ALERTS_SAVE_ERROR_PREFIX) {
+        return full;
+    }
+    full.split_once(" · ").map(|(head, _)| head).unwrap_or(full)
+}
+
 async fn run_stock_quote_batch(
     generation: u64,
     symbols: Vec<String>,
@@ -340,8 +383,19 @@ impl App {
         let symbol = if let Some(first) = watchlist.first() {
             first.clone()
         } else {
-            normalize_symbol(&config.default_symbol).unwrap_or_else(|| "AAPL".to_string())
+            config
+                .last_symbol
+                .as_deref()
+                .and_then(normalize_symbol)
+                .or_else(|| normalize_symbol(&config.default_symbol))
+                .unwrap_or_else(|| "AAPL".to_string())
         };
+
+        let active_tab = config
+            .last_tab
+            .as_deref()
+            .and_then(Tab::from_config_str)
+            .unwrap_or(Tab::StockView);
 
         let mut watchlist_state = TableState::default();
         if !watchlist.is_empty() {
@@ -370,7 +424,7 @@ impl App {
             portfolio_state: TableState::default(),
             alerts,
             alerts_state: TableState::default(),
-            active_tab: Tab::StockView,
+            active_tab,
             active_runtime_error: None,
             startup_error,
             error_log: VecDeque::new(),
@@ -476,6 +530,29 @@ impl App {
         ));
     }
 
+    /// Copy `active_tab` / `symbol` into `config` before any disk write (Issue #19 / §22).
+    pub(crate) fn sync_session_fields_into_config(&mut self) {
+        self.config.last_tab = Some(self.active_tab.as_config_str().to_string());
+        self.config.last_symbol = normalize_symbol(&self.symbol);
+    }
+
+    /// [`Config::try_save`] after refreshing `last_tab` / `last_symbol` from UI state.
+    pub(crate) fn try_save_config_with_session(&mut self) -> Result<(), ConfigError> {
+        self.sync_session_fields_into_config();
+        self.config.try_save()
+    }
+
+    fn persist_session_to_disk(&mut self) {
+        if let Err(e) = self.try_save_config_with_session() {
+            self.surface_runtime_error(
+                self.active_tab,
+                ErrorSourceDomain::Other,
+                AppError::ConfigSave(format!("Failed to save session: {e}")),
+                false,
+            );
+        }
+    }
+
     /// Issue #120 / #121 / SPEC §20.15.1 — clamp [`Self::error_log_scroll`]
     /// against the most recently rendered visible-row count and the current
     /// [`Self::error_log`] length. Idempotent; safe to call from input
@@ -491,10 +568,18 @@ impl App {
         }
     }
 
-    fn preserves_alerts_save_banner(&self) -> bool {
-        self.active_runtime_error.as_ref().is_some_and(|a| {
-            matches!(&a.error, AppError::ConfigSave(s) if s.starts_with(ALERTS_SAVE_ERROR_PREFIX))
+    /// Active runtime error is an alerts `try_save` failure or a §22.2 merged line (`Internal` + same prefix).
+    fn active_alerts_save_failure_message(&self) -> Option<&str> {
+        self.active_runtime_error.as_ref().and_then(|a| match &a.error {
+            AppError::ConfigSave(s) if s.starts_with(ALERTS_SAVE_ERROR_PREFIX) => Some(s.as_str()),
+            AppError::Internal(s) if s.starts_with(ALERTS_SAVE_ERROR_PREFIX) => Some(s.as_str()),
+            _ => None,
         })
+    }
+
+    /// True when the status line shows an alerts-disk failure (including §22.2 merged `Internal`).
+    fn preserves_alerts_save_banner(&self) -> bool {
+        self.active_alerts_save_failure_message().is_some()
     }
 
     pub(crate) fn clear_alerts_save_runtime_error_after_recovery(&mut self) {
@@ -706,7 +791,11 @@ impl App {
             // scrolled to the bottom of the overlay does not observe a
             // "dead `k`" key (Issue #120 / #121 audit follow-up).
             self.clamp_error_log_scroll();
-            let primary = if self.ticker_data.is_none() && errors.len() == 1 {
+            let alerts_save_line = self
+                .active_alerts_save_failure_message()
+                .map(|full| alerts_disk_failure_head_for_quote_merge(full).to_string());
+
+            let primary_base = if self.ticker_data.is_none() && errors.len() == 1 {
                 AppError::Provider(errors[0].1.clone())
             } else if self.ticker_data.is_none() {
                 AppError::Internal(
@@ -726,6 +815,16 @@ impl App {
                         .join("; ")
                 ))
             };
+
+            let primary = if let Some(alerts_line) = alerts_save_line {
+                AppError::Internal(format!(
+                    "{alerts_line} · {}",
+                    quote_error_digest_for_merge(&primary_base)
+                ))
+            } else {
+                primary_base
+            };
+
             self.surface_runtime_error(
                 Tab::StockView,
                 ErrorSourceDomain::Stock,
@@ -1160,7 +1259,7 @@ impl App {
                     return true;
                 }
                 self.config.refresh_rate = v;
-                if let Err(e) = self.config.try_save() {
+                if let Err(e) = self.try_save_config_with_session() {
                     self.surface_runtime_error(
                         Tab::Settings,
                         ErrorSourceDomain::Settings,
@@ -1183,7 +1282,7 @@ impl App {
                     return true;
                 };
                 self.config.default_symbol = sym;
-                if let Err(e) = self.config.try_save() {
+                if let Err(e) = self.try_save_config_with_session() {
                     self.surface_runtime_error(
                         Tab::Settings,
                         ErrorSourceDomain::Settings,
@@ -1223,7 +1322,7 @@ impl App {
         let mut merged = previous.clone().unwrap_or_default();
         merged.preset = Some(self.settings_theme_draft);
         self.config.theme = Some(merged);
-        if let Err(e) = self.config.try_save() {
+        if let Err(e) = self.try_save_config_with_session() {
             self.config.theme = previous;
             self.surface_runtime_error(
                 Tab::Settings,
@@ -1252,7 +1351,7 @@ impl App {
     /// SPEC §18.7 — toggle desktop toasts for alert fires (bell always rings).
     pub fn settings_toggle_notifications(&mut self) {
         self.config.notifications_enabled = !self.config.notifications_enabled;
-        if let Err(e) = self.config.try_save() {
+        if let Err(e) = self.try_save_config_with_session() {
             self.config.notifications_enabled = !self.config.notifications_enabled;
             self.surface_runtime_error(
                 Tab::Settings,
@@ -1461,6 +1560,7 @@ impl App {
             draw(terminal, self)?;
 
             if self.should_quit {
+                let _ = self.try_save_config_with_session();
                 return Ok(());
             }
 
@@ -1473,6 +1573,7 @@ impl App {
                                 self.should_fetch_ticker = false;
                                 self.sync_watchlist_selection_to_symbol();
                                 self.request_immediate_stock_poll();
+                                self.persist_session_to_disk();
                             }
                         }
                         Some(Event::Tick) => self.on_background_tick(),
@@ -1519,7 +1620,7 @@ impl App {
         self.watchlist.push(sym.clone());
         self.symbol = sym;
         self.config.watchlist = self.watchlist.clone();
-        if let Err(e) = self.config.try_save() {
+        if let Err(e) = self.try_save_config_with_session() {
             self.surface_runtime_error(
                 Tab::StockView,
                 ErrorSourceDomain::Portfolio,
@@ -1548,7 +1649,7 @@ impl App {
         self.watchlist.remove(selected);
         self.watchlist_quotes.retain(|k, _| self.watchlist.contains(k));
         self.config.watchlist = self.watchlist.clone();
-        if let Err(e) = self.config.try_save() {
+        if let Err(e) = self.try_save_config_with_session() {
             self.surface_runtime_error(
                 Tab::StockView,
                 ErrorSourceDomain::Portfolio,
@@ -1595,6 +1696,7 @@ impl App {
             self.on_active_symbol_changed_for_charts();
         }
         self.notify_symbol_changed_for_news();
+        self.persist_session_to_disk();
     }
 
     pub fn watchlist_select_next(&mut self) {
@@ -1613,6 +1715,7 @@ impl App {
             self.on_active_symbol_changed_for_charts();
         }
         self.notify_symbol_changed_for_news();
+        self.persist_session_to_disk();
     }
 
     /// Charts tab: switch time range and refetch (keys `1`–`4`).
@@ -1695,6 +1798,7 @@ impl App {
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
         }
+        self.persist_session_to_disk();
     }
 
     pub fn prev_tab(&mut self) {
@@ -1711,6 +1815,7 @@ impl App {
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
         }
+        self.persist_session_to_disk();
     }
 
     /// Returns `false` if validation or `try_save` failed (`error_message` may be set).
@@ -1737,7 +1842,7 @@ impl App {
         }
 
         self.config.portfolio = self.portfolio.clone();
-        match self.config.try_save() {
+        match self.try_save_config_with_session() {
             Ok(()) => {
                 if !self.portfolio.is_empty() && self.portfolio_state.selected().is_none() {
                     self.portfolio_state.select(Some(self.portfolio.len() - 1));
@@ -1767,7 +1872,7 @@ impl App {
         let backup = self.portfolio.clone();
         self.portfolio.remove(index);
         self.config.portfolio = self.portfolio.clone();
-        match self.config.try_save() {
+        match self.try_save_config_with_session() {
             Ok(()) => {
                 if self.portfolio.is_empty() {
                     self.portfolio_state.select(None);
@@ -2004,6 +2109,102 @@ mod tests {
         app2.clamp_error_log_scroll();
         // total = 1, visible_rows treated as 1 → max_scroll = 0.
         assert_eq!(app2.error_log_scroll, 0);
+    }
+
+    #[test]
+    fn apply_stock_fetch_done_merges_alerts_save_with_quote_errors_issue_103() {
+        use crate::api::error::ProviderError;
+        use crate::app::alerts::ALERTS_SAVE_ERROR_PREFIX;
+        use crate::app::app_error::{
+            ActiveErrorState, AppError, ErrorPersistence, ErrorSourceDomain,
+        };
+        use std::collections::HashMap;
+        use std::time::Instant;
+
+        let mut app = App::new();
+        app.symbol = "AAPL".to_string();
+        app.stock_fetch_generation = 1;
+        app.stock_refresh_inflight = true;
+        app.active_runtime_error = Some(ActiveErrorState::new(
+            AppError::ConfigSave(format!("{ALERTS_SAVE_ERROR_PREFIX} simulated")),
+            ErrorPersistence::Sticky,
+            Instant::now(),
+            ErrorSourceDomain::Alerts,
+        ));
+
+        let errors = vec![("AAPL".into(), ProviderError::ApiMessage("bad".into()))];
+        app.apply_stock_fetch_done(1, HashMap::new(), errors);
+        let msg = app.error_message().expect("merged error");
+        assert!(
+            msg.contains(ALERTS_SAVE_ERROR_PREFIX),
+            "status line should keep alerts-save prefix: {msg}"
+        );
+        assert!(msg.contains("bad"), "expected quote detail: {msg}");
+    }
+
+    #[test]
+    fn apply_stock_fetch_done_remerges_when_active_error_is_internal_audit_round2() {
+        use crate::api::error::ProviderError;
+        use crate::app::alerts::ALERTS_SAVE_ERROR_PREFIX;
+        use crate::app::app_error::{
+            ActiveErrorState, AppError, ErrorPersistence, ErrorSourceDomain,
+        };
+        use std::collections::HashMap;
+        use std::time::Instant;
+
+        let mut app = App::new();
+        app.symbol = "AAPL".to_string();
+        app.stock_fetch_generation = 1;
+        app.stock_refresh_inflight = true;
+        app.active_runtime_error = Some(ActiveErrorState::new(
+            AppError::Internal(format!(
+                "{ALERTS_SAVE_ERROR_PREFIX} disk · first-batch"
+            )),
+            ErrorPersistence::Sticky,
+            Instant::now(),
+            ErrorSourceDomain::Stock,
+        ));
+
+        let errors = vec![("MSFT".into(), ProviderError::ApiMessage("second".into()))];
+        app.apply_stock_fetch_done(1, HashMap::new(), errors);
+        let msg = app.error_message().expect("second merge");
+        assert!(
+            msg.contains(ALERTS_SAVE_ERROR_PREFIX),
+            "must keep alerts prefix: {msg}"
+        );
+        assert!(msg.contains("second"), "second batch detail: {msg}");
+    }
+
+    #[test]
+    fn tab_config_str_roundtrip() {
+        assert_eq!(Tab::Charts.as_config_str(), "charts");
+        assert_eq!(Tab::from_config_str("charts"), Some(Tab::Charts));
+        assert_eq!(Tab::from_config_str("Charts"), Some(Tab::Charts));
+        assert!(Tab::from_config_str("nope").is_none());
+    }
+
+    #[test]
+    fn clear_alerts_save_runtime_error_clears_merged_internal_issue_audit() {
+        use crate::app::alerts::ALERTS_SAVE_ERROR_PREFIX;
+        use crate::app::app_error::{
+            ActiveErrorState, AppError, ErrorPersistence, ErrorSourceDomain,
+        };
+        use std::time::Instant;
+
+        let mut app = App::new();
+        app.active_runtime_error = Some(ActiveErrorState::new(
+            AppError::Internal(format!(
+                "{ALERTS_SAVE_ERROR_PREFIX} simulated · API: bad"
+            )),
+            ErrorPersistence::Sticky,
+            Instant::now(),
+            ErrorSourceDomain::Stock,
+        ));
+        app.clear_alerts_save_runtime_error_after_recovery();
+        assert!(
+            app.active_runtime_error.is_none(),
+            "merged §22.2 Internal line must clear after alerts save recovery"
+        );
     }
 
     #[test]
