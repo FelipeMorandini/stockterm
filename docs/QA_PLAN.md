@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7). **[Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16)** covers substring filter on **Portfolio** holdings and **Stock View** watchlist (`/`, **Esc** clears, **Enter** commits, **Tab** unchanged — see [`docs/SPEC.md`](SPEC.md) §23).
 
 ## Issues #19, #103 — Config persistence & alerts-save / quote error coordination
 
@@ -1790,4 +1790,83 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 
 ---
 
-**After implementation:** Run the relevant QA sections (#44 and/or #3) and record results in the sign-off tables before merge.
+## Issue #16 — Filter stocks (Portfolio + Stock View watchlist)
+
+**Scope:** [GitHub Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16) — ephemeral case-insensitive **substring** filter on the **symbol** column for **Portfolio** holdings and **Stock View** watchlist; **`/`** enters filter input mode; live table narrowing; **Esc** clears filter and restores full list; **Enter** exits input mode while keeping the current filter string; **Tab** / **Shift+Tab** still change tabs; selection stays valid on the **filtered** row set.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §23.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0; unit tests for **`filter_symbol_indices`** (or equivalent) per §23.8 are present and green.
+
+### Manual — Portfolio
+
+**Prep:** In **`~/.stockterm.json`**, ensure **`portfolio`** has **at least three** rows whose symbols are easy to distinguish (e.g. **AAPL**, **MSFT**, **GOOGL**). Restart **`cargo run --release`**.
+
+1. Open **Portfolio**. Press **`/`**. Type **`aa`** (lowercase).  
+   **Pass:** Holdings table shows only symbols whose ticker **contains** **`AA`** case-insensitively (e.g. **AAPL**); block title reflects the active filter (e.g. contains **`filter`** and the query per §23.6).
+
+2. Press **Enter** (commit, exit input mode). Press **`j`** / **`k`** or arrows.  
+   **Pass:** Highlight moves only among **visible** (filtered) rows; no panic; selection never points past the last filtered row.
+
+3. Press **`/`** again, **Backspace** until the query is empty (or use **Esc** per shipped UX), then **Enter** if needed to exit input mode.  
+   **Pass:** Full portfolio list returns when filter is cleared.
+
+4. Press **`/`**, type a query that matches **no** holdings (e.g. **`ZZZ`**).  
+   **Pass:** Empty filtered state with a readable hint (per §23.6); **no panic**.
+
+5. With a **non-empty** filter showing **≥1** row, press **Tab** then **Shift+Tab** to leave and return to **Portfolio**.  
+   **Pass:** Filter was cleared by tab switch (full list); **`/`** starts fresh.
+
+6. Open **add holding** dialog (**`a`**). Press **`/`**.  
+   **Pass:** **`/`** does not hijack the modal (ignored or no filter mode — per §23.2.9).
+
+### Manual — Stock View watchlist
+
+**Prep:** **Stock View** with **≥3** watchlist symbols (e.g. **AAPL**, **MSFT**, **SPY**) per [Issue #3](#issue-3--watchlist--multi-row-quotes).
+
+1. Press **`/`**, type **`ms`**.  
+   **Pass:** Only **MSFT** (and any other symbol containing **`ms`**) remains visible; watchlist title shows active filter.
+
+2. Press **Esc**.  
+   **Pass:** Full watchlist returns; top symbol buffer / detail behavior unchanged after filter clear.
+
+3. Press **`/`**, type **`AAPL`**, **Enter**. Press letter keys (e.g. **`X`**) **without** pressing **`/`** again.  
+   **Pass:** After **Enter**, symbol-buffer typing works as before #16 (letters append to the ticker string); while **`/`** mode was active, letters went to the **filter**, not the symbol buffer.
+
+4. With filter active (**`aa`**), press **`j`**/**`k`**.  
+   **Pass:** Row highlight and **`symbol`** / detail pane stay coherent for **filtered** rows only.
+
+5. Press **Tab** to another tab and back to **Stock View**.  
+   **Pass:** Filter cleared.
+
+### Manual — Regression (#3 / §23.7)
+
+1. With a multi-symbol watchlist and a non-trivial **Portfolio**, confirm quote refresh still updates **all** underlying symbols (not only filtered rows) after **≥1** **`refresh_rate`** cycle or **Enter** refresh — **Pass:** rows off-filter still get prices when their rows are shown again (filter is view-only).
+
+### Sign-off — Issue #16
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests + filter unit tests | | | |
+| Portfolio: `/` + substring + title | | | |
+| Portfolio: Enter commit + j/k on filtered rows | | | |
+| Portfolio: Esc clears + empty-filter UX | | | |
+| Portfolio: Tab clears filter | | | |
+| Portfolio: `/` blocked in add dialog | | | |
+| Stock View: filter + Esc + symbol buffer after Enter | | | |
+| Stock View: Tab clears filter | | | |
+| Quote batch still covers full symbol set | | | |
+
+---
+
+**After implementation:** Run the relevant QA sections (#44, #3, and/or **#16**) and record results in the sign-off tables before merge.
