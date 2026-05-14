@@ -277,7 +277,7 @@ issue before code):
    - Add OS notification (e.g. `notify-rust`) and terminal bell.
    - Add input dialog for symbol/condition/price.
 7. **M6 — Filters, customizable shortcuts, themes**
-   - Add `Filter` predicate over watchlist/portfolio.
+   - Substring filter over watchlist/portfolio — **done** (Issue [#16](https://github.com/FelipeMorandini/stockterm/issues/16) / §23, [PR #132](https://github.com/FelipeMorandini/stockterm/pull/132)); broader saved/regex filters remain future work.
    - Define `Keymap` in `Config`, look up actions via map.
    - Define `Theme` (palette) and apply via a `Style`-builder helper.
 8. **M7 — Tests & CI**
