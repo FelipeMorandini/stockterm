@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fs;
 use std::io::ErrorKind;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::theme::Theme;
 use crate::models::alerts::Alert;
@@ -90,6 +90,15 @@ pub enum ConfigError {
     Serde(#[from] serde_json::Error),
 }
 
+/// Read `path` as JSON [`Config`]. Missing file → [`Config::default`]; same rules as [`Config::try_load`] after path resolution.
+fn load_config_from_path(path: &Path) -> Result<Config, ConfigError> {
+    match fs::read_to_string(path) {
+        Err(e) if e.kind() == ErrorKind::NotFound => Ok(Config::default()),
+        Err(e) => Err(ConfigError::Io(e)),
+        Ok(s) => serde_json::from_str(&s).map_err(ConfigError::Serde),
+    }
+}
+
 impl Config {
     /// API key resolution (used for **Polygon** only):
     /// 1. Non-empty `api_key` from config file (`~/.stockterm.json`).
@@ -105,8 +114,17 @@ impl Config {
         }
     }
 
-    /// Load config from disk, or defaults. Never panics; I/O/JSON errors fall back to default.
+    /// Load config from disk, or [`Config::default`] on any error.
+    ///
+    /// **Prefer [`try_load`](Self::try_load)** for interactive applications: failures are invisible
+    /// here (silent reset to defaults). [`crate::app::App::new`] uses `try_load` and surfaces
+    /// errors via the startup banner (Issue #35 / SPEC §22.7.2).
     pub fn load() -> Self {
+        Self::try_load().unwrap_or_default()
+    }
+
+    /// Infallible load; same as [`load`](Self::load).
+    pub fn load_or_default() -> Self {
         Self::try_load().unwrap_or_default()
     }
 
@@ -116,12 +134,7 @@ impl Config {
             Err(ConfigError::NoHomeDir) => return Ok(Config::default()),
             Err(e) => return Err(e),
         };
-
-        match fs::read_to_string(&path) {
-            Err(e) if e.kind() == ErrorKind::NotFound => Ok(Config::default()),
-            Err(e) => Err(ConfigError::Io(e)),
-            Ok(s) => serde_json::from_str(&s).map_err(ConfigError::Serde),
-        }
+        load_config_from_path(&path)
     }
 
     /// Persist config. Errors are dropped (TUI has no logger); use [`try_save`](Self::try_save) to handle them.
@@ -149,6 +162,8 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::path::PathBuf;
 
     #[test]
     fn effective_api_key_prefers_config_file_value() {
@@ -185,6 +200,22 @@ mod tests {
         let c: Config = serde_json::from_str(j).expect("parse");
         assert!(c.last_tab.is_none());
         assert!(c.last_symbol.is_none());
+    }
+
+    #[test]
+    fn load_config_from_path_invalid_json_returns_serde_error() {
+        let dir =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/_stockterm_corrupt_cfg_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("corrupt.json");
+        fs::write(&path, "{ not valid json").expect("write corrupt config");
+        let res = super::load_config_from_path(&path);
+        let _ = fs::remove_dir_all(&dir);
+        assert!(
+            matches!(res, Err(ConfigError::Serde(_))),
+            "expected Serde error, got {res:?}"
+        );
     }
 
 }

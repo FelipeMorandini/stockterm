@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7).
 
 ## Issues #19, #103 — Config persistence & alerts-save / quote error coordination
 
@@ -64,6 +64,80 @@ Use the sections below per milestone. **Issue #3** remains the regression baseli
 | #103 alerts-save survives quote batch errors | | | |
 | #103 watchlist success does not hide alerts-save | | | |
 | #103 recovery clears alerts-save when disk fixed | | | |
+
+---
+
+## Issues #34, #35, #40, #129 — Config operator docs, load UX, optional I/O, session write coalescing
+
+**Scope:**
+
+- [Issue #34](https://github.com/FelipeMorandini/stockterm/issues/34) — Document plaintext **`api_key`** in **`~/.stockterm.json`** and **`STOCKTERM_API_KEY`** override ([`docs/SPEC.md`](SPEC.md) §22.7.1).
+- [Issue #35](https://github.com/FelipeMorandini/stockterm/issues/35) — Config load failures must not appear as a silent fresh install on the **`App`** path ([`docs/SPEC.md`](SPEC.md) §22.7.2).
+- [Issue #40](https://github.com/FelipeMorandini/stockterm/issues/40) — Optional: non-blocking **`Config::try_save`** if profiling shows UI stalls ([`docs/SPEC.md`](SPEC.md) §22.7.3).
+- [Issue #129](https://github.com/FelipeMorandini/stockterm/issues/129) — Optional: debounce or coalesce frequent session JSON writes ([`docs/SPEC.md`](SPEC.md) §22.7.4).
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §22.7 for any shipped slice.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+### Manual — Issue #34 (README / operator docs)
+
+1. Open **[`README.md`](../../README.md)** after the change ships. Locate the **Security — API keys** (or equivalent) subsection.  
+   **Pass:** Text states **`api_key`** is stored **in plaintext** in **`~/.stockterm.json`**; describes **`STOCKTERM_API_KEY`** when the file field is empty; includes at least one practical hygiene tip (e.g. file permissions, do not commit secrets).
+
+### Manual — Issue #35 (config load failures)
+
+Use a **disposable** config path via **`HOME`** pointing at a writable temp directory.
+
+1. Write intentionally **invalid JSON** to **`$HOME/.stockterm.json`**. Launch **`cargo run --release`**.  
+   **Pass:** App starts with **defaults** (empty watchlist, etc.) **and** the **startup error banner** (top of UI) shows a **config load** failure (wording may vary); **no panic**.
+
+2. Restore **valid** minimal JSON (see [`docs/SPEC.md`](SPEC.md) §22 serde examples), relaunch.  
+   **Pass:** Startup error banner **absent**; prior **`portfolio`** / **`watchlist`** values load when present.
+
+### Manual — Issue #40 (non-blocking saves, only if implemented)
+
+If **§22.7.3** code ships: exercise rapid Settings / watchlist saves on a **slow** disk or large config (or maintainer-defined stress path).  
+**Pass:** No sustained UI freeze beyond acceptable bounds **and** failed saves still surface via **`error_message()`** / §20 patterns.
+
+If **not** implemented: mark **N/A** in the sign-off table with a pointer to the profiling gate in [`docs/SPEC.md`](SPEC.md) §22.7.3.
+
+### Manual — Issue #129 (session write debounce, only if implemented)
+
+If **§22.7.4** code ships:
+
+1. Rapidly switch tabs (**Tab** / **Shift+Tab** or bound keys) **10+** times within **1 s**, then **quit normally** (`q`). Inspect **`~/.stockterm.json`** **`last_tab`** (or relaunch).  
+   **Pass:** Persisted tab matches the **last** tab before quit (or per SPEC-chosen strategy **B**); disk write count is **not** O(N) per keystroke if debounce is the goal (optional: maintainer counts writes with a debug hook if one exists).
+
+2. If debounce delays disk writes while running, **kill -9** is **not** required for acceptance; normal quit must **flush** pending session fields per [`docs/SPEC.md`](SPEC.md) §22.7.4.
+
+If **not** implemented: mark **N/A** in the sign-off table.
+
+### Regression — Issue #3 (watchlist)
+
+Whenever §22.7 touches **`try_save`**, **`persist_session_to_disk`**, or watchlist persistence, re-run **[Issue #3](#issue-3--watchlist--multi-row-quotes)** automated + manual smoke (multi-row table, **`w`/`x`/`j`/`k`**, **`refresh_rate`**, responsive input).
+
+### Sign-off (#34, #35, #40, #129, #3 regression)
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | | | |
+| #34 README security copy | | | |
+| #35 corrupt JSON startup banner | | | |
+| #35 valid JSON clean startup | | | |
+| #40 non-blocking save (or N/A + gate) | | | |
+| #129 debounce / quit flush (or N/A) | | | |
+| #3 regression smoke (if persistence touched) | | | |
 
 ---
 
