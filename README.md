@@ -4,6 +4,22 @@ Terminal UI (TUI) for stock quotes, watchlists, charts, and alerts. Rust + [rata
 
 Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md). Manual verification steps live in [`docs/QA_PLAN.md`](docs/QA_PLAN.md).
 
+## Config file (`~/.stockterm.json`)
+
+| Field | Type | Default | Notes |
+|-------|------|---------|--------|
+| `portfolio` | array | `[]` | Holdings (symbol, shares, cost). |
+| `watchlist` | array of strings | `[]` | Stock View symbols (uppercase). |
+| `refresh_rate` | number | `0` | Quote poll interval in seconds (app may enforce a minimum). |
+| `api_key` | string | `""` | Polygon key; optional if `STOCKTERM_API_KEY` is set. |
+| `alerts` | array | `[]` | Price alerts. |
+| `default_symbol` | string | `""` | Startup symbol when `watchlist` is empty (empty → `AAPL`). |
+| `theme` | object or null | `null` | Theme preset and hex overrides (see [`docs/SPEC.md`](docs/SPEC.md) §21). |
+| `provider` | string | `"yahoo"` | `"yahoo"` or `"polygon"`. |
+| `notifications_enabled` | boolean | `true` | Desktop toasts for alert fires (bell always rings). |
+| `last_tab` | string or omitted | omitted | Last tab: `stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `settings` (Issue #19 / §22). |
+| `last_symbol` | string or omitted | omitted | Last active ticker when `watchlist` was empty at launch (normalized). |
+
 ## Developer / debug
 
 These environment variables are supported for local diagnosis. Any other `STOCKTERM_DEBUG_*` name is **not** supported unless it appears here or in `docs/SPEC.md`.
