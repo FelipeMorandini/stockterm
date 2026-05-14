@@ -211,6 +211,8 @@ pub struct App {
     pub search_request_generation: u64,
     pub search_refresh_inflight: bool,
     search_debounce_deadline: Option<Instant>,
+    /// Issue #129 — flush session fields to disk after this instant (set by `persist_session_to_disk`).
+    session_persist_deadline: Option<Instant>,
     pub news_list_state: ListState,
     /// Settings tab: selected menu row (0..SETTINGS_ROW_COUNT).
     pub settings_row: usize,
@@ -253,6 +255,9 @@ const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-e
 const MAX_CONCURRENT_QUOTES: usize = 2;
 
 const SEARCH_DEBOUNCE: Duration = Duration::from_millis(250);
+
+/// Issue #129 / SPEC §22.7.4 — coalesce rapid `last_tab` / `last_symbol` disk writes.
+const SESSION_PERSIST_DEBOUNCE: Duration = Duration::from_millis(400);
 
 /// Rows in the Settings tab (refresh, default symbol, notifications, theme, provider, keymap).
 pub const SETTINGS_ROW_COUNT: usize = 6;
@@ -437,6 +442,7 @@ impl App {
             search_request_generation: 0,
             search_refresh_inflight: false,
             search_debounce_deadline: None,
+            session_persist_deadline: None,
             news_list_state: ListState::default(),
             settings_row: 0,
             settings_editing: None,
@@ -542,7 +548,20 @@ impl App {
         self.config.try_save()
     }
 
+    /// Schedule a debounced flush of `last_tab` / `last_symbol` to `~/.stockterm.json` (Issue #129).
+    /// High-frequency callers (`j`/`k`, tab keys, Stock View **Enter** after fetch) coalesce into one write.
     fn persist_session_to_disk(&mut self) {
+        self.session_persist_deadline = Some(Instant::now() + SESSION_PERSIST_DEBOUNCE);
+    }
+
+    fn flush_session_persist_if_due(&mut self) {
+        let Some(deadline) = self.session_persist_deadline else {
+            return;
+        };
+        if Instant::now() < deadline {
+            return;
+        }
+        self.session_persist_deadline = None;
         if let Err(e) = self.try_save_config_with_session() {
             self.surface_runtime_error(
                 self.active_tab,
@@ -977,6 +996,7 @@ impl App {
             _ => {}
         }
         self.tick_runtime_error_ttl();
+        self.flush_session_persist_if_due();
     }
 
     /// Call after `search_query` mutates (typing); schedules debounced API call on Search tab.
@@ -1560,6 +1580,7 @@ impl App {
             draw(terminal, self)?;
 
             if self.should_quit {
+                self.session_persist_deadline = None;
                 let _ = self.try_save_config_with_session();
                 return Ok(());
             }
@@ -1577,7 +1598,12 @@ impl App {
                             }
                         }
                         Some(Event::Tick) => self.on_background_tick(),
-                        None => return Ok(()),
+                        None => {
+                            // Event sender dropped (abnormal); best-effort persist like quit path.
+                            self.session_persist_deadline = None;
+                            let _ = self.try_save_config_with_session();
+                            return Ok(());
+                        }
                     }
                 }
                 done = fetch_rx.recv() => {
