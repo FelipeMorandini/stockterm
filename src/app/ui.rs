@@ -767,9 +767,16 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
         Span::styled("4. Provider (read-only): ", row_style(4)),
         Span::styled(provider_s, rt.canvas()),
     ]));
+    let keymap_count = app.config.keymap.as_ref().map_or(0, |m| m.len());
+    let keymap_value = if keymap_count == 0 {
+        "defaults (README Keymap)".to_string()
+    } else {
+        format!("{keymap_count} override(s) — README Keymap")
+    };
     lines.push(Line::from(vec![
         Span::styled("5. Keymap: ", row_style(5)),
-        Span::styled("Coming later (#13)", rt.fg_muted()),
+        Span::styled(keymap_value, rt.canvas()),
+        Span::styled("  (~/.stockterm.json)", rt.fg_muted()),
     ]));
 
     if let Some(e) = &app.settings_inline_error {

@@ -12,7 +12,7 @@ use crate::app::event::{spawn_event_thread, Event};
 use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
 use crate::config::theme::{PaletteRgb, Theme, ThemePreset};
-use crate::config::{Config, ConfigError, MarketProviderKind};
+use crate::config::{Config, ConfigError, MarketProviderKind, ResolvedKeymap};
 use crate::models::alerts::{Alert, AlertCondition};
 use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
@@ -194,6 +194,8 @@ pub struct App {
     pub(crate) active_runtime_error: Option<ActiveErrorState>,
     /// Config load failure at startup (banner); distinct from runtime errors (§20.7).
     pub startup_error: Option<AppError>,
+    /// Issue #13 / SPEC §24 — resolved chord→action tables per [`BindingLayer`](crate::config::keymap::BindingLayer).
+    pub resolved_keymap: ResolvedKeymap,
     pub error_log: VecDeque<ErrorLogEntry>,
     pub error_log_overlay_open: bool,
     pub error_log_scroll: usize,
@@ -366,7 +368,7 @@ async fn run_stock_quote_batch(
 
 impl App {
     pub fn new() -> App {
-        let (config, startup_error) = match Config::try_load() {
+        let (config, mut startup_error) = match Config::try_load() {
             Ok(c) => (c, None),
             Err(e) => (
                 Config::default(),
@@ -375,6 +377,14 @@ impl App {
                 ))),
             ),
         };
+
+        let (resolved_keymap, keymap_err) = ResolvedKeymap::build(config.keymap.as_ref());
+        if let Some(ke) = keymap_err {
+            startup_error = Some(match startup_error {
+                Some(se) => AppError::Internal(format!("{}\n{}", se.status_line(), ke)),
+                None => AppError::Internal(ke),
+            });
+        }
         let portfolio = config.portfolio.clone();
         let alerts = config.alerts.clone();
 
@@ -436,6 +446,7 @@ impl App {
             active_tab,
             active_runtime_error: None,
             startup_error,
+            resolved_keymap,
             error_log: VecDeque::new(),
             error_log_overlay_open: false,
             error_log_scroll: 0,

@@ -1,8 +1,11 @@
+#![allow(clippy::collapsible_match, clippy::needless_return)]
+
 use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
 use crate::app::{AlertAddDialog, AlertAddField, App, Tab};
+use crate::config::keymap::{Action, BindingLayer};
 use crate::models::alerts::{process_alert_crossings, Alert, AlertCondition};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
@@ -386,77 +389,95 @@ fn append_threshold_char(buf: &mut String, c: char) -> bool {
 }
 
 fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
-    use KeyCode::*;
-
-    match key.code {
-        Esc if key.modifiers == KeyModifiers::NONE => {
-            app.alert_add_dialog = None;
-        }
-        Tab => {
-            cycle_alert_dialog_focus(app, true);
-        }
-        BackTab => {
-            cycle_alert_dialog_focus(app, false);
-        }
-        Left if key.modifiers == KeyModifiers::NONE => {
-            let Some(d) = app.alert_add_dialog.as_mut() else {
+    if let Some(a) = app
+        .resolved_keymap
+        .action(BindingLayer::AlertDialog, &key)
+    {
+        match a {
+            Action::AlertDialogEsc if key.modifiers == KeyModifiers::NONE => {
+                app.alert_add_dialog = None;
                 return;
-            };
-            if d.focused == AlertAddField::Condition {
-                d.condition = AlertCondition::Below;
-                d.inline_error = None;
             }
-        }
-        Right if key.modifiers == KeyModifiers::NONE => {
-            let Some(d) = app.alert_add_dialog.as_mut() else {
+            Action::AlertDialogTab => {
+                cycle_alert_dialog_focus(app, true);
                 return;
-            };
-            if d.focused == AlertAddField::Condition {
-                d.condition = AlertCondition::Above;
-                d.inline_error = None;
             }
-        }
-        Char(';') if letter_key_plain(key.modifiers) => {
-            let Some(d) = app.alert_add_dialog.as_mut() else {
+            Action::AlertDialogShiftTab => {
+                cycle_alert_dialog_focus(app, false);
                 return;
-            };
-            if d.focused == AlertAddField::Condition {
-                d.condition = match d.condition {
-                    AlertCondition::Above => AlertCondition::Below,
-                    AlertCondition::Below => AlertCondition::Above,
+            }
+            Action::AlertDialogLeft if key.modifiers == KeyModifiers::NONE => {
+                let Some(d) = app.alert_add_dialog.as_mut() else {
+                    return;
+                };
+                if d.focused == AlertAddField::Condition {
+                    d.condition = AlertCondition::Below;
+                    d.inline_error = None;
+                }
+                return;
+            }
+            Action::AlertDialogRight if key.modifiers == KeyModifiers::NONE => {
+                let Some(d) = app.alert_add_dialog.as_mut() else {
+                    return;
+                };
+                if d.focused == AlertAddField::Condition {
+                    d.condition = AlertCondition::Above;
+                    d.inline_error = None;
+                }
+                return;
+            }
+            Action::AlertDialogConditionCycleOrFocusNext => {
+                if !letter_key_plain(key.modifiers) {
+                    return;
+                }
+                let Some(d) = app.alert_add_dialog.as_mut() else {
+                    return;
+                };
+                if d.focused == AlertAddField::Condition {
+                    d.condition = match d.condition {
+                        AlertCondition::Above => AlertCondition::Below,
+                        AlertCondition::Below => AlertCondition::Above,
+                    };
+                    d.inline_error = None;
+                } else {
+                    cycle_alert_dialog_focus(app, true);
+                }
+                return;
+            }
+            Action::AlertDialogEnter if key.modifiers == KeyModifiers::NONE => {
+                let Some(d) = app.alert_add_dialog.as_mut() else {
+                    return;
                 };
                 d.inline_error = None;
-            } else {
-                cycle_alert_dialog_focus(app, true);
-            }
-        }
-        Enter if key.modifiers == KeyModifiers::NONE => {
-            let Some(d) = app.alert_add_dialog.as_mut() else {
-                return;
-            };
-            d.inline_error = None;
-            match d.focused {
-                AlertAddField::Symbol => d.focused = AlertAddField::Condition,
-                AlertAddField::Condition => d.focused = AlertAddField::Threshold,
-                AlertAddField::Threshold => try_commit_alert_dialog(app),
-            }
-        }
-        Backspace if key.modifiers == KeyModifiers::NONE => {
-            let Some(d) = app.alert_add_dialog.as_mut() else {
-                return;
-            };
-            d.inline_error = None;
-            match d.focused {
-                AlertAddField::Symbol => {
-                    d.symbol_buffer.pop();
+                match d.focused {
+                    AlertAddField::Symbol => d.focused = AlertAddField::Condition,
+                    AlertAddField::Condition => d.focused = AlertAddField::Threshold,
+                    AlertAddField::Threshold => try_commit_alert_dialog(app),
                 }
-                AlertAddField::Threshold => {
-                    d.threshold_buffer.pop();
-                }
-                AlertAddField::Condition => {}
+                return;
             }
+            Action::AlertDialogBackspace if key.modifiers == KeyModifiers::NONE => {
+                let Some(d) = app.alert_add_dialog.as_mut() else {
+                    return;
+                };
+                d.inline_error = None;
+                match d.focused {
+                    AlertAddField::Symbol => {
+                        d.symbol_buffer.pop();
+                    }
+                    AlertAddField::Threshold => {
+                        d.threshold_buffer.pop();
+                    }
+                    AlertAddField::Condition => {}
+                }
+                return;
+            }
+            _ => {}
         }
-        Char(c) if letter_key_plain(key.modifiers) => {
+    }
+
+    if let KeyCode::Char(c) = key.code {
+        if letter_key_plain(key.modifiers) {
             let Some(d) = app.alert_add_dialog.as_mut() else {
                 return;
             };
@@ -477,7 +498,6 @@ fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
                 }
             }
         }
-        _ => {}
     }
 }
 
@@ -487,54 +507,47 @@ pub fn handle_alerts_events(app: &mut App, key: KeyEvent) {
         return;
     }
 
-    match key {
-        KeyEvent {
-            code: KeyCode::Char(c),
-            modifiers,
-            ..
-        } if c.eq_ignore_ascii_case(&'a') && letter_key_plain(modifiers) => {
-            app.alert_add_dialog = Some(AlertAddDialog::new_from_app(app));
-        }
-        KeyEvent {
-            code: KeyCode::Char(c),
-            modifiers,
-            ..
-        } if c.eq_ignore_ascii_case(&'d') && letter_key_plain(modifiers) => {
-            if let Some(selected) = app.alerts_state.selected() {
-                app.remove_alert(selected);
-            }
-        }
-        KeyEvent {
-            code: KeyCode::Up,
-            ..
-        } => {
-            if app.alerts.is_empty() {
-                return;
-            }
-            match app.alerts_state.selected() {
-                None => app
-                    .alerts_state
-                    .select(Some(app.alerts.len().saturating_sub(1))),
-                Some(i) if i > 0 => app.alerts_state.select(Some(i - 1)),
-                _ => {}
-            }
-        }
-        KeyEvent {
-            code: KeyCode::Down,
-            ..
-        } => {
-            if app.alerts.is_empty() {
-                return;
-            }
-            match app.alerts_state.selected() {
-                None => app.alerts_state.select(Some(0)),
-                Some(i) if i < app.alerts.len().saturating_sub(1) => {
-                    app.alerts_state.select(Some(i + 1));
+    if let Some(a) = app.resolved_keymap.action(BindingLayer::Alerts, &key) {
+        match a {
+            Action::AlertAdd => {
+                if letter_key_plain(key.modifiers) {
+                    app.alert_add_dialog = Some(AlertAddDialog::new_from_app(app));
                 }
-                _ => {}
             }
+            Action::AlertRemove => {
+                if letter_key_plain(key.modifiers) {
+                    if let Some(selected) = app.alerts_state.selected() {
+                        app.remove_alert(selected);
+                    }
+                }
+            }
+            Action::AlertRowUp => {
+                if app.alerts.is_empty() {
+                    return;
+                }
+                match app.alerts_state.selected() {
+                    None => app
+                        .alerts_state
+                        .select(Some(app.alerts.len().saturating_sub(1))),
+                    Some(i) if i > 0 => app.alerts_state.select(Some(i - 1)),
+                    _ => {}
+                }
+            }
+            Action::AlertRowDown => {
+                if app.alerts.is_empty() {
+                    return;
+                }
+                match app.alerts_state.selected() {
+                    None => app.alerts_state.select(Some(0)),
+                    Some(i) if i < app.alerts.len().saturating_sub(1) => {
+                        app.alerts_state.select(Some(i + 1));
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
         }
-        _ => {}
+        return;
     }
 }
 
