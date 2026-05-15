@@ -3311,7 +3311,7 @@ After maintainer approval of §25, implementation may proceed per [`.cursor/rule
 
 ### 25.11 Shipment record
 
-- **Status:** Implemented in-tree (2026-05-15). **PR:** _(link at ship)_. **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134** — maintainer sign-off pending.
+- **Status:** Implemented in-tree (2026-05-15). **PR:** [#135](https://github.com/FelipeMorandini/stockterm/pull/135). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134** — maintainer sign-off pending.
 - **Tracking:** [Issue #134](https://github.com/FelipeMorandini/stockterm/issues/134).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `overlay_layer_index`, `action_overlay_layers`, `apply_user_remap` (multi-layer propagation), release `Err` when overlay targets empty; [`README.md`](../README.md) Keymap note; **§25** / **§24.11** cross-links.
 - **Audit:** Re-audit **AUDIT PASSED** (2026-05-15) — zero hard fails, zero minor nits after `/fix`.
