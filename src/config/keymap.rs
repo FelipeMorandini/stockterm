@@ -1,15 +1,16 @@
-//! User-configurable keyboard shortcuts (GitHub Issue #13 / SPEC §24).
+//! User-configurable keyboard shortcuts (GitHub Issue #13 / SPEC §24; Issue #134 / §25).
 //!
 //! ## JSON shape
 //!
 //! Optional on [`crate::config::Config`]: `"keymap": { "<chord>": "<ActionName>", ... }`.
-//! Chords combine modifiers with `+` (see README). Each **action** lives in exactly one
-//! [`BindingLayer`]; the file maps **chord → action** and replaces that action’s default chord
-//! within its layer (so `j` can mean different things on Stock vs Search without collision).
+//! Chords combine modifiers with `+` (see README). Each **action** has a primary
+//! [`BindingLayer`] via [`action_binding_layer`]; user overrides propagate to every layer where
+//! [`default_bindings`] registers that action (Issue #134).
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
 use thiserror::Error;
 
 /// Tab / modal slice used for lookup (same physical key may bind to different [`Action`] values).
@@ -152,6 +153,31 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         | AlertDialogRight | AlertDialogConditionCycleOrFocusNext | AlertDialogEnter
         | AlertDialogBackspace => BindingLayer::AlertDialog,
     }
+}
+
+/// Layers that receive user `keymap` updates for `action` (all layers where [`default_bindings`]
+/// registers that action). Issue #134 / SPEC §25.
+#[inline]
+pub(crate) fn action_overlay_layers(action: Action) -> &'static [BindingLayer] {
+    static EMPTY: &[BindingLayer] = &[];
+    overlay_layer_index()
+        .get(&action)
+        .map(|v| v.as_slice())
+        .unwrap_or(EMPTY)
+}
+
+fn overlay_layer_index() -> &'static HashMap<Action, Vec<BindingLayer>> {
+    static INDEX: OnceLock<HashMap<Action, Vec<BindingLayer>>> = OnceLock::new();
+    INDEX.get_or_init(|| {
+        let mut map: HashMap<Action, Vec<BindingLayer>> = HashMap::new();
+        for &(layer, _, action) in default_bindings() {
+            let layers = map.entry(action).or_default();
+            if !layers.contains(&layer) {
+                layers.push(layer);
+            }
+        }
+        map
+    })
 }
 
 #[derive(Debug, Error)]
@@ -333,6 +359,34 @@ fn insert_defaults(layers: &mut HashMap<BindingLayer, LayerMap>) -> Result<(), S
     Ok(())
 }
 
+fn apply_user_remap(
+    out: &mut HashMap<BindingLayer, LayerMap>,
+    chord_s: &str,
+    chord: Chord,
+    action: Action,
+    targets: &[BindingLayer],
+) -> Result<(), String> {
+    if targets.is_empty() {
+        return Err(format!("action {action:?} has no default bindings"));
+    }
+    for &layer in targets {
+        let map = out.entry(layer).or_default();
+        if let Some(&existing) = map.get(&chord) {
+            if existing != action {
+                return Err(format!(
+                    "chord {chord_s:?} already maps to {existing:?} (cannot map to {action:?})"
+                ));
+            }
+        }
+    }
+    for &layer in targets {
+        let map = out.entry(layer).or_default();
+        map.retain(|c, a| !(*a == action && *c != chord));
+        map.insert(chord, action);
+    }
+    Ok(())
+}
+
 fn apply_user_overlay(
     base: &HashMap<BindingLayer, LayerMap>,
     user: &HashMap<String, String>,
@@ -342,17 +396,13 @@ fn apply_user_overlay(
         let chord = parse_chord(chord_s).map_err(|e| format!("{e} (chord {chord_s:?})"))?;
         let action: Action = serde_json::from_value(serde_json::Value::String(action_s.clone()))
             .map_err(|_| format!("unknown action name {action_s:?}"))?;
-        let layer = action_binding_layer(action);
-        let map = out.entry(layer).or_default();
-        if let Some(existing) = map.get(&chord) {
-            if *existing != action {
-                return Err(format!(
-                    "chord {chord_s:?} already maps to {existing:?} (cannot map to {action:?})"
-                ));
-            }
-        }
-        map.retain(|c, a| !(*a == action && *c != chord));
-        map.insert(chord, action);
+        apply_user_remap(
+            &mut out,
+            chord_s,
+            chord,
+            action,
+            action_overlay_layers(action),
+        )?;
     }
     Ok(out)
 }
@@ -557,5 +607,107 @@ mod tests {
             KeyModifiers::SHIFT | KeyModifiers::SUPER,
         );
         assert_eq!(km.action(BindingLayer::Global, &tab_shift_super), None);
+    }
+
+    #[test]
+    fn primary_binding_layer_is_in_overlay_layers_for_defaults() {
+        let mut seen = HashSet::new();
+        for &(_, _, action) in default_bindings() {
+            if !seen.insert(action) {
+                continue;
+            }
+            let primary = action_binding_layer(action);
+            let layers = action_overlay_layers(action);
+            assert!(
+                layers.contains(&primary),
+                "{action:?}: primary {primary:?} not in overlay layers {layers:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn overlay_layers_include_portfolio_and_armed_for_row_actions() {
+        let layers = action_overlay_layers(Action::PortfolioRowDown);
+        assert!(layers.contains(&BindingLayer::Portfolio));
+        assert!(layers.contains(&BindingLayer::PortfolioRemoveArmed));
+        let up = action_overlay_layers(Action::PortfolioRowUp);
+        assert!(up.contains(&BindingLayer::Portfolio));
+        assert!(up.contains(&BindingLayer::PortfolioRemoveArmed));
+    }
+
+    #[test]
+    fn remap_portfolio_row_down_propagates_to_armed_layer() {
+        let mut m = HashMap::new();
+        // `char:u` is free on both portfolio layers (`char:n` is decline on armed).
+        m.insert("char:u".to_string(), "PortfolioRowDown".to_string());
+        let (km, err) = ResolvedKeymap::build(Some(&m));
+        assert!(err.is_none(), "unexpected overlay error: {err:?}");
+        let u = KeyEvent::new(KeyCode::Char('u'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::Portfolio, &u),
+            Some(Action::PortfolioRowDown)
+        );
+        assert_eq!(
+            km.action(BindingLayer::PortfolioRemoveArmed, &u),
+            Some(Action::PortfolioRowDown)
+        );
+        let j = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
+        assert_eq!(km.action(BindingLayer::Portfolio, &j), None);
+        assert_eq!(km.action(BindingLayer::PortfolioRemoveArmed, &j), None);
+    }
+
+    #[test]
+    fn remap_portfolio_remove_confirm_only_armed_layer() {
+        let mut m = HashMap::new();
+        m.insert("char:z".to_string(), "PortfolioRemoveConfirm".to_string());
+        let (km, err) = ResolvedKeymap::build(Some(&m));
+        assert!(err.is_none());
+        let z = KeyEvent::new(KeyCode::Char('z'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::PortfolioRemoveArmed, &z),
+            Some(Action::PortfolioRemoveConfirm)
+        );
+        assert_eq!(km.action(BindingLayer::Portfolio, &z), None);
+        let d = KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::Portfolio, &d),
+            Some(Action::PortfolioRemoveArm)
+        );
+    }
+
+    #[test]
+    fn overlay_rejects_action_without_default_bindings() {
+        let mut base: HashMap<BindingLayer, LayerMap> = HashMap::new();
+        insert_defaults(&mut base).unwrap();
+        let chord = parse_chord("q").unwrap();
+        let err = apply_user_remap(
+            &mut base,
+            "q",
+            chord,
+            Action::Quit,
+            &[],
+        );
+        assert!(err.is_err());
+        assert!(
+            err.unwrap_err()
+                .contains("has no default bindings")
+        );
+    }
+
+    #[test]
+    fn propagation_rejects_on_sibling_chord_conflict() {
+        let mut m = HashMap::new();
+        m.insert("char:d".to_string(), "PortfolioRowDown".to_string());
+        let (km, err) = ResolvedKeymap::build(Some(&m));
+        assert!(err.is_some());
+        let j = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::Portfolio, &j),
+            Some(Action::PortfolioRowDown)
+        );
+        assert_eq!(
+            km.action(BindingLayer::PortfolioRemoveArmed, &j),
+            Some(Action::PortfolioRowDown)
+        );
     }
 }

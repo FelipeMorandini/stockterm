@@ -23,7 +23,7 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 
 ### Keymap (`keymap` field)
 
-Optional JSON object: each key is a **chord** string, each value is an **`Action`** name in **PascalCase** (for example `"Quit"`, `"StockRowDown"`). Overrides replace the default binding for that action **within its layer** (Stock View, Charts, Search, …); see [`src/config/keymap.rs`](src/config/keymap.rs) for the full default table and [`BindingLayer`](src/config/keymap.rs) rules.
+Optional JSON object: each key is a **chord** string, each value is an **`Action`** name in **PascalCase** (for example `"Quit"`, `"StockRowDown"`). Overrides replace the default binding for that action in every [`BindingLayer`](src/config/keymap.rs) where built-in defaults register it (for example portfolio row **↑/↓** while remove-confirm is armed — Issue #134 / [`docs/SPEC.md`](docs/SPEC.md) §25); see [`src/config/keymap.rs`](src/config/keymap.rs) for the full default table.
 
 **Chord grammar** (ASCII, case-insensitive except `char:` payload):
 
