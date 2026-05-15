@@ -1940,3 +1940,67 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 ---
 
 **After implementation:** Run the relevant QA sections (#44, #3, **#16**, and/or **#13**) and record results in the sign-off tables before merge.
+
+---
+
+## Issue #134 — Keymap per-context overlay propagation (portfolio remove-armed)
+
+**Scope:** [GitHub Issue #134](https://github.com/FelipeMorandini/stockterm/issues/134) — user `keymap` remaps for actions registered in more than one [`BindingLayer`](../src/config/keymap.rs) in built-in defaults (today: **`PortfolioRowUp`** / **`PortfolioRowDown`** on list **and** remove-armed) apply to **all** those layers after overlay merge.
+
+**Prerequisite:** Implementation matches [`docs/SPEC.md`](SPEC.md) §25. **Depends on:** §24 / Issue **#13** keymap shipped ([`src/config/keymap.rs`](../src/config/keymap.rs)).
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0; new tests per §25.6 (`action_overlay_layers`, propagated remap to `PortfolioRemoveArmed`, single-layer confirm action, conflict rejection) are green.
+
+### Manual — Portfolio row nav while remove-armed
+
+**Prep:** Backup **`~/.stockterm.json`**. Ensure at least **two** portfolio holdings (add via Stock View + Portfolio **`a`** if needed).
+
+1. Edit **`keymap`** — remap row down/up, for example:
+
+   ```json
+   "keymap": {
+     "char:u": "PortfolioRowDown",
+     "char:p": "PortfolioRowUp"
+   }
+   ```
+
+   (Use exact chord grammar from README / §24. Avoid **`char:n`** for row-down — it conflicts with armed **decline** on **`n`**.)
+
+2. Save; launch **`cargo run --release`**. Open **Portfolio**. Press **`u`** / **`p`** (or your chosen chords).  
+   **Pass:** Selection moves on the holdings table; default **`j`**/**`k`** (if unbound) do **not** move rows.
+
+3. With a row selected, press **`d`** to arm remove. Status shows remove-armed hint. Press **`u`** / **`p`** again.  
+   **Pass:** Selection still moves with the **same** remapped chords; **`j`**/**`k`** do **not** move rows while armed.
+
+4. Press **`y`** or armed **`d`** to confirm remove (defaults) or **`Esc`** / **`n`** to cancel.  
+   **Pass:** Confirm/cancel behavior unchanged from §24 / Issue **#13** QA.
+
+### Manual — Armed-only action not leaked to list layer
+
+1. Remap only **`PortfolioRemoveConfirm`** to a test chord (e.g. **`char:z`**) per README. Relaunch.  
+   **Pass:** Confirm works on armed flow with **`z`**; main list **`d`** arm behavior unchanged unless also remapped.
+
+### Manual — Conflict fallback (optional)
+
+1. If §25 documents a predictable conflict (remap row-down to a chord still bound to another action on the armed layer), apply that JSON.  
+   **Pass:** Startup **`keymap:`** message; defaults used; list **and** armed row nav use default **`j`**/**`k`** again.
+
+### Sign-off — Issue #134
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests + §25.6 unit tests | | | |
+| Remapped row nav on portfolio list | | | |
+| Same remapped row nav while remove-armed | | | |
+| Armed-only confirm remap does not alter list layer | | | |
+| README notes multi-layer propagation | | | |

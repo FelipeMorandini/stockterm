@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -3175,3 +3175,143 @@ After maintainer approval of §24, implementation may proceed per [`.cursor/rule
 - **Tracking:** [Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `Action`, `BindingLayer`, `Chord`, `parse_chord`, `ResolvedKeymap`; [`src/config/config.rs`](../src/config/config.rs) — `keymap` field + rustdoc; [`src/app/app.rs`](../src/app/app.rs) — `resolved_keymap`, startup merge on parse failure; [`src/app/handlers.rs`](../src/app/handlers.rs), [`portfolio.rs`](../src/app/portfolio.rs), [`alerts.rs`](../src/app/alerts.rs) — dispatch by layer; **[`README.md`](../README.md)** — Keymap subsection.
 - **Post-audit (2026-05-14):** Handlers must not re-check literal `KeyCode` / `Char` after `ResolvedKeymap::action` returns an [`Action`](../src/config/keymap.rs) (Alerts add/remove, portfolio remove-armed cancel/decline/confirm, portfolio main list `PortfolioRowUp` / `PortfolioRowDown`, `WatchlistRemoveShift`). [`chord_lookup_candidates`](../src/config/keymap.rs) uses `contains(SHIFT)` for Tab→BackTab aliasing (idiomatic for `KeyModifiers` bitflags and tolerant if crossterm adds modifier bits later).
+- **Follow-up:** [Issue #134](https://github.com/FelipeMorandini/stockterm/issues/134) — user remaps for actions registered in more than one [`BindingLayer`](../src/config/keymap.rs) in **`default_bindings()`** (e.g. **`PortfolioRowDown`** on list **and** remove-armed) must apply to **all** those layers — **§25**.
+
+---
+
+## 25. Issue [#134](https://github.com/FelipeMorandini/stockterm/issues/134) — Keymap per-context overlay propagation (shared actions across layers)
+
+**Sources:**
+
+- [GitHub Issue #134](https://github.com/FelipeMorandini/stockterm/issues/134) — user `keymap` JSON remaps row navigation on the main portfolio table but those chords **do not** apply while **remove-confirm** is armed.
+- [`docs/ROADMAP.md`](ROADMAP.md) §4.10 — follow-up to **§24** / [Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13) / [PR #133](https://github.com/FelipeMorandini/stockterm/pull/133).
+
+**Related:** **§24** — `ResolvedKeymap`, `action_binding_layer`, `apply_user_overlay`. [`handle_portfolio_remove_armed_keys`](../src/app/portfolio.rs) resolves **`BindingLayer::PortfolioRemoveArmed`** only.
+
+---
+
+### 25.1 Problem (verified in tree, 2026-05-15)
+
+| Area | Location | State |
+|------|----------|-------|
+| Canonical layer | [`action_binding_layer`](../src/config/keymap.rs) | Each [`Action`](../src/config/keymap.rs) maps to **one** [`BindingLayer`](../src/config/keymap.rs) (e.g. `PortfolioRowDown` → **`Portfolio`**). |
+| User overlay | [`apply_user_overlay`](../src/config/keymap.rs) | Updates **only** that canonical layer’s `LayerMap`. |
+| Built-in defaults | [`default_bindings()`](../src/config/keymap.rs) | The **same** `Action` may appear in **multiple** layers — today **`PortfolioRowUp`** / **`PortfolioRowDown`** are bound on **`Portfolio`** **and** **`PortfolioRemoveArmed`** (lines ~427–439). |
+| Armed handler | [`handle_portfolio_remove_armed_keys`](../src/app/portfolio.rs) | Looks up **`PortfolioRemoveArmed`**; after a user remap of row-down on **`Portfolio`**, the armed layer still serves **stale default chords** (`j` / arrows). |
+
+**User-visible bug:** Remap e.g. `"char:n": "PortfolioRowDown"` in `~/.stockterm.json` — **`n`** moves rows on the holdings table, but **`j`** still moves rows (or **`n`** does nothing) while **“Remove armed”** is active.
+
+**Root cause:** §24 chose **one layer per action** for JSON overlay targeting, but §24.11 shipped **duplicate default registrations** for shared semantics without propagating user overrides to sibling layers.
+
+---
+
+### 25.2 Acceptance criteria
+
+1. **Shared default actions:** For every [`Action`](../src/config/keymap.rs) that appears in **more than one** entry of [`default_bindings()`](../src/config/keymap.rs), a user chord override in **`Config.keymap`** updates **every** layer that lists that action in defaults (remove old chord, insert new chord, per layer).
+2. **Single-layer actions:** Actions that appear in only one default layer (e.g. **`PortfolioRemoveConfirm`**) behave unchanged — overlay touches **only** that layer.
+3. **Default parity:** With **`keymap` absent**, portfolio list and remove-armed row navigation remain **identical** to today (still duplicate default rows in **`default_bindings()`**).
+4. **Invalid overlay:** If propagating a remap to **any** sibling layer would violate §24 duplicate-chord rules, **reject the entire user `keymap`** and fall back to baked-in defaults with a **`keymap:`** message (no partial apply).
+5. **Documentation:** [`README.md`](../README.md) Keymap subsection — one sentence: remaps for actions used in multiple UI modes (e.g. portfolio row nav while remove is armed) apply everywhere that action is bound by default.
+
+---
+
+### 25.3 Design (recommended — multi-layer overlay propagation)
+
+**Rejected for this slice:** Splitting into per-context `Action` variants (e.g. `PortfolioRowDownArmed`) — forces users to remap twice and expands the public `Action` surface without product benefit.
+
+**Chosen:** Keep the existing [`Action`](../src/config/keymap.rs) enum and [`BindingLayer`](../src/config/keymap.rs) dispatch; fix **`ResolvedKeymap::build`** so user overlays target **all default layers** for that action.
+
+#### 25.3.1 `action_overlay_layers`
+
+Add in [`src/config/keymap.rs`](../src/config/keymap.rs):
+
+```rust
+/// Layers that receive user `keymap` updates for `action` (all layers where
+/// `default_bindings()` registers that action).
+fn action_overlay_layers(action: Action) -> &'static [BindingLayer];
+```
+
+- **Build time (preferred):** Scan `default_bindings()` once (const / `lazy_static` / private `fn overlay_layer_index() -> HashMap<Action, Vec<BindingLayer>>` populated at first `insert_defaults` call) and cache **unique** layers per `Action`.
+- **Keep** [`action_binding_layer`](../src/config/keymap.rs) as the **primary** layer for rustdoc / README (“home” layer) — must remain one of the entries in `action_overlay_layers(action)`.
+
+**Inventory (2026-05-15 tree):** Only **`PortfolioRowUp`** and **`PortfolioRowDown`** are duplicated across layers today (`Portfolio` + `PortfolioRemoveArmed`). The indexer must remain **data-driven** so future duplicate defaults (e.g. Stock View + another mode) pick up propagation without a second issue.
+
+#### 25.3.2 `apply_user_overlay` algorithm change
+
+For each `(chord_s, action_s)` in the user map (unchanged parse/serde):
+
+1. `chord = parse_chord(chord_s)?`, `action = parse Action`.
+2. `targets = action_overlay_layers(action)` (non-empty; assert in debug).
+3. **For each** `layer` in `targets`:
+   - `map = out.entry(layer).or_default()`.
+   - If `map.get(&chord)` is `Some(existing)` and `existing != action` → **return Err** (whole-file reject).
+   - `map.retain(|c, a| !(*a == action && *c != chord))` (drop prior chord for this action **in this layer**).
+   - `map.insert(chord, action)`.
+4. If **any** layer step fails, do not mutate `out` (transactional apply) — match §24.2 fallback.
+
+**Do not** change handler layer selection: [`handle_portfolio_remove_armed_keys`](../src/app/portfolio.rs) continues to call `action(PortfolioRemoveArmed, …)`; armed layer maps must simply **mirror** list-layer remaps after build.
+
+#### 25.3.3 Optional defensive lookup (out of scope unless QA finds gaps)
+
+A helper `action_with_fallback(layers: &[BindingLayer], key)` trying layers in order is **not required** if §25.3.2 keeps armed maps in sync. Do not add fallback that masks overlay bugs.
+
+---
+
+### 25.4 Crate & module layout
+
+- **Single package:** `stockterm`.
+- **`src/config/keymap.rs`:** `action_overlay_layers`, transactional `apply_user_overlay`, unit tests (§25.6).
+- **`src/config/mod.rs`:** Re-export only if tests or docs need `action_overlay_layers` (prefer `pub(crate)`).
+- **`README.md`:** Keymap bullet on multi-layer propagation (§25.2.5).
+- **No** `App` struct field changes; **no** handler `match` churn beyond what tests require.
+
+---
+
+### 25.5 Application wiring
+
+**No handler changes required** when overlay propagation is correct.
+
+**Regression guard:** [`handle_portfolio_remove_armed_keys`](../src/app/portfolio.rs) already handles `Action::PortfolioRowUp` / `PortfolioRowDown` from the armed layer — verify manually that remapped chords reach this `match` after §25.3.2.
+
+**Portfolio filter (§23):** Row nav while **`filter_input_mode`** stays disabled in both list and armed paths — unchanged.
+
+---
+
+### 25.6 Automated verification
+
+- `cargo build --release`, `cargo clippy -- -D warnings`, `cargo test`.
+- **New unit tests** in `keymap.rs`:
+  1. **`overlay_layers_include_portfolio_and_armed_for_row_actions`** — `action_overlay_layers(PortfolioRowDown)` contains both `Portfolio` and `PortfolioRemoveArmed`.
+  2. **`remap_portfolio_row_down_propagates_to_armed_layer`** — user map `"char:n": "PortfolioRowDown"` → `action(Portfolio, n)` and `action(PortfolioRemoveArmed, n)` both `Some(PortfolioRowDown)`; old `j` absent on **both** layers.
+  3. **`remap_portfolio_remove_confirm_only_armed_layer`** — user map for `PortfolioRemoveConfirm` does **not** add chords to `Portfolio` layer.
+  4. **`propagation_rejects_on_sibling_chord_conflict`** — e.g. remap `PortfolioRowDown` to `char:d` while armed layer still has default `PortfolioRemoveConfirm` on `d` → build returns `Err`, defaults restored (exact scenario may require clearing confirm binding in test setup per implementation).
+
+---
+
+### 25.7 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #134** section.
+
+---
+
+### 25.8 Out of scope
+
+- New `Action` variants per UI mode.
+- In-app keymap editor or layer names in JSON (users still remap by **`Action`** name only).
+- Propagating remaps to layers that **do not** list the action in `default_bindings()` (no implicit “parent layer” inheritance).
+- Stock View / Alerts armed flows (no duplicate-layer defaults today).
+
+---
+
+### 25.9 Approval
+
+After maintainer approval of §25, implementation may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**.
+
+---
+
+### 25.11 Shipment record
+
+- **Status:** Implemented in-tree (2026-05-15). **PR:** _(link at ship)_. **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134** — maintainer sign-off pending.
+- **Tracking:** [Issue #134](https://github.com/FelipeMorandini/stockterm/issues/134).
+- **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `overlay_layer_index`, `action_overlay_layers`, `apply_user_remap` (multi-layer propagation), release `Err` when overlay targets empty; [`README.md`](../README.md) Keymap note; **§25** / **§24.11** cross-links.
+- **Audit:** Re-audit **AUDIT PASSED** (2026-05-15) — zero hard fails, zero minor nits after `/fix`.
