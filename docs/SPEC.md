@@ -3433,7 +3433,7 @@ After maintainer approval of §26, implementation may proceed per [`.cursor/rule
 
 ### 26.9 Shipment record
 
-- **Status:** Implemented in-tree. **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — maintainer sign-off pending.
+- **Status:** Implemented in-tree. **PR:** [#140](https://github.com/FelipeMorandini/stockterm/pull/140). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — maintainer sign-off pending.
 - **Tracking:** [Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `CORE_DEFAULTS`, `build_default_bindings_with_issue136_rows`, **`SettingsEditDigit`**, **`SettingsEditSymbolChar`**, **`AlertDialogDigitOrDot`**, default chord rows; [`src/app/portfolio.rs`](../src/app/portfolio.rs) — **`PortfolioDialogDigitOrDot`** dispatch; [`src/app/alerts.rs`](../src/app/alerts.rs) — **`AlertDialogDigitOrDot`** dispatch; [`src/app/handlers.rs`](../src/app/handlers.rs) — Settings edit refactor + Stock View §26 comment; [`src/app/app.rs`](../src/app/app.rs) — filter literal note; **[`README.md`](../README.md)** — Keymap wildcard note.
 - **Follow-ups:** [#137](https://github.com/FelipeMorandini/stockterm/issues/137) — `BindingLayer::FilterInput`; [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) — explicit alert symbol/condition keymap actions.
