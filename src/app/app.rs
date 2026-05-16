@@ -766,6 +766,7 @@ impl App {
     }
 
     /// Issue #16 — while `filter_input_mode`, consumes keys for editing; returns true if handled.
+    /// Chords stay literal here (§23); filter keymap is out of scope for Issue #136 / §26.
     pub(crate) fn consume_filter_input_key(&mut self, key: &crossterm::event::KeyEvent) -> bool {
         use crossterm::event::{KeyCode, KeyModifiers};
         if !self.filter_input_mode {

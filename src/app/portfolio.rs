@@ -427,20 +427,24 @@ fn handle_portfolio_dialog_keys(app: &mut App, key: KeyEvent) {
                 }
                 return;
             }
-            _ => {}
-        }
-    }
-
-    if let KeyCode::Char(c) = key.code {
-        if key.modifiers == KeyModifiers::NONE && (c.is_ascii_digit() || c == '.') {
-            if let Some(d) = app.portfolio_dialog.as_mut() {
-                d.inline_error = None;
-                let buf = match d.focused {
-                    PortfolioAddField::Shares => &mut d.shares_buffer,
-                    PortfolioAddField::Price => &mut d.price_buffer,
+            Action::PortfolioDialogDigitOrDot => {
+                if !letter_key_plain(key.modifiers) {
+                    return;
+                }
+                let KeyCode::Char(c) = key.code else {
+                    return;
                 };
-                let _ = append_numeric_char(buf, c);
+                if let Some(d) = app.portfolio_dialog.as_mut() {
+                    d.inline_error = None;
+                    let buf = match d.focused {
+                        PortfolioAddField::Shares => &mut d.shares_buffer,
+                        PortfolioAddField::Price => &mut d.price_buffer,
+                    };
+                    let _ = append_numeric_char(buf, c);
+                }
+                return;
             }
+            _ => {}
         }
     }
 }

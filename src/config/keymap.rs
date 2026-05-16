@@ -1,4 +1,5 @@
-//! User-configurable keyboard shortcuts (GitHub Issue #13 / SPEC §24; Issue #134 / §25).
+//! User-configurable keyboard shortcuts (GitHub Issue #13 / SPEC §24; Issue #134 / §25;
+//! Issue #136 / SPEC §26 — dialog digit + settings edit buffer actions).
 //!
 //! ## JSON shape
 //!
@@ -92,6 +93,10 @@ pub enum Action {
     SettingsEditEsc,
     SettingsEditEnter,
     SettingsEditBackspace,
+    /// Refresh-rate row: digits `0`–`9` (Issue #136 / SPEC §26).
+    SettingsEditDigit,
+    /// Default-symbol row: letters, digits, `.`, `-` via explicit chords (§26).
+    SettingsEditSymbolChar,
     PortfolioFilterToggle,
     PortfolioAdd,
     PortfolioRemoveArm,
@@ -118,6 +123,9 @@ pub enum Action {
     AlertDialogConditionCycleOrFocusNext,
     AlertDialogEnter,
     AlertDialogBackspace,
+    /// Alert add dialog: default chords for digits and `.` on symbol/threshold fields (focus
+    /// selects append rules). Symbol letters and condition `a`/`b` stay wildcard — Issue #136 / §26.
+    AlertDialogDigitOrDot,
 }
 
 #[inline]
@@ -140,7 +148,8 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         NewsRowDown | NewsRowUp | NewsEnter => BindingLayer::News,
         SettingsEscThemeDraft | SettingsThemePrev | SettingsThemeNext | SettingsRowDown
         | SettingsRowUp | SettingsEnter => BindingLayer::SettingsBrowse,
-        SettingsEditEsc | SettingsEditEnter | SettingsEditBackspace => BindingLayer::SettingsEdit,
+        SettingsEditEsc | SettingsEditEnter | SettingsEditBackspace | SettingsEditDigit
+        | SettingsEditSymbolChar => BindingLayer::SettingsEdit,
         PortfolioFilterToggle | PortfolioAdd | PortfolioRemoveArm | PortfolioRowDown
         | PortfolioRowUp | PortfolioEnterStock => BindingLayer::Portfolio,
         PortfolioRemoveCancel | PortfolioRemoveDecline | PortfolioRemoveConfirm => {
@@ -151,7 +160,7 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         AlertAdd | AlertRemove | AlertRowUp | AlertRowDown => BindingLayer::Alerts,
         AlertDialogEsc | AlertDialogTab | AlertDialogShiftTab | AlertDialogLeft
         | AlertDialogRight | AlertDialogConditionCycleOrFocusNext | AlertDialogEnter
-        | AlertDialogBackspace => BindingLayer::AlertDialog,
+        | AlertDialogBackspace | AlertDialogDigitOrDot => BindingLayer::AlertDialog,
     }
 }
 
@@ -407,7 +416,9 @@ fn apply_user_overlay(
     Ok(out)
 }
 
-fn default_bindings() -> &'static [(BindingLayer, &'static str, Action)] {
+/// Built-in rows before Issue #136 programmatic digit/symbol chords (see [`default_bindings`]).
+#[allow(clippy::redundant_static_lifetimes)]
+const CORE_DEFAULTS: &[(BindingLayer, &'static str, Action)] = {
     use Action::*;
     use BindingLayer::*;
     &[
@@ -504,6 +515,35 @@ fn default_bindings() -> &'static [(BindingLayer, &'static str, Action)] {
         (AlertDialog, "enter", AlertDialogEnter),
         (AlertDialog, "backspace", AlertDialogBackspace),
     ]
+};
+
+fn build_default_bindings_with_issue136_rows() -> &'static [(BindingLayer, &'static str, Action)] {
+    use Action::*;
+    use BindingLayer::*;
+    let mut v: Vec<(BindingLayer, &'static str, Action)> = CORE_DEFAULTS.to_vec();
+    for d in '0'..='9' {
+        let s: &'static str = Box::leak(format!("char:{d}").into_boxed_str());
+        v.push((PortfolioDialog, s, PortfolioDialogDigitOrDot));
+        v.push((AlertDialog, s, AlertDialogDigitOrDot));
+        v.push((SettingsEdit, s, SettingsEditDigit));
+    }
+    let dot: &'static str = Box::leak(Box::from("char:."));
+    v.push((PortfolioDialog, dot, PortfolioDialogDigitOrDot));
+    v.push((AlertDialog, dot, AlertDialogDigitOrDot));
+    for c in 'a'..='z' {
+        let s: &'static str = Box::leak(format!("char:{c}").into_boxed_str());
+        v.push((SettingsEdit, s, SettingsEditSymbolChar));
+    }
+    for sym in ['.', '-'] {
+        let s: &'static str = Box::leak(format!("char:{sym}").into_boxed_str());
+        v.push((SettingsEdit, s, SettingsEditSymbolChar));
+    }
+    Box::leak(v.into_boxed_slice())
+}
+
+fn default_bindings() -> &'static [(BindingLayer, &'static str, Action)] {
+    static ALL: OnceLock<&'static [(BindingLayer, &'static str, Action)]> = OnceLock::new();
+    ALL.get_or_init(build_default_bindings_with_issue136_rows)
 }
 
 #[cfg(test)]
@@ -692,6 +732,64 @@ mod tests {
             err.unwrap_err()
                 .contains("has no default bindings")
         );
+    }
+
+    #[test]
+    fn issue136_portfolio_dialog_digit_or_dot_defaults() {
+        let (km, err) = ResolvedKeymap::build(None);
+        assert!(err.is_none());
+        let five = KeyEvent::new(KeyCode::Char('5'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::PortfolioDialog, &five),
+            Some(Action::PortfolioDialogDigitOrDot)
+        );
+        let dot = KeyEvent::new(KeyCode::Char('.'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::PortfolioDialog, &dot),
+            Some(Action::PortfolioDialogDigitOrDot)
+        );
+        let n = default_bindings()
+            .iter()
+            .filter(|&&(_, _, a)| a == Action::PortfolioDialogDigitOrDot)
+            .count();
+        assert_eq!(n, 11);
+    }
+
+    #[test]
+    fn issue136_alert_dialog_digit_or_dot_defaults() {
+        let (km, err) = ResolvedKeymap::build(None);
+        assert!(err.is_none());
+        let three = KeyEvent::new(KeyCode::Char('3'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::AlertDialog, &three),
+            Some(Action::AlertDialogDigitOrDot)
+        );
+        let n = default_bindings()
+            .iter()
+            .filter(|&&(_, _, a)| a == Action::AlertDialogDigitOrDot)
+            .count();
+        assert_eq!(n, 11);
+    }
+
+    #[test]
+    fn issue136_settings_edit_digit_and_symbol_defaults() {
+        let (km, err) = ResolvedKeymap::build(None);
+        assert!(err.is_none());
+        let d = KeyEvent::new(KeyCode::Char('7'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::SettingsEdit, &d),
+            Some(Action::SettingsEditDigit)
+        );
+        let z = KeyEvent::new(KeyCode::Char('z'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::SettingsEdit, &z),
+            Some(Action::SettingsEditSymbolChar)
+        );
+        let n_digit = default_bindings()
+            .iter()
+            .filter(|&&(_, _, a)| a == Action::SettingsEditDigit)
+            .count();
+        assert_eq!(n_digit, 10);
     }
 
     #[test]
