@@ -472,6 +472,28 @@ fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
                 }
                 return;
             }
+            Action::AlertDialogDigitOrDot => {
+                if !letter_key_plain(key.modifiers) {
+                    return;
+                }
+                let KeyCode::Char(c) = key.code else {
+                    return;
+                };
+                let Some(d) = app.alert_add_dialog.as_mut() else {
+                    return;
+                };
+                d.inline_error = None;
+                match d.focused {
+                    AlertAddField::Symbol => {
+                        let _ = append_symbol_char(&mut d.symbol_buffer, c);
+                    }
+                    AlertAddField::Threshold => {
+                        let _ = append_threshold_char(&mut d.threshold_buffer, c);
+                    }
+                    AlertAddField::Condition => {}
+                }
+                return;
+            }
             _ => {}
         }
     }

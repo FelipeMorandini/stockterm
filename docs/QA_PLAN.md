@@ -2004,3 +2004,73 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 | Same remapped row nav while remove-armed | | | |
 | Armed-only confirm remap does not alter list layer | | | |
 | README notes multi-layer propagation | | | |
+
+---
+
+## Issue #136 — Keymap phase 2 (symbol buffers + modal digit/symbol entry)
+
+**Scope:** [GitHub Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136) — after **§24** / **§25**, finish wiring **Stock View**, **Search**, **Settings** edit buffers and **portfolio** / **alert** add dialogs so typed characters and digits go through **`ResolvedKeymap`** where [`docs/SPEC.md`](SPEC.md) **§26** specifies (no shadow `KeyCode::Char` after an `Action` match); preserve **§23** filter mode, **§8** modifier rules, and **§25** overlay propagation.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §26.
+
+### Preconditions
+
+- Build matches **§26.5** (`cargo clippy -- -D warnings`, `cargo test`).
+- Baseline: default `keymap` absent or `null` in `~/.stockterm.json`.
+
+### Manual — Default keymap parity (regression)
+
+Run the same smoke paths as Issue **#13** / **#44** for these surfaces; **Pass** = behavior matches the pre–#136 tree on each row.
+
+| Surface | Steps |
+|--------|--------|
+| **Stock View** | Type a multi-letter symbol with Shift/Caps where needed (**§8**); **Enter** fetch; **Backspace**; watchlist **`w`** / **`x`** / **`j`**/**`k`**; **`/`** enters filter mode (see §23 block below). |
+| **Search** | Type query with space / `-` / `.`; **Esc** clears; **Backspace**; **Enter** picks row; **j**/**k** or arrows move selection. |
+| **Settings** | Browse rows; **Enter** on refresh rate + default symbol; type digits / symbol; **Esc** cancel; **Enter** commit; row **3** theme **h**/**l**/**j**/**k** unchanged. |
+| **Portfolio add dialog** | **`a`** open; **Tab** (global) / **`;`** field cycle per defaults; digits and **`.`** in shares + price; **Enter** commit path; **Esc** close. |
+| **Alert add dialog** | **`a`** open; **Tab** / **Shift+Tab**; **←**/**→** on Condition; symbol + threshold typing; **`;`** condition cycle when not on Condition focus; **Enter** / **Esc**. |
+
+### Manual — §23 filter (no regression)
+
+On **Stock View** and **Portfolio** holdings (default keymap):
+
+1. Press **`/`** → status shows filter mode; type a substring; table narrows live.  
+2. **Esc** clears query and exits filter mode; selection clamps.  
+3. **Enter** exits filter mode with query applied; **Backspace** edits query while in mode.  
+4. **`/`** with empty query exits filter mode (per §23).
+
+**Pass:** Identical to Issue **#16** QA expectations.
+
+### Manual — Remap spot checks (§26 acceptance)
+
+Use a **temporary** `keymap` object in `~/.stockterm.json` (restore after testing). Relaunch between edits.
+
+1. **Portfolio dialog — dialog-layer remap:** Remap **`PortfolioDialogEnter`** (or **`PortfolioDialogEsc`**) from its default chord to an otherwise-unused **`char:p`**. Open add dialog; **`p`** performs the remapped action; old chord no longer does.  
+   **Pass:** No second `KeyCode` path fires the same effect; restore JSON.
+
+2. **Portfolio dialog — digits (post–§26.4 default rows):** With **defaults**, type **`12.34`** in shares and **`56.7`** in price; commit or tab through fields.  
+   **Pass:** Same parsing / validation as pre–#136; digits and **`.`** arrive only via **`PortfolioDialogDigitOrDot`** (no `KeyModifiers::NONE`-only shadow block).
+
+3. **Settings edit (if §26 adds `SettingsEdit*` buffer actions):** Remap one digit chord for refresh-rate row; confirm digit entry follows remap.  
+   **Pass:** Matches README row for the new **`Action`** name. If §26 ships without separate digit **`Action`**s, skip with note “N/A — wildcard only”.
+
+4. **Alert threshold (if §26 adds threshold `Action`):** Remap one threshold digit chord; verify threshold field only.  
+   **Pass:** Remap works; symbol field unchanged unless explicitly remapped.
+
+5. **Collision:** Bind **`StockBackspace`** to a chord that previously was unused; verify **keymap wins** and symbol buffer does not also consume that key (**§24.5**).
+
+### Manual — Invalid `keymap` fallback
+
+Introduce a deliberate duplicate-chord or unknown **`Action`** if §26 adds validation paths; relaunch.  
+**Pass:** **`keymap:`** prefix message; app runs on **full defaults**; Issue **#13** global **`q`** quit still works.
+
+### Sign-off — Issue #136
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo clippy -- -D warnings` + `cargo test` | | | |
+| Default parity table (Stock / Search / Settings / dialogs) | | | |
+| §23 filter matrix | | | |
+| Shift/Caps symbol typing (**§8**) on Stock View + dialogs | | | |
+| At least one remap spot-check + restore defaults | | | |
+| README Keymap table lists any **new** `Action` names from §26 | | | |

@@ -170,6 +170,8 @@ fn handle_charts_events(app: &mut App, key: KeyEvent) {
 }
 
 fn handle_search_events(app: &mut App, key: KeyEvent) {
+    // §26 / Issue #136: `SearchEsc`, `SearchEnter`, and `SearchBackspace` intentionally require
+    // `KeyModifiers::NONE` so Ctrl/Alt chords do not clear the query or pick a row by accident.
     use Action::*;
     if let Some(a) = app.resolved_keymap.action(BindingLayer::Search, &key) {
         match a {
@@ -246,143 +248,142 @@ fn handle_news_events(app: &mut App, key: KeyEvent) {
     }
 }
 
+/// Shared Esc / Enter / Backspace for Settings edit rows (Issue #136 / SPEC §26).
+fn settings_edit_apply_common_action(app: &mut App, key: &KeyEvent, action: Action) -> bool {
+    use Action::*;
+    match action {
+        SettingsEditEsc if key.modifiers == KeyModifiers::NONE => {
+            app.settings_cancel_edit();
+            true
+        }
+        SettingsEditEnter if key.modifiers == KeyModifiers::NONE => {
+            let _ = app.settings_commit_edit();
+            true
+        }
+        SettingsEditBackspace if key.modifiers == KeyModifiers::NONE => {
+            app.settings_edit_buffer.pop();
+            true
+        }
+        _ => false,
+    }
+}
+
+fn settings_edit_append_digit(app: &mut App, key: &KeyEvent) -> bool {
+    if !letter_key_plain(key.modifiers) {
+        return false;
+    }
+    let KeyCode::Char(c) = key.code else {
+        return false;
+    };
+    if !c.is_ascii_digit() {
+        return false;
+    }
+    app.settings_edit_buffer.push(c);
+    true
+}
+
+fn settings_edit_append_symbol_char(app: &mut App, key: &KeyEvent) -> bool {
+    if !letter_key_plain(key.modifiers) {
+        return false;
+    }
+    let KeyCode::Char(c) = key.code else {
+        return false;
+    };
+    if !(c.is_ascii_alphanumeric() || c == '.' || c == '-') {
+        return false;
+    }
+    let c = if c.is_ascii_alphabetic() {
+        c.to_ascii_uppercase()
+    } else {
+        c
+    };
+    app.settings_edit_buffer.push(c);
+    true
+}
+
+fn settings_edit_apply_keymap_action(app: &mut App, key: &KeyEvent, action: Action, mode: SettingsEdit) {
+    use Action::*;
+    if settings_edit_apply_common_action(app, key, action) {
+        return;
+    }
+    match (action, mode) {
+        (SettingsEditDigit, _) => {
+            let _ = settings_edit_append_digit(app, key);
+        }
+        (SettingsEditSymbolChar, SettingsEdit::DefaultSymbol) => {
+            let _ = settings_edit_append_symbol_char(app, key);
+        }
+        // Refresh-rate row: `char:a`–`z` chords resolve to `SettingsEditSymbolChar` but letters are N/A.
+        (SettingsEditSymbolChar, SettingsEdit::RefreshRate) => {}
+        _ => {}
+    }
+}
+
+/// Wildcard append when no `SettingsEdit` chord matched (e.g. Shift+letter).
+fn settings_edit_apply_unmatched_wildcard(app: &mut App, key: &KeyEvent, mode: SettingsEdit) {
+    match mode {
+        SettingsEdit::RefreshRate => {
+            let _ = settings_edit_append_digit(app, key);
+        }
+        SettingsEdit::DefaultSymbol => {
+            let _ = settings_edit_append_symbol_char(app, key);
+        }
+    }
+}
+
 fn handle_settings_events(app: &mut App, key: KeyEvent) {
     use Action::*;
-    let layer = match app.settings_editing {
-        Some(SettingsEdit::RefreshRate) | Some(SettingsEdit::DefaultSymbol) => {
-            BindingLayer::SettingsEdit
-        }
-        None => BindingLayer::SettingsBrowse,
-    };
-
-    if let Some(a) = app.resolved_keymap.action(layer, &key) {
-        match app.settings_editing {
-            Some(SettingsEdit::RefreshRate) => match a {
-                SettingsEditEsc if key.modifiers == KeyModifiers::NONE => {
-                    app.settings_cancel_edit();
-                }
-                SettingsEditEnter if key.modifiers == KeyModifiers::NONE => {
-                    let _ = app.settings_commit_edit();
-                }
-                SettingsEditBackspace if key.modifiers == KeyModifiers::NONE => {
-                    app.settings_edit_buffer.pop();
-                }
-                _ => {
-                    if let KeyEvent {
-                        code: KeyCode::Char(c),
-                        modifiers,
-                        ..
-                    } = key
-                    {
-                        if c.is_ascii_digit() && letter_key_plain(modifiers) {
-                            app.settings_edit_buffer.push(c);
-                        }
-                    }
-                }
-            },
-            Some(SettingsEdit::DefaultSymbol) => match a {
-                SettingsEditEsc if key.modifiers == KeyModifiers::NONE => {
-                    app.settings_cancel_edit();
-                }
-                SettingsEditEnter if key.modifiers == KeyModifiers::NONE => {
-                    let _ = app.settings_commit_edit();
-                }
-                SettingsEditBackspace if key.modifiers == KeyModifiers::NONE => {
-                    app.settings_edit_buffer.pop();
-                }
-                _ => {
-                    if let KeyEvent {
-                        code: KeyCode::Char(c),
-                        modifiers,
-                        ..
-                    } = key
-                    {
-                        if (c.is_ascii_alphanumeric() || c == '.' || c == '-')
-                            && letter_key_plain(modifiers)
-                        {
-                            let c = if c.is_ascii_alphabetic() {
-                                c.to_ascii_uppercase()
-                            } else {
-                                c
-                            };
-                            app.settings_edit_buffer.push(c);
-                        }
-                    }
-                }
-            },
-            None => match a {
-                SettingsEscThemeDraft if key.modifiers == KeyModifiers::NONE => {
-                    if app.settings_row == 3 {
-                        app.sync_settings_theme_draft_from_config();
-                    }
-                }
-                SettingsThemePrev => {
-                    if app.settings_row == 3
-                        && (key.code == KeyCode::Left || letter_key_plain(key.modifiers))
-                    {
-                        app.settings_cycle_theme_draft_prev();
-                    }
-                }
-                SettingsThemeNext => {
-                    if app.settings_row == 3
-                        && (key.code == KeyCode::Right || letter_key_plain(key.modifiers))
-                    {
-                        app.settings_cycle_theme_draft_next();
-                    }
-                }
-                SettingsRowDown => {
-                    if key.code == KeyCode::Down || letter_key_plain(key.modifiers) {
-                        app.settings_row_next();
-                    }
-                }
-                SettingsRowUp => {
-                    if key.code == KeyCode::Up || letter_key_plain(key.modifiers) {
-                        app.settings_row_prev();
-                    }
-                }
-                SettingsEnter if key.modifiers == KeyModifiers::NONE => {
-                    app.settings_try_enter_row();
-                }
-                _ => {}
-            },
+    if let Some(mode) = app.settings_editing {
+        if let Some(a) = app
+            .resolved_keymap
+            .action(BindingLayer::SettingsEdit, &key)
+        {
+            settings_edit_apply_keymap_action(app, &key, a, mode);
+        } else {
+            settings_edit_apply_unmatched_wildcard(app, &key, mode);
         }
         return;
     }
 
-    // Edit modes: digits / symbol chars when not matched as a dedicated action chord.
-    match app.settings_editing {
-        Some(SettingsEdit::RefreshRate) => {
-            if let KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers,
-                ..
-            } = key
-            {
-                if c.is_ascii_digit() && letter_key_plain(modifiers) {
-                    app.settings_edit_buffer.push(c);
+    if let Some(a) = app
+        .resolved_keymap
+        .action(BindingLayer::SettingsBrowse, &key)
+    {
+        match a {
+            SettingsEscThemeDraft if key.modifiers == KeyModifiers::NONE => {
+                if app.settings_row == 3 {
+                    app.sync_settings_theme_draft_from_config();
                 }
             }
-        }
-        Some(SettingsEdit::DefaultSymbol) => {
-            if let KeyEvent {
-                code: KeyCode::Char(c),
-                modifiers,
-                ..
-            } = key
-            {
-                if (c.is_ascii_alphanumeric() || c == '.' || c == '-')
-                    && letter_key_plain(modifiers)
+            SettingsThemePrev => {
+                if app.settings_row == 3
+                    && (key.code == KeyCode::Left || letter_key_plain(key.modifiers))
                 {
-                    let c = if c.is_ascii_alphabetic() {
-                        c.to_ascii_uppercase()
-                    } else {
-                        c
-                    };
-                    app.settings_edit_buffer.push(c);
+                    app.settings_cycle_theme_draft_prev();
                 }
             }
+            SettingsThemeNext => {
+                if app.settings_row == 3
+                    && (key.code == KeyCode::Right || letter_key_plain(key.modifiers))
+                {
+                    app.settings_cycle_theme_draft_next();
+                }
+            }
+            SettingsRowDown => {
+                if key.code == KeyCode::Down || letter_key_plain(key.modifiers) {
+                    app.settings_row_next();
+                }
+            }
+            SettingsRowUp => {
+                if key.code == KeyCode::Up || letter_key_plain(key.modifiers) {
+                    app.settings_row_prev();
+                }
+            }
+            SettingsEnter if key.modifiers == KeyModifiers::NONE => {
+                app.settings_try_enter_row();
+            }
+            _ => {}
         }
-        None => {}
     }
 }
 
@@ -433,6 +434,7 @@ fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
         return;
     }
 
+    // §24.5 / §26 — Stock symbol buffer: letters only (wildcard after keymap); digits are not ticker input here.
     if let KeyEvent {
         code: KeyCode::Char(c),
         modifiers,
