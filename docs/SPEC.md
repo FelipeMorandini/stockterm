@@ -3436,7 +3436,7 @@ After maintainer approval of §26, implementation may proceed per [`.cursor/rule
 - **Status:** Implemented in-tree. **PR:** [#140](https://github.com/FelipeMorandini/stockterm/pull/140). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — maintainer sign-off pending.
 - **Tracking:** [Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `CORE_DEFAULTS`, `build_default_bindings_with_issue136_rows`, **`SettingsEditDigit`**, **`SettingsEditSymbolChar`**, **`AlertDialogDigitOrDot`**, default chord rows; [`src/app/portfolio.rs`](../src/app/portfolio.rs) — **`PortfolioDialogDigitOrDot`** dispatch; [`src/app/alerts.rs`](../src/app/alerts.rs) — **`AlertDialogDigitOrDot`** dispatch; [`src/app/handlers.rs`](../src/app/handlers.rs) — Settings edit refactor + Stock View §26 comment; [`src/app/app.rs`](../src/app/app.rs) — filter literal note; **[`README.md`](../README.md)** — Keymap wildcard note.
-- **Follow-ups:** [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) — explicit alert symbol/condition keymap actions. **#137** shipped — **§28.11**.
+- **Follow-ups:** [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) — explicit alert symbol/condition keymap actions — **§29** (planned). **#137** shipped — **§28.11**.
 
 ---
 
@@ -3606,7 +3606,7 @@ After maintainer approval of §27, implementation may proceed per [`.cursor/rule
 - **§24** / [Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13) — configurable keymap; **`StockFilterToggle`** / **`PortfolioFilterToggle`** already enter filter mode from **`BindingLayer::StockView`** / **`Portfolio`**.
 - **§26** — hybrid keymap + wildcard policy; filter literals were intentionally frozen in #136.
 
-**Related:** **§25** — overlay propagation unchanged (filter actions register only on **`FilterInput`**). **§8** — `letter_key_plain` remains authoritative where this slice documents Shift/Caps parity; filter query append keeps **`KeyModifiers::NONE`** only (§23.5 parity). Follow-ons: [#138](https://github.com/FelipeMorandini/stockterm/issues/138) static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) alert symbol/condition keymap actions.
+**Related:** **§25** — overlay propagation unchanged (filter actions register only on **`FilterInput`**). **§8** — `letter_key_plain` remains authoritative where this slice documents Shift/Caps parity; filter query append keeps **`KeyModifiers::NONE`** only (§23.5 parity). Follow-ons: [#138](https://github.com/FelipeMorandini/stockterm/issues/138) static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) alert symbol/condition keymap actions — **§29**.
 
 ---
 
@@ -3738,7 +3738,7 @@ Remove the literal **`KeyCode`** arms once defaults + tests cover parity.
 - Persisting filter strings in **`~/.stockterm.json`**.
 - **`letter_key_plain`** / Shifted filter typing (would change §23 UX).
 - In-app keymap editor ([Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12)).
-- [#138](https://github.com/FelipeMorandini/stockterm/issues/138), [#139](https://github.com/FelipeMorandini/stockterm/issues/139).
+- [#138](https://github.com/FelipeMorandini/stockterm/issues/138) (§29 defers static table to that issue).
 
 ---
 
@@ -3753,3 +3753,144 @@ After maintainer approval of §28, implementation may proceed per [`.cursor/rule
 - **Status:** Implemented in-tree (2026-05-17). **PR:** [#142](https://github.com/FelipeMorandini/stockterm/pull/142). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — maintainer sign-off pending.
 - **Tracking:** [Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `BindingLayer::FilterInput`, **`FilterClear`** / **`FilterCommit`** / **`FilterBackspace`** / **`FilterSlash`** / **`FilterQueryChar`** + default chords; [`src/app/app.rs`](../src/app/app.rs) — `consume_filter_input_key` keymap dispatch; **[`README.md`](../README.md)** — filter layer + duplicate-chord note.
+
+---
+
+## 29. Issue [#139](https://github.com/FelipeMorandini/stockterm/issues/139) — Keymap phase 3: explicit alert dialog symbol + condition actions
+
+**Sources:**
+
+- [GitHub Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139) — optional follow-up from [Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136) / **§26.2.6–7** (SPEC option **(b)**).
+- **§26** — shipped **`AlertDialogDigitOrDot`** for digits and **`.`** on symbol **and** threshold fields; alert **symbol letters** and condition **`a`/`b`** remain a post-keymap **wildcard** in [`handle_alert_dialog_keys`](../src/app/alerts.rs).
+- **§8** / [Issue #44](https://github.com/FelipeMorandini/stockterm/issues/44) — **`letter_key_plain`** remains authoritative for letter-class typing (Shift/Caps parity).
+- **§24** / [Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13) — user `keymap` JSON overrides.
+
+**Related:** **§25** — no new duplicate-layer defaults expected. **§28** — filter layer unchanged. [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — static default chord table (orthogonal).
+
+---
+
+### 29.1 Problem inventory (verified in tree, 2026-05-17)
+
+| Area | Location | Gap |
+|------|----------|-----|
+| **Symbol letters** | [`handle_alert_dialog_keys`](../src/app/alerts.rs) trailing wildcard | After **`AlertDialogDigitOrDot`**, any **`KeyCode::Char` + `letter_key_plain`** appends to **`symbol_buffer`** — not individually remappable via **`~/.stockterm.json`**. |
+| **Condition `a`/`b`** | Same wildcard block | **`eq_ignore_ascii_case`** sets **Above** / **Below** on **Condition** focus — not **`Action`** rows. |
+| **`AlertDialogDigitOrDot`** | [`keymap.rs`](../src/config/keymap.rs) + handler | Correctly keymap-driven for **0–9** and **`.`**, but handler still routes digits to **symbol** and **threshold** via focus — acceptable; **symbol letters** are the main gap. |
+| **Chord collision `a`/`b`** | — | **`a`** is both a ticker letter and the **Above** shortcut on **Condition** focus today. Remapping must use **focus dispatch** on explicit condition **`Action`**s (see §29.2.3). |
+| **Docs** | [`README.md`](../README.md) | Still lists alert symbol + condition **`a`/`b`** as §26 wildcards. |
+
+---
+
+### 29.2 Product model
+
+1. **Keymap-first, minimal wildcard (§24.5 + §26):** After **`resolved_keymap.action(AlertDialog, &key)`**, handlers apply **`Action`** effects only. **Remove** the trailing alert-dialog **`KeyCode::Char`** wildcard block once defaults + optional Shift fallback cover parity.
+2. **Three new `Action` variants** (names fixed for JSON / README):
+
+| `Action` | Default chord(s) on **`AlertDialog`** | Handler focus / effect |
+|----------|----------------------------------------|-------------------------|
+| **`AlertDialogSymbolChar`** | **`char:c`…`char:z`** (24 letters **excluding** `a` and `b`), **`char:-`** | **Symbol** focus only: **`letter_key_plain`** + **`append_symbol_char`**. **Condition** / **Threshold**: no-op. |
+| **`AlertDialogConditionAbove`** | **`char:a`** | **Condition** focus: set **`AlertCondition::Above`**. **Symbol** focus: **`append_symbol_char`** with **`A`** (Shift/Caps parity via **`letter_key_plain`**). **Threshold**: no-op. |
+| **`AlertDialogConditionBelow`** | **`char:b`** | **Condition** focus: set **`Below`**. **Symbol** focus: append **`B`**. **Threshold**: no-op. |
+
+3. **`AlertDialogDigitOrDot` (existing):** Keep **11** default chords (**`char:0`…`char:9`**, **`char:.`**). **Narrow handler** to:
+   - **Threshold** focus → **`append_threshold_char`** (unchanged).
+   - **Symbol** focus → **`append_symbol_char`** (digits / dot only — same as today).
+   - **Condition** focus → no-op.
+   - **Do not** register digits on **`AlertDialogSymbolChar`** (same-layer duplicate chords forbidden — mirror **§26** / **Settings** split: **`SettingsEditDigit`** vs **`SettingsEditSymbolChar`**).
+4. **Remapping semantics (acceptance driver):**
+   - User remaps **`AlertDialogSymbolChar`** chord (e.g. remap all symbol letters by remapping one chord — only that chord changes; document per-chord remap like other multi-chord actions).
+   - User remaps **`AlertDialogConditionAbove`** from **`a`** to **`char:u`**: on **Condition** focus **`u`** sets **Above**; **`a`** is **unbound** on **`AlertDialog`** → optional **Shift+letter** wildcard may append **`a`** on **Symbol** focus only (see §29.4.3).
+   - User remaps condition keys without breaking **§8**: handler arms keep **`letter_key_plain`** checks (not **`NONE`-only**).
+5. **§25:** **`action_overlay_layers`** unchanged — each new action appears on **`AlertDialog`** only.
+
+---
+
+### 29.3 Acceptance criteria (closure checklist)
+
+1. **Default parity:** Alert add dialog UX matches pre–#139 tree: type **`AAPL`** on **Symbol** (letters + Shift/Caps), **`a`**/**`b`** on **Condition**, **`150.25`** on **Threshold**, **Tab** / **←/→** / **`;`** cycle unchanged; **Enter** commits.
+2. **No shadow wildcard:** With default keymap, **no** trailing **`match key.code`** block runs for effects already covered by **`Action`** defaults (wildcard removed or reduced to Shift-only fallback per §29.4.3).
+3. **Remappable symbol letters:** Remap **`AlertDialogSymbolChar`** for **`char:z`** to another chord; relaunch; **`z`** no longer appends on **Symbol**; new chord appends.
+4. **Remappable condition:** Remap **`AlertDialogConditionAbove`** from **`a`** to **`char:u`**; on **Condition** focus **`u`** sets **Above**, **`a`** does not (unless wildcard / remapped).
+5. **§8 regression:** Shift/Caps **`a`** on **Symbol** still appends **`A`** when **`char:a`** maps to **`AlertDialogConditionAbove`** (focus dispatch on condition action).
+6. **Digit parity:** **`0`–`9`** and **`.`** on **Threshold** still via **`AlertDialogDigitOrDot`** only; **`.`** on **Symbol** via same action on **Symbol** focus.
+7. **Invalid keymap:** Duplicate chord or unknown action → full default fallback (§24.2).
+8. **Build:** `cargo clippy -- -D warnings`, `cargo test` green; README Keymap paragraph updated.
+
+---
+
+### 29.4 Implementation plan (Rust)
+
+#### 29.4.1 `src/config/keymap.rs`
+
+- Add **`AlertDialogSymbolChar`**, **`AlertDialogConditionAbove`**, **`AlertDialogConditionBelow`** to **`Action`**.
+- Update **`action_binding_layer`** — all three → **`BindingLayer::AlertDialog`**.
+- Extend **`build_default_bindings_extended`**:
+  - **`AlertDialogConditionAbove`** ← **`char:a`**; **`AlertDialogConditionBelow`** ← **`char:b`**.
+  - **`AlertDialogSymbolChar`** ← **`char:c`…`char:z`** and **`char:-`** (do **not** add **`char:a`/`char:b`** or digits).
+  - Keep existing **`AlertDialogDigitOrDot`** rows for **`char:0`…`char:9`** and **`char:.`**.
+- Update **`AlertDialogDigitOrDot`** rustdoc — threshold + symbol **digit/dot** only; symbol **letters** via **`AlertDialogSymbolChar`** / condition actions.
+- **Unit tests:**
+  1. **`char:z`** → **`AlertDialogSymbolChar`**; **`char:a`** → **`AlertDialogConditionAbove`**; **`char:5`** → **`AlertDialogDigitOrDot`**.
+  2. Count: **25** **`AlertDialogSymbolChar`** (`c`–`z` + `-`), **2** condition actions, **11** **`AlertDialogDigitOrDot`** on **`AlertDialog`**.
+  3. User remap: `"char:u": "AlertDialogConditionAbove"` → **`action(AlertDialog, u)`** is **Above**; default **`a`** no longer **Above** unless also remapped.
+
+#### 29.4.2 `src/app/alerts.rs`
+
+- Add handler arms for the three new **`Action`**s with focus dispatch per §29.2.
+- Refactor **`AlertDialogDigitOrDot`** arm: drop **Condition** branch; keep **Symbol** + **Threshold** paths.
+- **Delete** the trailing wildcard **`match key.code`** block (lines ~501–523 today).
+- **Optional Shift fallback** (recommended, mirrors Settings edit):
+
+  ```text
+  if action(AlertDialog, key).is_none() && letter_key_plain(modifiers) {
+      match focused { Symbol => append_symbol_char; Threshold => append_threshold_char; _ => {} }
+  }
+  ```
+
+  Only when **no** keymap hit — preserves Shift/Caps typing for keys user unbound from defaults.
+
+#### 29.4.3 `README.md`
+
+- Keymap bullet: remove alert symbol + condition **`a`/`b`** from the §26 wildcard list.
+- Document **`AlertDialogSymbolChar`**, **`AlertDialogConditionAbove`**, **`AlertDialogConditionBelow`**, and note **`a`/`b`** on **Symbol** still type **`A`/`B`** via condition-action focus dispatch; remapping condition keys frees **`a`/`b`** for symbol entry when unbound.
+
+#### 29.4.4 Async / channels
+
+- **None** — synchronous input dispatch only.
+
+---
+
+### 29.5 Automated verification
+
+- `cargo build --release`, `cargo clippy -- -D warnings`, `cargo test`.
+- **`keymap.rs`** tests per §29.4.1.
+- Optional: thin test that **`handle_alert_dialog_keys`** does not double-append when keymap returns **`Some`** (if harness exists; otherwise manual-only).
+
+---
+
+### 29.6 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #139** section.
+
+---
+
+### 29.7 Out of scope
+
+- Per-Unicode ticker symbols beyond ASCII alnum + **`.`** + **`-`** (unchanged [`append_symbol_char`](../src/app/alerts.rs) charset).
+- Splitting **`AlertDialogDigitOrDot`** into a renamed **`AlertDialogThresholdDigitOrDot`** enum variant (behavioral narrow only; rename optional).
+- In-app keymap editor ([Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12)).
+- [#138](https://github.com/FelipeMorandini/stockterm/issues/138) static default chord table export.
+
+---
+
+### 29.8 Approval
+
+After maintainer approval of §29, implementation may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#139**.
+
+---
+
+### 29.9 Shipment record
+
+- **Status:** Implemented in-tree (2026-05-17). **PR:** [#143](https://github.com/FelipeMorandini/stockterm/pull/143). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#139** — maintainer sign-off pending.
+- **Tracking:** [Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139).
+- **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — **`AlertDialogSymbolChar`**, **`AlertDialogConditionAbove`**, **`AlertDialogConditionBelow`** + default chords; [`src/app/alerts.rs`](../src/app/alerts.rs) — focus dispatch, wildcard removed, unmatched-key fallback; **[`README.md`](../README.md)** — Keymap paragraph updated.

@@ -388,6 +388,63 @@ fn append_threshold_char(buf: &mut String, c: char) -> bool {
     false
 }
 
+/// `KeyEvent` → typed char when §8 `letter_key_plain` (Shift allowed; meta chords rejected).
+fn alert_dialog_plain_char(key: &KeyEvent) -> Option<char> {
+    if !letter_key_plain(key.modifiers) {
+        return None;
+    }
+    let KeyCode::Char(c) = key.code else {
+        return None;
+    };
+    Some(c)
+}
+
+enum AlertDialogCharEffect {
+    SymbolOnly,
+    DigitOrDot,
+    Condition(AlertCondition),
+}
+
+fn alert_dialog_apply_char(app: &mut App, c: char, effect: AlertDialogCharEffect) {
+    let Some(d) = app.alert_add_dialog.as_mut() else {
+        return;
+    };
+    d.inline_error = None;
+    match effect {
+        AlertDialogCharEffect::SymbolOnly => {
+            if d.focused == AlertAddField::Symbol {
+                let _ = append_symbol_char(&mut d.symbol_buffer, c);
+            }
+        }
+        AlertDialogCharEffect::DigitOrDot => match d.focused {
+            AlertAddField::Symbol => {
+                let _ = append_symbol_char(&mut d.symbol_buffer, c);
+            }
+            AlertAddField::Threshold => {
+                let _ = append_threshold_char(&mut d.threshold_buffer, c);
+            }
+            AlertAddField::Condition => {}
+        },
+        AlertDialogCharEffect::Condition(cond) => match d.focused {
+            AlertAddField::Symbol => {
+                let _ = append_symbol_char(&mut d.symbol_buffer, c);
+            }
+            AlertAddField::Condition => d.condition = cond,
+            AlertAddField::Threshold => {}
+        },
+    }
+}
+
+/// Unbound-chord fallback when `action(AlertDialog, key)` is `None` (Issue #139 / §29).
+///
+/// Covers Shift+letter and keys freed by user remaps (e.g. condition `a` moved off `char:a`).
+fn alert_dialog_apply_unbound_char(app: &mut App, key: &KeyEvent) {
+    let Some(c) = alert_dialog_plain_char(key) else {
+        return;
+    };
+    alert_dialog_apply_char(app, c, AlertDialogCharEffect::DigitOrDot);
+}
+
 fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
     if let Some(a) = app
         .resolved_keymap
@@ -396,15 +453,12 @@ fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
         match a {
             Action::AlertDialogEsc if key.modifiers == KeyModifiers::NONE => {
                 app.alert_add_dialog = None;
-                return;
             }
             Action::AlertDialogTab => {
                 cycle_alert_dialog_focus(app, true);
-                return;
             }
             Action::AlertDialogShiftTab => {
                 cycle_alert_dialog_focus(app, false);
-                return;
             }
             Action::AlertDialogLeft if key.modifiers == KeyModifiers::NONE => {
                 let Some(d) = app.alert_add_dialog.as_mut() else {
@@ -414,7 +468,6 @@ fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
                     d.condition = AlertCondition::Below;
                     d.inline_error = None;
                 }
-                return;
             }
             Action::AlertDialogRight if key.modifiers == KeyModifiers::NONE => {
                 let Some(d) = app.alert_add_dialog.as_mut() else {
@@ -424,7 +477,6 @@ fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
                     d.condition = AlertCondition::Above;
                     d.inline_error = None;
                 }
-                return;
             }
             Action::AlertDialogConditionCycleOrFocusNext => {
                 if !letter_key_plain(key.modifiers) {
@@ -442,7 +494,6 @@ fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
                 } else {
                     cycle_alert_dialog_focus(app, true);
                 }
-                return;
             }
             Action::AlertDialogEnter if key.modifiers == KeyModifiers::NONE => {
                 let Some(d) = app.alert_add_dialog.as_mut() else {
@@ -454,7 +505,6 @@ fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
                     AlertAddField::Condition => d.focused = AlertAddField::Threshold,
                     AlertAddField::Threshold => try_commit_alert_dialog(app),
                 }
-                return;
             }
             Action::AlertDialogBackspace if key.modifiers == KeyModifiers::NONE => {
                 let Some(d) = app.alert_add_dialog.as_mut() else {
@@ -470,57 +520,41 @@ fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
                     }
                     AlertAddField::Condition => {}
                 }
-                return;
             }
             Action::AlertDialogDigitOrDot => {
-                if !letter_key_plain(key.modifiers) {
-                    return;
+                if let Some(c) = alert_dialog_plain_char(&key) {
+                    alert_dialog_apply_char(app, c, AlertDialogCharEffect::DigitOrDot);
                 }
-                let KeyCode::Char(c) = key.code else {
-                    return;
-                };
-                let Some(d) = app.alert_add_dialog.as_mut() else {
-                    return;
-                };
-                d.inline_error = None;
-                match d.focused {
-                    AlertAddField::Symbol => {
-                        let _ = append_symbol_char(&mut d.symbol_buffer, c);
-                    }
-                    AlertAddField::Threshold => {
-                        let _ = append_threshold_char(&mut d.threshold_buffer, c);
-                    }
-                    AlertAddField::Condition => {}
+            }
+            Action::AlertDialogSymbolChar => {
+                if let Some(c) = alert_dialog_plain_char(&key) {
+                    alert_dialog_apply_char(app, c, AlertDialogCharEffect::SymbolOnly);
                 }
-                return;
+            }
+            Action::AlertDialogConditionAbove => {
+                if let Some(c) = alert_dialog_plain_char(&key) {
+                    alert_dialog_apply_char(
+                        app,
+                        c,
+                        AlertDialogCharEffect::Condition(AlertCondition::Above),
+                    );
+                }
+            }
+            Action::AlertDialogConditionBelow => {
+                if let Some(c) = alert_dialog_plain_char(&key) {
+                    alert_dialog_apply_char(
+                        app,
+                        c,
+                        AlertDialogCharEffect::Condition(AlertCondition::Below),
+                    );
+                }
             }
             _ => {}
         }
+        return;
     }
 
-    if let KeyCode::Char(c) = key.code {
-        if letter_key_plain(key.modifiers) {
-            let Some(d) = app.alert_add_dialog.as_mut() else {
-                return;
-            };
-            d.inline_error = None;
-            match d.focused {
-                AlertAddField::Symbol => {
-                    let _ = append_symbol_char(&mut d.symbol_buffer, c);
-                }
-                AlertAddField::Threshold => {
-                    let _ = append_threshold_char(&mut d.threshold_buffer, c);
-                }
-                AlertAddField::Condition => {
-                    if c.eq_ignore_ascii_case(&'a') {
-                        d.condition = AlertCondition::Above;
-                    } else if c.eq_ignore_ascii_case(&'b') {
-                        d.condition = AlertCondition::Below;
-                    }
-                }
-            }
-        }
-    }
+    alert_dialog_apply_unbound_char(app, &key);
 }
 
 pub fn handle_alerts_events(app: &mut App, key: KeyEvent) {
