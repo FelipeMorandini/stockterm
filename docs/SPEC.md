@@ -3891,6 +3891,6 @@ After maintainer approval of §29, implementation may proceed per [`.cursor/rule
 
 ### 29.9 Shipment record
 
-- **Status:** Implemented in-tree (2026-05-17). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#139** — maintainer sign-off pending.
+- **Status:** Implemented in-tree (2026-05-17). **PR:** [#143](https://github.com/FelipeMorandini/stockterm/pull/143). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#139** — maintainer sign-off pending.
 - **Tracking:** [Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — **`AlertDialogSymbolChar`**, **`AlertDialogConditionAbove`**, **`AlertDialogConditionBelow`** + default chords; [`src/app/alerts.rs`](../src/app/alerts.rs) — focus dispatch, wildcard removed, unmatched-key fallback; **[`README.md`](../README.md)** — Keymap paragraph updated.
