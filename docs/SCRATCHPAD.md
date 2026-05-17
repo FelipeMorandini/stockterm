@@ -3,4 +3,4 @@
 Use this file for **short-lived** notes during development. Before shipping, turn
 bullets into GitHub issues and clear the list.
 
-_Last cleared: 2026-05-17 — `/ship` Issue #15: no new scratchpad items; **PR:** [#145](https://github.com/FelipeMorandini/stockterm/pull/145)._
+_Last cleared: 2026-05-17 — `/ship` Issue #89: no new scratchpad items._

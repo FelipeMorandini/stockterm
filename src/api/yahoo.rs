@@ -364,32 +364,47 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
     (quotes, errors)
 }
 
-async fn yahoo_quote_v7(symbol: &str) -> ProviderResult<TickerResponse> {
+fn v7_quote_url(query_base: &str, symbol: &str) -> String {
+    let base = query_base.trim_end_matches('/');
     let enc_sym = encode(symbol);
-    let url = format!("{}/v7/finance/quote?symbols={}", QUERY1, enc_sym);
+    format!("{base}/v7/finance/quote?symbols={enc_sym}")
+}
+
+fn v8_chart_latest_url(query_base: &str, symbol: &str) -> String {
+    let base = query_base.trim_end_matches('/');
+    let enc_sym = encode(symbol);
+    format!("{base}/v8/finance/chart/{enc_sym}?range=1d&interval=1d")
+}
+
+async fn yahoo_quote_v7_at(symbol: &str, query_base: &str) -> ProviderResult<TickerResponse> {
+    let url = v7_quote_url(query_base, symbol);
     let text = fetch_text(&url).await?;
     let env: V7QuoteEnvelope = serde_json::from_str(&text)?;
     v7_envelope_to_ticker(&env, symbol)
 }
 
-/// Try **`v7/finance/quote`** first; on failure or empty body, use v8 chart ([`yahoo_quote`]).
-async fn yahoo_latest_quote(symbol: &str) -> ProviderResult<TickerResponse> {
-    match yahoo_quote_v7(symbol).await {
-        Ok(t) if !t.results.is_empty() => Ok(t),
-        Ok(_) | Err(_) => yahoo_quote(symbol).await,
-    }
-}
-
 /// Latest quote via **v8 chart** `range=1d` (fallback when v7 is empty or errors).
-async fn yahoo_quote(symbol: &str) -> ProviderResult<TickerResponse> {
-    let enc_sym = encode(symbol);
-    let url = format!(
-        "{}/v8/finance/chart/{}?range=1d&interval=1d",
-        QUERY1, enc_sym
-    );
+async fn yahoo_quote_at(symbol: &str, query_base: &str) -> ProviderResult<TickerResponse> {
+    let url = v8_chart_latest_url(query_base, symbol);
     let text = fetch_text(&url).await?;
     let env: ChartEnvelope = serde_json::from_str(&text)?;
     chart_to_ticker(&env, symbol)
+}
+
+/// Try **`v7/finance/quote`** first; on failure or empty body, use v8 chart ([`yahoo_quote_at`]).
+async fn yahoo_latest_quote(symbol: &str) -> ProviderResult<TickerResponse> {
+    yahoo_latest_quote_at(symbol, QUERY1).await
+}
+
+/// Same orchestration as [`yahoo_latest_quote`] with an injectable Yahoo **`query1`** base (Issue #89 / SPEC §32).
+pub(crate) async fn yahoo_latest_quote_at(
+    symbol: &str,
+    query_base: &str,
+) -> ProviderResult<TickerResponse> {
+    match yahoo_quote_v7_at(symbol, query_base).await {
+        Ok(t) if !t.results.is_empty() => Ok(t),
+        Ok(_) | Err(_) => yahoo_quote_at(symbol, query_base).await,
+    }
 }
 
 fn chart_to_ticker(env: &ChartEnvelope, requested: &str) -> ProviderResult<TickerResponse> {
@@ -1238,5 +1253,101 @@ mod tests {
         assert_eq!(yahoo_w1_daily_fallback_interval(Some("1mo"), "30m", 0), None);
         assert_eq!(yahoo_w1_daily_fallback_interval(Some("5d"), "1d", 0), None);
         assert_eq!(yahoo_w1_daily_fallback_interval(None, "30m", 0), None);
+    }
+
+    #[test]
+    fn v7_quote_url_builds_expected_path() {
+        let url = v7_quote_url("https://mock.test", "AAPL");
+        assert_eq!(url, "https://mock.test/v7/finance/quote?symbols=AAPL");
+    }
+
+    #[test]
+    fn v8_chart_latest_url_builds_expected_path() {
+        let url = v8_chart_latest_url("https://mock.test/", "AAPL");
+        assert_eq!(
+            url,
+            "https://mock.test/v8/finance/chart/AAPL?range=1d&interval=1d"
+        );
+    }
+}
+
+#[cfg(test)]
+mod wiremock_quote_fallback_tests {
+    use super::*;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    const SYMBOL: &str = "AAPL";
+    const CHART_FIXTURE: &str = include_str!("../../tests/fixtures/yahoo_chart_aapl.json");
+    const EXPECTED_CLOSE: f64 = 293.32;
+
+    async fn mount_v8_chart_ok(srv: &MockServer) {
+        Mock::given(method("GET"))
+            .and(path(format!("/v8/finance/chart/{SYMBOL}")))
+            .respond_with(ResponseTemplate::new(200).set_body_string(CHART_FIXTURE))
+            .expect(1)
+            .mount(srv)
+            .await;
+    }
+
+    fn assert_chart_quote(tr: &TickerResponse) {
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - EXPECTED_CLOSE).abs() < 1e-9);
+        assert_eq!(tr.ticker, "AAPL");
+    }
+
+    #[tokio::test]
+    async fn v7_malformed_json_falls_back_to_v8() {
+        let srv = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v7/finance/quote"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("not-json"))
+            .expect(1)
+            .mount(&srv)
+            .await;
+        mount_v8_chart_ok(&srv).await;
+
+        let tr = yahoo_latest_quote_at(SYMBOL, &srv.uri())
+            .await
+            .expect("v8 fallback");
+        assert_chart_quote(&tr);
+    }
+
+    #[tokio::test]
+    async fn v7_empty_result_falls_back_to_v8() {
+        let srv = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v7/finance/quote"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"{"quoteResponse":{"result":[],"error":null}}"#,
+            ))
+            .expect(1)
+            .mount(&srv)
+            .await;
+        mount_v8_chart_ok(&srv).await;
+
+        let tr = yahoo_latest_quote_at(SYMBOL, &srv.uri())
+            .await
+            .expect("v8 fallback");
+        assert_chart_quote(&tr);
+    }
+
+    #[tokio::test]
+    async fn v7_api_error_envelope_falls_back_to_v8() {
+        let srv = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v7/finance/quote"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"{"quoteResponse":{"result":null,"error":{"description":"User is not logged in"}}}"#,
+            ))
+            .expect(1)
+            .mount(&srv)
+            .await;
+        mount_v8_chart_ok(&srv).await;
+
+        let tr = yahoo_latest_quote_at(SYMBOL, &srv.uri())
+            .await
+            .expect("v8 fallback");
+        assert_chart_quote(&tr);
     }
 }
