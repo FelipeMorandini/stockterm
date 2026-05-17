@@ -4534,6 +4534,6 @@ After maintainer approval of §32, implementation may proceed per [`.cursor/rule
 
 ### 32.8 Shipment record
 
-- **Status:** Implemented in-tree (2026-05-17). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** (sign-off pending).
+- **Status:** Implemented in-tree (2026-05-17). **PR:** [#146](https://github.com/FelipeMorandini/stockterm/pull/146). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** (sign-off pending).
 - **Tracking:** [Issue #89](https://github.com/FelipeMorandini/stockterm/issues/89).
 - **Code:** [`src/api/yahoo.rs`](../src/api/yahoo.rs) — `v7_quote_url` / `v8_chart_latest_url`, `yahoo_quote_v7_at` / `yahoo_quote_at` / `yahoo_latest_quote_at`; `wiremock_quote_fallback_tests` (malformed JSON, empty v7, API error envelope → v8 chart fixture).
