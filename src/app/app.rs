@@ -13,7 +13,9 @@ use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
 use crate::config::theme::{PaletteRgb, Theme, ThemePreset};
 use crate::config::keymap::{Action, BindingLayer};
-use crate::config::{Config, ConfigError, MarketProviderKind, ResolvedKeymap};
+use crate::config::{
+    Config, ConfigError, LayoutPreset, MarketProviderKind, ResolvedKeymap, ResolvedLayout,
+};
 use crate::models::alerts::{Alert, AlertCondition};
 use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
@@ -300,6 +302,8 @@ pub struct App {
     pub alerts_save_retry_pending: bool,
     /// Issue #14 / SPEC §21.5 — Settings Theme row: preset ring before **Enter** saves.
     pub settings_theme_draft: ThemePreset,
+    /// Issue #15 / SPEC §31.7 — Settings Layout row: preset ring before **Enter** saves.
+    pub settings_layout_draft: LayoutPreset,
     /// Issue #16 / SPEC §23 — substring filter (Portfolio + Stock View); cleared on tab switch.
     pub filter_query: String,
     /// Issue #16 — true after `/` until Enter (commit) or Esc (clear).
@@ -315,8 +319,8 @@ const SEARCH_DEBOUNCE: Duration = Duration::from_millis(250);
 /// Issue #129 / SPEC §22.7.4 — coalesce rapid `last_tab` / `last_symbol` disk writes.
 const SESSION_PERSIST_DEBOUNCE: Duration = Duration::from_millis(400);
 
-/// Rows in the Settings tab (refresh, default symbol, notifications, theme, provider, keymap).
-pub const SETTINGS_ROW_COUNT: usize = 6;
+/// Rows in the Settings tab (refresh, default symbol, notifications, theme, provider, keymap, layout).
+pub const SETTINGS_ROW_COUNT: usize = 7;
 
 const SETTINGS_SAVED_FLASH: Duration = Duration::from_secs(2);
 
@@ -479,6 +483,8 @@ impl App {
             .map(Theme::effective_preset)
             .unwrap_or(ThemePreset::BuiltinDefault);
 
+        let settings_layout_draft = config.layout.effective_preset();
+
         let mut app = App {
             config: config.clone(),
             ticker_data: None,
@@ -537,6 +543,7 @@ impl App {
             alert_add_dialog: None,
             alerts_save_retry_pending: false,
             settings_theme_draft,
+            settings_layout_draft,
             filter_query: String::new(),
             filter_input_mode: false,
         };
@@ -568,6 +575,21 @@ impl App {
             t.preset = Some(self.settings_theme_draft);
         }
         t.resolve_rgb()
+    }
+
+    /// Issue #15 — layout for this frame (Settings Layout row previews `settings_layout_draft`).
+    ///
+    /// Mirrors [`Self::theme_palette_for_render`]: clone saved layout, swap only `preset` while
+    /// focused on row 6 so scalar overrides (e.g. hand-tuned `charts_chart_pct`) stay visible.
+    pub fn layout_for_render(&self) -> ResolvedLayout {
+        let mut layout = self.config.layout.clone();
+        if self.active_tab == Tab::Settings
+            && self.settings_row == 6
+            && self.settings_editing.is_none()
+        {
+            layout.preset = Some(self.settings_layout_draft);
+        }
+        layout.resolve()
     }
 
     pub(crate) fn sync_settings_theme_draft_from_config(&mut self) {
@@ -1484,6 +1506,9 @@ impl App {
         if prev_row != 3 && self.settings_row == 3 {
             self.sync_settings_theme_draft_from_config();
         }
+        if prev_row != 6 && self.settings_row == 6 {
+            self.sync_settings_layout_draft_from_config();
+        }
     }
 
     pub fn settings_row_next(&mut self) {
@@ -1494,6 +1519,9 @@ impl App {
         self.settings_row = (self.settings_row + 1).min(SETTINGS_ROW_COUNT - 1);
         if prev_row != 3 && self.settings_row == 3 {
             self.sync_settings_theme_draft_from_config();
+        }
+        if prev_row != 6 && self.settings_row == 6 {
+            self.sync_settings_layout_draft_from_config();
         }
     }
 
@@ -1589,6 +1617,7 @@ impl App {
             0 | 1 => self.settings_begin_edit(),
             2 => self.settings_toggle_notifications(),
             3 => self.settings_commit_theme_preset(),
+            6 => self.settings_commit_layout_preset(),
             _ => {}
         }
     }
@@ -1623,6 +1652,44 @@ impl App {
 
     pub fn settings_cycle_theme_draft_prev(&mut self) {
         self.settings_theme_draft = self.settings_theme_draft.prev();
+    }
+
+    pub(crate) fn sync_settings_layout_draft_from_config(&mut self) {
+        self.settings_layout_draft = self.config.layout.effective_preset();
+    }
+
+    /// Issue #15 — persist `settings_layout_draft` as the active `Config.layout` preset.
+    ///
+    /// Mirrors [`Self::settings_commit_theme_preset`]: update only `preset`, keep scalar overrides.
+    pub fn settings_commit_layout_preset(&mut self) {
+        let previous = self.config.layout.clone();
+        let mut merged = previous.clone();
+        merged.preset = Some(self.settings_layout_draft);
+        self.config.layout = merged;
+        if let Err(e) = self.try_save_config_with_session() {
+            self.config.layout = previous;
+            self.surface_runtime_error(
+                Tab::Settings,
+                ErrorSourceDomain::Settings,
+                AppError::ConfigSave(format!("Failed to save layout: {e}")),
+                true,
+            );
+        } else {
+            if self.active_runtime_error.as_ref().is_some_and(|a| {
+                a.source_domain == ErrorSourceDomain::Settings
+            }) {
+                self.active_runtime_error = None;
+            }
+            self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
+        }
+    }
+
+    pub fn settings_cycle_layout_draft_next(&mut self) {
+        self.settings_layout_draft = self.settings_layout_draft.next();
+    }
+
+    pub fn settings_cycle_layout_draft_prev(&mut self) {
+        self.settings_layout_draft = self.settings_layout_draft.prev();
     }
 
     /// SPEC §18.7 — toggle desktop toasts for alert fires (bell always rings).

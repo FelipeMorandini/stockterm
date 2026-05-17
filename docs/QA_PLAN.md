@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7). **[Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16)** covers substring filter on **Portfolio** holdings and **Stock View** watchlist (`/`, **Esc** clears, **Enter** commits, **Tab** unchanged — see [`docs/SPEC.md`](SPEC.md) §23). **Issues [#58](https://github.com/FelipeMorandini/stockterm/issues/58), [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** cover News clipboard copy and non-blocking **`http`/`https`** URL open (see [`docs/SPEC.md`](SPEC.md) §27). **[Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137)** covers remappable filter-input mode (`BindingLayer::FilterInput` — see [`docs/SPEC.md`](SPEC.md) §28). **[Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139)** covers explicit alert add-dialog symbol + condition keymap actions (see [`docs/SPEC.md`](SPEC.md) §29). **[Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138)** covers compile-time default keymap chord table refactor — no user-visible behavior change (see [`docs/SPEC.md`](SPEC.md) §30; manual sign-off **2026-05-17**).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issue #15** covers **layout / widget visibility** (`Config.layout`, shell chrome, Stock View + Charts pane splits — see [`docs/SPEC.md`](SPEC.md) §31). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7). **[Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16)** covers substring filter on **Portfolio** holdings and **Stock View** watchlist (`/`, **Esc** clears, **Enter** commits, **Tab** unchanged — see [`docs/SPEC.md`](SPEC.md) §23). **Issues [#58](https://github.com/FelipeMorandini/stockterm/issues/58), [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** cover News clipboard copy and non-blocking **`http`/`https`** URL open (see [`docs/SPEC.md`](SPEC.md) §27). **[Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137)** covers remappable filter-input mode (`BindingLayer::FilterInput` — see [`docs/SPEC.md`](SPEC.md) §28). **[Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139)** covers explicit alert add-dialog symbol + condition keymap actions (see [`docs/SPEC.md`](SPEC.md) §29). **[Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138)** covers compile-time default keymap chord table refactor — no user-visible behavior change (see [`docs/SPEC.md`](SPEC.md) §30; manual sign-off **2026-05-17**).
 
 ## Issues #19, #103 — Config persistence & alerts-save / quote error coordination
 
@@ -590,7 +590,7 @@ _Manual validation passed 2026-05-13._
 2. Toggle **Desktop alert toasts** (or equivalent Settings row per §18.7) **off**, **`try_save`** succeeds, repeat a **new** alert fire (use a fresh symbol or reset **`triggered`** in JSON).  
    **Pass:** **Bell** still fires per §18.5; **no** desktop toast (or documented platform limitation).
 
-### Manual — Regression (#15 / §8)
+### Manual — Regression (Alerts keys / §8 — not layout Issue #15)
 
 1. **Alerts** tab: **`d`** removes selected row; config updates. **`a`**/**`A`** with Shift still opens add per §8.  
    **Pass:** No panic; watchlist quote batch still updates **Current** column.
@@ -2214,6 +2214,131 @@ Use a **temporary** `keymap` in `~/.stockterm.json` (restore after testing). Rel
 | Threshold digits regression | | | |
 | Invalid keymap → defaults + dialog works | | | |
 | README lists new `Action` names; wildcards updated | | | |
+
+---
+
+## Issue #15 — Layout / widget visibility customization
+
+**Scope:** [GitHub Issue #15](https://github.com/FelipeMorandini/stockterm/issues/15) — `Config.layout` with shell visibility toggles, Stock View watchlist pane percent, Charts inner chart-height percent, optional Settings layout presets; defaults match pre-ship behavior.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §31.
+
+**Prerequisite:** Implementation matches §31.4–§31.10.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0; `config/layout.rs` unit tests for defaults, clamping, preset merge, and serde round-trip per §31.10.
+
+### Manual — Default layout regression
+
+**Prep:** Remove or omit the `layout` key from `~/.stockterm.json` (or use a fresh config). `cargo run --release`.
+
+1. **Shell:** Tab bar (3 rows), status bar (1 row), all seven tabs reachable via **Tab** / **Shift+Tab**.  
+   **Pass:** Matches pre-#15 appearance.
+
+2. **Stock View:** Watchlist band vs detail pane proportions look unchanged (~**42%** top band).  
+   **Pass:** Detail pane still usable at default terminal size (≥ 24×80).
+
+3. **Charts:** Open **Charts** for a symbol with data.  
+   **Pass:** Chart uses full tab body; key hints visible (title or chrome per implementation).
+
+### Manual — `show_status_bar: false` (#15 acceptance)
+
+1. Edit `~/.stockterm.json`:
+
+   ```json
+   "layout": { "show_status_bar": false }
+   ```
+
+   Restart the app.
+
+2. Visit **Stock View**, **Portfolio**, **Alerts**, **Search**, **News**, **Charts**, **Settings**.  
+   **Pass:** No bottom status row on any tab; content extends to the former status area; no stray blank bordered line.
+
+3. Trigger a runtime status message (e.g. invalid alert threshold).  
+   **Pass:** Message still surfaces via an existing channel (inline / overlay / error log) — layout change must not swallow errors silently.
+
+### Manual — `show_tab_bar: false`
+
+1. Set `"layout": { "show_tab_bar": false }`, restart.
+
+2. Use **Tab** / **Shift+Tab** (or keymap tab actions) to cycle tabs.  
+   **Pass:** Tabs switch; no top tab strip rendered; no panic.
+
+### Manual — Stock View pane percent
+
+1. Set `"layout": { "stock_view_watchlist_pct": 60 }`, restart, open **Stock View** with ≥3 watchlist rows.
+
+2. Compare visually to default **42** (temporary A/B by editing JSON is fine).  
+   **Pass:** Watchlist band is visibly taller; detail pane remains at least ~6 rows.
+
+3. Set an out-of-range value (e.g. **5** or **95**), restart.  
+   **Pass:** Clamped to **20** or **80** per §31.5 without crash.
+
+### Manual — Charts `charts_chart_pct`
+
+1. Set `"layout": { "charts_chart_pct": 40 }`, restart, open **Charts** with historical data loaded.
+
+2. Set `"charts_chart_pct": 70`, restart, same symbol/range.  
+   **Pass:** Chart drawing area is visibly larger at **70** than at **40**; bottom chrome strip present when **&lt; 100**.
+
+3. Set `"charts_chart_pct": 100` (or remove key), restart.  
+   **Pass:** Matches default full-body chart layout (§31.3 item 5).
+
+### Manual — Layout presets (if Settings row shipped)
+
+1. Open **Settings**, focus the **Layout** row, cycle presets with **←/→** or **h**/**l** without saving.  
+   **Pass:** Live preview (e.g. status bar hides on **compact**) before **Enter**.
+
+2. Select **chart_focused**, press **Enter**.  
+   **Pass:** `~/.stockterm.json` contains `"preset": "chart_focused"` (and/or expected pct fields); restart preserves choice.
+
+3. **Esc** while previewing a non-saved preset.  
+   **Pass:** Reverts to last saved layout on disk.
+
+### Manual — Persistence & docs
+
+1. After a successful layout save, restart the app.  
+   **Pass:** Layout choices persist.
+
+2. **README** lists all `layout` fields with defaults and ranges.  
+   **Pass:** Matches §31.8 examples.
+
+### Manual — Cross-feature regression
+
+Spot-check that layout changes do not break:
+
+| Area | Spot-check | Pass |
+|------|------------|------|
+| Theme | Settings theme preview still works | |
+| Filter | **/** filter on Stock View + Portfolio | |
+| Keymap | **Tab** navigation with hidden tab bar | |
+| Watchlist | **w** add / **j**/**k** with tall watchlist pane | |
+| Charts | **1–4**, **+/-**, **h**/**l** pan/zoom at `charts_chart_pct: 70` | |
+
+### Sign-off — Issue #15
+
+_Manual validation passed 2026-05-17._
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo clippy -- -D warnings` + `cargo test` | maintainer | 2026-05-17 | Pass |
+| Default layout regression (no `layout` key) | maintainer | 2026-05-17 | Pass |
+| `show_status_bar: false` on all tabs | maintainer | 2026-05-17 | Pass |
+| `show_tab_bar: false` + Tab navigation | maintainer | 2026-05-17 | Pass |
+| `stock_view_watchlist_pct` 60 vs 42 | maintainer | 2026-05-17 | Pass |
+| `charts_chart_pct` 40 vs 70 vs 100 | maintainer | 2026-05-17 | Pass |
+| Settings layout presets (if shipped) | maintainer | 2026-05-17 | Pass |
+| README `layout` documentation | maintainer | 2026-05-17 | Pass |
+| Cross-feature regression table | maintainer | 2026-05-17 | Pass |
 
 ---
 

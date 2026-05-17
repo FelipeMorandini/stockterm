@@ -2,16 +2,17 @@
 
 use crate::app::styles::ResolvedTheme;
 use crate::app::App;
+use crate::config::ResolvedLayout;
 use crate::models::historical::{HistoricalData, HistoricalResponse};
 use crate::models::time_range::TimeRange;
 use chrono::{DateTime, Utc};
 use ratatui::{
     buffer::Buffer,
-    layout::Rect,
+    layout::{Constraint, Direction, Layout, Rect},
     style::Style,
     symbols,
     text::{Line, Span},
-    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Widget},
+    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Paragraph, Widget},
     Frame,
 };
 
@@ -240,15 +241,65 @@ fn format_time_axis(ts_ms: f64, intraday: bool) -> String {
     }
 }
 
-pub fn draw_charts(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme) {
-    let title = format!(
-        "{} · {} · {} │ 1-4 range │ +/- zoom │ h l pan │ 0 reset │ c mode",
+fn charts_short_title(app: &App) -> String {
+    format!(
+        "{} · {} · {}",
         app.symbol,
         app.time_range.label(),
         app.chart_mode.label()
-    );
+    )
+}
+
+fn charts_key_hints() -> &'static str {
+    "1-4 range │ +/- zoom │ h l pan │ 0 reset │ c mode"
+}
+
+fn charts_block_title(app: &App, include_key_hints: bool) -> String {
+    if include_key_hints {
+        format!("{} │ {}", charts_short_title(app), charts_key_hints())
+    } else {
+        charts_short_title(app)
+    }
+}
+
+pub fn draw_charts(
+    f: &mut Frame,
+    app: &App,
+    area: Rect,
+    theme: ResolvedTheme,
+    layout: ResolvedLayout,
+) {
+    if layout.charts_chart_pct >= 100 {
+        draw_charts_inner(f, app, area, theme, true);
+        return;
+    }
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(layout.charts_chart_pct),
+            Constraint::Min(2),
+        ])
+        .split(area);
+    draw_charts_inner(f, app, chunks[0], theme, false);
+    draw_charts_chrome_strip(f, app, chunks[1], theme);
+}
+
+fn draw_charts_chrome_strip(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme) {
+    let line = Line::from(vec![Span::styled(
+        format!("{} │ {}", charts_short_title(app), charts_key_hints()),
+        theme.fg_muted(),
+    )]);
     let block = Block::default()
-        .title(title)
+        .borders(Borders::TOP)
+        .style(theme.canvas())
+        .border_style(Style::default().fg(theme.border).bg(theme.background));
+    f.render_widget(Paragraph::new(line).block(block), area);
+}
+
+fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme, full_title: bool) {
+    let block = Block::default()
+        .title(charts_block_title(app, full_title))
         .borders(Borders::ALL)
         .style(theme.canvas())
         .border_style(Style::default().fg(theme.border).bg(theme.background));

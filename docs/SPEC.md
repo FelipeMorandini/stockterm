@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -4098,3 +4098,310 @@ After maintainer approval of §30, implementation may proceed per [`.cursor/rule
 - **Status:** Implemented in-tree (2026-05-17). **PR:** [#144](https://github.com/FelipeMorandini/stockterm/pull/144). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off **2026-05-17**.
 - **Tracking:** [Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — **`DEFAULT_BINDINGS`** (single `const` slice, 220 rows); removed **`build_default_bindings_extended`** and per-chord **`Box::leak`**; **`default_bindings_total_row_count`** / **`default_bindings_slice_is_static`** tests.
+
+---
+
+## 31. Issue [#15](https://github.com/FelipeMorandini/stockterm/issues/15) — Layout / widget visibility customization
+
+**Sources:**
+
+- [GitHub Issue #15](https://github.com/FelipeMorandini/stockterm/issues/15) — configurable shell chrome and per-tab pane sizing; persist in `~/.stockterm.json`; optional Settings presets.
+- [`docs/ROADMAP.md`](ROADMAP.md) §4.11 — theme (#14) shipped; **layout customization missing** (hard-coded in [`ui.rs`](../src/app/ui.rs)).
+- **§21** / [Issue #14](https://github.com/FelipeMorandini/stockterm/issues/14) — Settings **draft + live preview + Enter commit** pattern to mirror for layout presets.
+- **§22** / [Issue #19](https://github.com/FelipeMorandini/stockterm/issues/19) — `try_save_config_with_session` + README config table for new fields.
+
+**Related:** [Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12) (Settings tab). **Not** a keymap change — no new `Action` variants required for MVP (JSON + optional Settings row only).
+
+**Note:** An older QA heading **“Regression (#15 / §8)”** under the Alerts milestone refers to **keyboard regression after §8 (Issue #44)** — it is **not** this layout issue. Layout QA lives in [`docs/QA_PLAN.md`](QA_PLAN.md) **Issue #15** (§31).
+
+---
+
+### 31.1 Problem inventory (verified in tree, 2026-05-17)
+
+| Surface | Location | Today |
+|---------|----------|--------|
+| **Global shell** | [`draw`](../src/app/ui.rs) ~L34–45 | Fixed vertical split: tab bar **`Length(3)`**, startup banner **`Length(0\|2)`**, body **`Min(0)`**, status **`Length(1)`** — always allocated. |
+| **Stock View panes** | [`draw_stock_view`](../src/app/ui.rs) ~L203–210 | **`Percentage(42)`** watchlist (top) + **`Min(6)`** detail (bottom). **Vertical** split only — issue text “width” means **pane share**, not horizontal columns. |
+| **Charts tab** | [`draw_charts`](../src/app/charts.rs) | Chart block uses **full** tab `area`; **no** inner `Layout::split`. Title string carries key hints in the border. |
+| **News on Stock View** | — | **Does not exist** — News is a **separate tab** ([`draw_news`](../src/app/ui.rs)). |
+| **Config** | [`Config`](../src/config/config.rs) | No `layout` field. |
+| **Settings** | [`draw_settings`](../src/app/ui.rs), [`SETTINGS_ROW_COUNT`](../src/app/app.rs) | Six rows (refresh, symbol, notifications, theme, provider, keymap); **no** layout row. |
+
+---
+
+### 31.2 Product model & scope
+
+**In scope (MVP for #15):**
+
+1. **`Config.layout`** — persisted JSON object (see §31.4) with visibility toggles and pane **height percentages** for the surfaces that exist today.
+2. **`ResolvedLayout`** — runtime, clamped values derived once per frame (or cached on `App` when config/draft changes) and passed into draw helpers.
+3. **Shell:** optional hide **tab bar** and **status bar** across **all** tabs (acceptance: `show_status_bar = false` removes the status row everywhere).
+4. **Stock View:** configurable **watchlist pane share** (`stock_view_watchlist_pct`, default **42**, same visual as today).
+5. **Charts:** introduce an **inner vertical split** when `charts_chart_pct < 100`: top = chart widget, bottom = **chrome strip** (key-hint / range summary — content may move from the block title). Default **`charts_chart_pct: 100`** → **no** inner split (identical to today).
+6. **Defaults:** `Layout::default()` + `LayoutPreset::Default` reproduce current hard-coded behavior for users who omit `layout` in JSON.
+7. **Docs:** README `~/.stockterm.json` table + §31.8 JSON examples (depends on #19 doc pattern; same PR is fine).
+8. **Optional (issue checkbox — include in same slice if low risk):** **Settings** row **“Layout”** with preset ring (**`compact`**, **`wide`**, **`chart_focused`**, **`default`**) — mirror §21.5 theme UX: **←/→** / **`h`/`l`** live preview, **Enter** → `try_save_config_with_session()`.
+
+**Out of scope (explicit non-goals):**
+
+- **Embedded News pane on Stock View** — requires new data wiring and layout; track as a **follow-up issue**, not #15.
+- **Horizontal** watchlist/detail columns, drag-resize, or mouse splitters.
+- **Per-tab status bars** or hiding individual tab bodies.
+- **Remapping layout via keymap** (no `Action` for “toggle status bar” in MVP).
+- **Layout in session-only fields** (`last_tab` / `last_symbol`) — layout is **config**, not session hints.
+
+---
+
+### 31.3 Acceptance criteria (closure checklist)
+
+1. **`show_status_bar: false`** in `~/.stockterm.json` → status row height **0** on every tab; body expands; **no** empty bordered strip.
+2. **`show_tab_bar: false`** → tab row height **0**; user navigates tabs via existing **`Tab` / `Shift+Tab`** (or keymap **`NextTab`/`PrevTab`**) only.
+3. **`stock_view_watchlist_pct: 60`** (valid range) → watchlist band visibly larger than default **42** on Stock View; detail pane still **`Min(6)`** floor.
+4. **`charts_chart_pct: 70`** → Charts tab chart area uses ~**70%** of body height; bottom strip shows hints; changing from **40** to **70** visibly enlarges the chart (issue acceptance text).
+5. **`charts_chart_pct: 100`** (default) → Charts tab matches pre-#15 layout (single full-area chart block).
+6. **Fresh install / missing `layout` key** → pixel-equivalent to today (regression matrix in QA).
+7. **Invalid JSON values** (pct &lt; min or &gt; max, unknown preset) → clamp or fall back per §31.5 without panic.
+8. **Persistence:** Editing layout in Settings (if shipped) or hand-editing JSON survives restart via `Config::try_save` / load.
+9. **README** documents every `layout` field with type, default, and valid range.
+
+---
+
+### 31.4 JSON schema — `Config.layout`
+
+New module **`src/config/layout.rs`**, re-exported from **`src/config/mod.rs`** (or `config.rs`).
+
+```rust
+/// Persisted layout preferences (Issue #15 / §31).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Layout {
+    /// Show the top tab strip (3 rows). Default: true.
+    pub show_tab_bar: bool,
+    /// Show the bottom status line (1 row). Default: true.
+    pub show_status_bar: bool,
+    /// Stock View: top watchlist pane height percent (20–80). Default: 42.
+    pub stock_view_watchlist_pct: u8,
+    /// Charts tab: chart pane height percent when &lt; 100 enables inner split (30–100). Default: 100.
+    pub charts_chart_pct: u8,
+    /// Optional named preset; when set in JSON, applied then fields above act as overrides.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preset: Option<LayoutPreset>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LayoutPreset {
+    Default,
+    Compact,
+    Wide,
+    ChartFocused,
+}
+```
+
+**`Config` change** ([`config.rs`](../src/config/config.rs)):
+
+```rust
+#[serde(default)]
+pub layout: Layout,
+```
+
+- **`#[serde(default)]`** on `layout` so existing files without the key load as **`Layout::default()`**.
+- Extend the struct doc table with a **`layout`** row pointing to §31.
+
+**Preset definitions** (applied in **`Layout::resolve()`** before field overrides):
+
+| Preset | `show_tab_bar` | `show_status_bar` | `stock_view_watchlist_pct` | `charts_chart_pct` |
+|--------|----------------|-------------------|----------------------------|--------------------|
+| **Default** | true | true | 42 | 100 |
+| **Compact** | true | **false** | 35 | 100 |
+| **Wide** | true | true | **30** | 100 |
+| **ChartFocused** | true | true | 35 | **85** |
+
+User-supplied scalar fields in JSON **override** the preset for that slot after preset merge (same mental model as **`Theme.preset` + overrides** in §21).
+
+---
+
+### 31.5 `ResolvedLayout` — clamping & constraints
+
+**`src/app/layout.rs`** (expand existing module that hosts **`centered_rect`**):
+
+```rust
+/// Clamped layout inputs for one frame (Issue #15).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ResolvedLayout {
+    pub show_tab_bar: bool,
+    pub show_status_bar: bool,
+    pub stock_view_watchlist_pct: u16,
+    pub charts_chart_pct: u16,
+}
+
+impl Layout {
+    pub fn resolve(&self) -> ResolvedLayout { /* preset merge + clamp */ }
+}
+```
+
+**Clamping rules:**
+
+| Field | Clamp |
+|-------|--------|
+| `stock_view_watchlist_pct` | **20..=80** (inclusive) |
+| `charts_chart_pct` | **30..=100**; values **100** mean “no inner split” |
+
+**Shell constraint builder** (private in `ui.rs` or `layout.rs`):
+
+```rust
+pub fn shell_vertical_constraints(
+    resolved: &ResolvedLayout,
+    startup_h: u16,
+) -> [Constraint; 4] {
+    [
+        Constraint::Length(if resolved.show_tab_bar { 3 } else { 0 }),
+        Constraint::Length(startup_h),
+        Constraint::Min(0),
+        Constraint::Length(if resolved.show_status_bar { 1 } else { 0 }),
+    ]
+}
+```
+
+- When **`show_tab_bar`** is false, **do not** call `Tabs::render` (skip widget; chunk height 0).
+- When **`show_status_bar`** is false, skip **`draw_status_bar`**.
+
+**Stock View** — replace literal **`Percentage(42)`**:
+
+```rust
+Constraint::Percentage(resolved.stock_view_watchlist_pct),
+Constraint::Min(6),
+```
+
+**Charts** — at top of **`draw_charts`**:
+
+```rust
+if resolved.charts_chart_pct >= 100 {
+    draw_charts_inner(f, app, area, theme);
+} else {
+    let chunks = Layout::vertical([
+        Constraint::Percentage(resolved.charts_chart_pct),
+        Constraint::Min(2),
+    ]).split(area);
+    draw_charts_inner(f, app, chunks[0], theme);
+    draw_charts_chrome_strip(f, app, chunks[1], theme); // hints moved from title
+}
+```
+
+Extract current chart body into **`draw_charts_inner`** to avoid duplication.
+
+---
+
+### 31.6 Crate & module wiring
+
+| File | Change |
+|------|--------|
+| [`src/config/layout.rs`](../src/config/layout.rs) | **New** — `Layout`, `LayoutPreset`, `Default`, `resolve`, unit tests. |
+| [`src/config/config.rs`](../src/config/config.rs) | `layout: Layout` field + doc table row. |
+| [`src/lib.rs`](../src/lib.rs) / [`src/config/mod.rs`](../src/config/mod.rs) | `pub mod layout;` re-export. |
+| [`src/app/layout.rs`](../src/app/layout.rs) | `ResolvedLayout` + `shell_vertical_constraints` (or keep helpers next to `centered_rect`). |
+| [`src/app/app.rs`](../src/app/app.rs) | `layout_for_render() -> ResolvedLayout` (reads `config.layout`; when Settings layout row focused, merge **`settings_layout_draft`** like theme — §31.7). |
+| [`src/app/ui.rs`](../src/app/ui.rs) | `draw` uses `shell_vertical_constraints`; pass `ResolvedLayout` into `draw_stock_view`, `draw_charts`, etc. |
+| [`src/app/charts.rs`](../src/app/charts.rs) | Inner split + `draw_charts_chrome_strip`. |
+| [`src/app/handlers.rs`](../src/app/handlers.rs) | Settings keys for layout row (if §31.7 shipped). |
+| [`README.md`](../README.md) | Config table: `layout` object + preset names. |
+
+**No changes** to `portfolio.rs` / `alerts.rs` / `draw_search` / `draw_news` pane splits in MVP (issue listed them as “identify surfaces”; only shell + Stock + Charts are configurable in v1).
+
+---
+
+### 31.7 Settings UX (optional but recommended)
+
+Mirror **§21.5**:
+
+- Add row index **6** **`Layout`**; bump **`SETTINGS_ROW_COUNT`** to **7** (provider → **4**, keymap → **5**, layout → **6** — **verify indices** in code when implementing).
+- **`App.settings_layout_draft: LayoutPreset`** (or full `Layout` draft) initialized from `config.layout` in **`App::new`**.
+- On layout row, not editing: **←/→** / **`h`/`l`** cycle preset with **live preview** via `layout_for_render()`; **Enter** writes `config.layout`, **`try_save_config_with_session()`**, surfaces save errors like theme.
+- **Esc** reverts draft from saved config.
+- Row label example: **`6. Layout: chart_focused (h/l · Enter save)`**.
+
+If Settings row is deferred, #15 still closes via **JSON-only** configuration + README (issue optional checkbox).
+
+---
+
+### 31.8 JSON examples (operators)
+
+**Defaults omitted** (same as today):
+
+```json
+{}
+```
+
+**Hide status bar globally:**
+
+```json
+"layout": {
+  "show_status_bar": false
+}
+```
+
+**Chart-focused:**
+
+```json
+"layout": {
+  "preset": "chart_focused"
+}
+```
+
+**Hand-tuned:**
+
+```json
+"layout": {
+  "show_tab_bar": true,
+  "show_status_bar": true,
+  "stock_view_watchlist_pct": 55,
+  "charts_chart_pct": 70
+}
+```
+
+---
+
+### 31.9 Async / threading
+
+- **None** — layout is pure layout math on the UI thread. Saves use existing synchronous **`try_save`** path (§22).
+
+---
+
+### 31.10 Automated verification
+
+- `cargo build --release`, `cargo clippy -- -D warnings`, `cargo test`.
+- **Unit tests in `config/layout.rs`:**
+  - `Layout::default()` resolves to **`show_tab_bar/status_bar == true`**, **`stock_view_watchlist_pct == 42`**, **`charts_chart_pct == 100`**.
+  - Clamp: `stock_view_watchlist_pct: 5` → **20**; `charts_chart_pct: 200` → **100**.
+  - Preset **`compact`** → `show_status_bar == false` after resolve.
+  - Serde: `{}` round-trip → defaults; partial object merges with defaults.
+- **Unit test in `app/layout.rs` (optional):** `shell_vertical_constraints` with both flags false → tab and status lengths **0**.
+
+---
+
+### 31.11 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #15** section.
+
+---
+
+### 31.12 Out of scope / follow-ups
+
+- Stock View **embedded News** split pane.
+- Portfolio / Alerts / Search **internal** pane sizing.
+- Keymap actions **`ToggleStatusBar`** / in-app layout editor beyond preset ring.
+- OSC / terminal size auto-layout.
+
+---
+
+### 31.13 Approval
+
+After maintainer approval of §31, implementation may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15**.
+
+---
+
+### 31.14 Shipment record
+
+- **Status:** Implemented in-tree (2026-05-17). **PR:** _pending_. **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**.
+- **Tracking:** [Issue #15](https://github.com/FelipeMorandini/stockterm/issues/15).
+- **Code:** [`src/config/layout.rs`](../src/config/layout.rs) — `Layout`, `LayoutPreset`, `resolve`; [`src/app/layout.rs`](../src/app/layout.rs) — `shell_vertical_constraints`; [`src/app/ui.rs`](../src/app/ui.rs), [`src/app/charts.rs`](../src/app/charts.rs) — draw paths; [`src/app/app.rs`](../src/app/app.rs) — Settings layout row + `layout_for_render`; [`README.md`](../README.md) — `layout` config table.

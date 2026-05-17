@@ -1,6 +1,21 @@
-//! Shared modal overlay geometry (SPEC §18.13.1 / Issue #93, §18.15.1 / Issue #100).
+//! Shared modal overlay geometry (SPEC §18.13.1 / Issue #93, §18.15.1 / Issue #100)
+//! and shell layout constraints (Issue #15 / §31).
 
+use crate::config::ResolvedLayout;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
+
+/// Vertical shell split: tab bar, startup banner, body, status bar.
+pub fn shell_vertical_constraints(
+    resolved: &ResolvedLayout,
+    startup_h: u16,
+) -> [Constraint; 4] {
+    [
+        Constraint::Length(if resolved.show_tab_bar { 3 } else { 0 }),
+        Constraint::Length(startup_h),
+        Constraint::Min(0),
+        Constraint::Length(if resolved.show_status_bar { 1 } else { 0 }),
+    ]
+}
 
 /// Centered inner rectangle as a percentage of `area` (width `percent_x`, height `percent_y`).
 ///
