@@ -4095,6 +4095,6 @@ After maintainer approval of §30, implementation may proceed per [`.cursor/rule
 
 ### 30.10 Shipment record
 
-- **Status:** Implemented in-tree (2026-05-17). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off **2026-05-17**.
+- **Status:** Implemented in-tree (2026-05-17). **PR:** [#144](https://github.com/FelipeMorandini/stockterm/pull/144). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off **2026-05-17**.
 - **Tracking:** [Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — **`DEFAULT_BINDINGS`** (single `const` slice, 220 rows); removed **`build_default_bindings_extended`** and per-chord **`Box::leak`**; **`default_bindings_total_row_count`** / **`default_bindings_slice_is_static`** tests.
