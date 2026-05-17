@@ -140,6 +140,8 @@ pub enum InflightRecovery {
     News,
     Search,
     Stock,
+    /// News tab URL open/copy when [`UrlOpDone`] could not be delivered (§27).
+    NewsUrlOp,
 }
 
 /// Outcomes from background HTTP tasks (never awaited on the draw/input hot path).
@@ -171,6 +173,50 @@ fn warn_fetch_channel_closed(context: &str, err: &SendError<FetchDone>) {
 
 fn warn_inflight_recovery_send_failed(kind: &str, err: SendError<InflightRecovery>) {
     eprintln!("stockterm: failed inflight recovery send ({kind}): {err}");
+}
+
+/// OS URL open / clipboard work completed off the input hot path (Issues #58, #59 / SPEC §27).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum UrlOpKind {
+    Open,
+    Copy,
+}
+
+pub(crate) struct UrlOpDone {
+    pub result: Result<(), String>,
+    pub flash: Option<crate::app::open_url::NewsUrlFlashHint>,
+}
+
+/// Releases [`App::news_url_op_inflight`] when a URL task panics or cannot deliver [`UrlOpDone`].
+struct NewsUrlOpInflightGuard {
+    recovery_tx: Option<UnboundedSender<InflightRecovery>>,
+    disarmed: bool,
+}
+
+impl NewsUrlOpInflightGuard {
+    fn new(recovery_tx: Option<UnboundedSender<InflightRecovery>>) -> Self {
+        Self {
+            recovery_tx,
+            disarmed: false,
+        }
+    }
+
+    fn disarm(&mut self) {
+        self.disarmed = true;
+    }
+}
+
+impl Drop for NewsUrlOpInflightGuard {
+    fn drop(&mut self) {
+        if self.disarmed {
+            return;
+        }
+        if let Some(tx) = &self.recovery_tx {
+            if let Err(e) = tx.send(InflightRecovery::NewsUrlOp) {
+                eprintln!("stockterm: failed news url op inflight recovery send: {e}");
+            }
+        }
+    }
 }
 
 pub struct App {
@@ -234,6 +280,9 @@ pub struct App {
     stock_refresh_pending: bool,
     hist_refresh_inflight: bool,
     pub news_refresh_inflight: bool,
+    url_op_tx: Option<UnboundedSender<UrlOpDone>>,
+    news_url_op_inflight: bool,
+    news_url_flash: Option<(crate::app::open_url::NewsUrlFlashHint, Instant)>,
     /// Charts tab: selected window (Issue #9).
     pub time_range: TimeRange,
     /// Charts tab: pan/zoom indices into `historical_data.results` (Issue #8).
@@ -269,6 +318,8 @@ const SESSION_PERSIST_DEBOUNCE: Duration = Duration::from_millis(400);
 pub const SETTINGS_ROW_COUNT: usize = 6;
 
 const SETTINGS_SAVED_FLASH: Duration = Duration::from_secs(2);
+
+const NEWS_URL_FLASH: Duration = Duration::from_secs(2);
 
 /// Trim and uppercase ticker input; returns `None` if empty after trim.
 pub fn normalize_symbol(s: &str) -> Option<String> {
@@ -474,6 +525,9 @@ impl App {
             stock_refresh_pending: false,
             hist_refresh_inflight: false,
             news_refresh_inflight: false,
+            url_op_tx: None,
+            news_url_op_inflight: false,
+            news_url_flash: None,
             time_range: TimeRange::default(),
             chart_viewport: ChartViewport::default(),
             chart_mode: ChartDisplayMode::default(),
@@ -1301,31 +1355,114 @@ impl App {
         self.news_list_state.select(Some(i));
     }
 
-    pub fn news_try_open_selected(&mut self) {
-        use crate::app::open_url::open_article_url;
-        let Some(data) = self.news_data.as_ref() else {
-            return;
-        };
+    fn news_selected_article_url(&self) -> Option<String> {
+        let data = self.news_data.as_ref()?;
         let n = data.results.len();
         if n == 0 {
-            return;
+            return None;
         }
         let i = self.news_list_state.selected().unwrap_or(0).min(n - 1);
-        let Some(item) = data.results.get(i) else {
+        data.results.get(i).map(|item| item.article_url.clone())
+    }
+
+    fn surface_news_url_validation_error(&mut self, msg: &str) {
+        self.surface_runtime_error(
+            Tab::News,
+            ErrorSourceDomain::NewsOpenUrl,
+            AppError::Internal(msg.to_string()),
+            true,
+        );
+    }
+
+    fn spawn_url_op(&mut self, kind: UrlOpKind, url: String) {
+        if self.news_url_op_inflight {
+            return;
+        }
+        let Some(tx) = self.url_op_tx.clone() else {
             return;
         };
-        if let Err(e) = open_article_url(&item.article_url) {
-            self.surface_runtime_error(
-                Tab::News,
-                ErrorSourceDomain::NewsOpenUrl,
-                AppError::Internal(format!("Could not open URL: {e}")),
-                true,
-            );
-        } else if self.active_runtime_error.as_ref().is_some_and(|a| {
-            a.source_domain == ErrorSourceDomain::NewsOpenUrl
-        }) {
-            self.active_runtime_error = None;
+        let recovery_tx = self.inflight_recovery_tx.clone();
+        self.news_url_op_inflight = true;
+        tokio::spawn(async move {
+            let mut inflight_guard = NewsUrlOpInflightGuard::new(recovery_tx);
+            let (result, flash) = match tokio::task::spawn_blocking(move || match kind {
+                UrlOpKind::Open => crate::app::open_url::run_open_with_copy_fallback(&url),
+                UrlOpKind::Copy => {
+                    let r = crate::app::open_url::copy_article_url_blocking(&url);
+                    let flash = r.as_ref().ok().map(|_| {
+                        crate::app::open_url::NewsUrlFlashHint::Copied
+                    });
+                    (r, flash)
+                }
+            })
+            .await
+            {
+                Ok(pair) => pair,
+                Err(e) => (Err(e.to_string()), None),
+            };
+            if tx.send(UrlOpDone { result, flash }).is_ok() {
+                inflight_guard.disarm();
+            } else {
+                eprintln!("stockterm: dropped url op result (channel closed)");
+            }
+        });
+    }
+
+    fn try_spawn_news_url_op(&mut self, kind: UrlOpKind) {
+        let Some(raw) = self.news_selected_article_url() else {
+            return;
+        };
+        let url = match crate::app::open_url::normalize_article_url(&raw) {
+            Ok(u) => u,
+            Err(msg) => {
+                self.surface_news_url_validation_error(msg);
+                return;
+            }
+        };
+        self.spawn_url_op(kind, url);
+    }
+
+    pub fn news_try_open_selected(&mut self) {
+        self.try_spawn_news_url_op(UrlOpKind::Open);
+    }
+
+    pub fn news_try_copy_selected(&mut self) {
+        self.try_spawn_news_url_op(UrlOpKind::Copy);
+    }
+
+    fn apply_url_op_done(&mut self, msg: UrlOpDone) {
+        self.news_url_op_inflight = false;
+        let UrlOpDone { result, flash } = msg;
+        match result {
+            Ok(()) => {
+                if self.active_runtime_error.as_ref().is_some_and(|a| {
+                    a.source_domain == ErrorSourceDomain::NewsOpenUrl
+                }) {
+                    self.active_runtime_error = None;
+                }
+                if let Some(hint) = flash {
+                    self.news_url_flash = Some((hint, Instant::now() + NEWS_URL_FLASH));
+                }
+            }
+            Err(e) => {
+                self.surface_runtime_error(
+                    Tab::News,
+                    ErrorSourceDomain::NewsOpenUrl,
+                    AppError::Internal(e),
+                    true,
+                );
+            }
         }
+    }
+
+    pub(crate) fn news_url_flash_line(&self) -> Option<&'static str> {
+        self.news_url_flash.as_ref().and_then(|(hint, until)| {
+            if Instant::now() < *until {
+                Some(hint.status_text())
+            } else {
+                None
+            }
+        })
     }
 
     pub fn settings_row_prev(&mut self) {
@@ -1511,6 +1648,7 @@ impl App {
                     self.spawn_stock_fetch_task();
                 }
             }
+            InflightRecovery::NewsUrlOp => self.news_url_op_inflight = false,
         }
     }
 
@@ -1680,6 +1818,8 @@ impl App {
         self.fetch_done_tx = Some(fetch_tx);
         let (recovery_tx, mut recovery_rx) = tokio::sync::mpsc::unbounded_channel();
         self.inflight_recovery_tx = Some(recovery_tx);
+        let (url_op_tx, mut url_op_rx) = tokio::sync::mpsc::unbounded_channel();
+        self.url_op_tx = Some(url_op_tx);
 
         let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
         spawn_event_thread(event_tx);
@@ -1724,6 +1864,11 @@ impl App {
                 recovery = recovery_rx.recv() => {
                     if let Some(kind) = recovery {
                         self.apply_inflight_recovery(kind);
+                    }
+                }
+                url_op = url_op_rx.recv() => {
+                    if let Some(msg) = url_op {
+                        self.apply_url_op_done(msg);
                     }
                 }
             }

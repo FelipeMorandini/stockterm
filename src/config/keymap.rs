@@ -84,6 +84,8 @@ pub enum Action {
     NewsRowDown,
     NewsRowUp,
     NewsEnter,
+    /// Copy selected article URL to clipboard (Issue #58 / SPEC §27).
+    NewsCopyUrl,
     SettingsEscThemeDraft,
     SettingsThemePrev,
     SettingsThemeNext,
@@ -145,7 +147,7 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         SearchEsc | SearchBackspace | SearchEnter | SearchRowDown | SearchRowUp => {
             BindingLayer::Search
         }
-        NewsRowDown | NewsRowUp | NewsEnter => BindingLayer::News,
+        NewsRowDown | NewsRowUp | NewsEnter | NewsCopyUrl => BindingLayer::News,
         SettingsEscThemeDraft | SettingsThemePrev | SettingsThemeNext | SettingsRowDown
         | SettingsRowUp | SettingsEnter => BindingLayer::SettingsBrowse,
         SettingsEditEsc | SettingsEditEnter | SettingsEditBackspace | SettingsEditDigit
@@ -469,6 +471,7 @@ const CORE_DEFAULTS: &[(BindingLayer, &'static str, Action)] = {
         (News, "char:k", NewsRowUp),
         (News, "up", NewsRowUp),
         (News, "enter", NewsEnter),
+        (News, "char:c", NewsCopyUrl),
         (SettingsBrowse, "esc", SettingsEscThemeDraft),
         (SettingsBrowse, "char:h", SettingsThemePrev),
         (SettingsBrowse, "char:l", SettingsThemeNext),
@@ -790,6 +793,14 @@ mod tests {
             .filter(|&&(_, _, a)| a == Action::SettingsEditDigit)
             .count();
         assert_eq!(n_digit, 10);
+    }
+
+    #[test]
+    fn default_map_binds_news_copy_url() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        let km = ResolvedKeymap::build(None).0;
+        let c = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::NONE);
+        assert_eq!(km.action(BindingLayer::News, &c), Some(Action::NewsCopyUrl));
     }
 
     #[test]
