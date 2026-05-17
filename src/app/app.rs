@@ -12,6 +12,7 @@ use crate::app::event::{spawn_event_thread, Event};
 use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
 use crate::config::theme::{PaletteRgb, Theme, ThemePreset};
+use crate::config::keymap::{Action, BindingLayer};
 use crate::config::{Config, ConfigError, MarketProviderKind, ResolvedKeymap};
 use crate::models::alerts::{Alert, AlertCondition};
 use crate::models::historical::HistoricalResponse;
@@ -819,46 +820,55 @@ impl App {
         self.clamp_watchlist_filter_selection();
     }
 
-    /// Issue #16 — while `filter_input_mode`, consumes keys for editing; returns true if handled.
-    /// Chords stay literal here (§23); filter keymap is out of scope for Issue #136 / §26.
+    /// Issue #16 / #137 — while `filter_input_mode`, resolves [`BindingLayer::FilterInput`]
+    /// (SPEC §28); returns true when mode is active (swallows unmapped keys).
     pub(crate) fn consume_filter_input_key(&mut self, key: &crossterm::event::KeyEvent) -> bool {
         use crossterm::event::{KeyCode, KeyModifiers};
+        use Action::*;
+
         if !self.filter_input_mode {
             return false;
         }
-        match key.code {
-            KeyCode::Esc if key.modifiers == KeyModifiers::NONE => {
+
+        let Some(action) = self
+            .resolved_keymap
+            .action(BindingLayer::FilterInput, key)
+        else {
+            return true;
+        };
+
+        if key.modifiers != KeyModifiers::NONE {
+            return true;
+        }
+
+        match action {
+            FilterClear => {
                 self.filter_query.clear();
                 self.filter_input_mode = false;
-                self.clamp_both_filter_selections();
-                true
             }
-            KeyCode::Enter if key.modifiers == KeyModifiers::NONE => {
+            FilterCommit => {
                 self.filter_input_mode = false;
-                self.clamp_both_filter_selections();
-                true
             }
-            KeyCode::Backspace if key.modifiers == KeyModifiers::NONE => {
+            FilterBackspace => {
                 self.filter_query.pop();
-                self.clamp_both_filter_selections();
-                true
             }
-            KeyCode::Char('/') if key.modifiers == KeyModifiers::NONE => {
-                if self.filter_query.is_empty() {
-                    self.filter_input_mode = false;
+            FilterSlash if self.filter_query.is_empty() => {
+                self.filter_input_mode = false;
+            }
+            FilterQueryChar => {
+                if let KeyCode::Char(c) = key.code {
+                    if c.is_ascii_alphanumeric()
+                        && self.filter_query.len()
+                            < crate::app::table_filter::MAX_FILTER_QUERY_LEN
+                    {
+                        self.filter_query.push(c);
+                    }
                 }
-                self.clamp_both_filter_selections();
-                true
             }
-            KeyCode::Char(c) if key.modifiers == KeyModifiers::NONE && c.is_ascii_alphanumeric() => {
-                if self.filter_query.len() < crate::app::table_filter::MAX_FILTER_QUERY_LEN {
-                    self.filter_query.push(c);
-                }
-                self.clamp_both_filter_selections();
-                true
-            }
-            _ => true,
+            _ => {}
         }
+        self.clamp_both_filter_selections();
+        true
     }
 
     /// User-driven refresh (Enter, portfolio jump, etc.). Coalesces if a batch is already running.

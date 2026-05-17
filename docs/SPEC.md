@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -3361,7 +3361,7 @@ After maintainer approval of §25, implementation may proceed per [`.cursor/rule
 3. **Settings edit:** Single code path for buffer mutation; default keymap restores today’s behavior (digits on refresh row; alnum + `.` + `-` on default symbol row).
 4. **Alert dialog:** Threshold entry keymap-driven per §26.2; symbol entry per chosen (a)/(b); condition **`a`/`b`** either keymap actions or documented frozen with tests unchanged from today’s UX.
 5. **Search:** At minimum, **dedupe** modifier policy (document Esc/Enter/Backspace `NONE` vs §8); optional `SearchQueryAppend` documented in README if implemented.
-6. **§23:** With default keymap, **`/`** → filter mode, type substring, **Esc** clears, **Enter** commits — identical to Issue #16 QA. With user-remapped **`StockFilterToggle`** / **`PortfolioFilterToggle`**, filter still toggles on the **remapped** chord only (existing §24.6); **inside** `filter_input_mode`, keys remain **literal** until a future issue adds `BindingLayer::FilterInput`.
+6. **§23:** With default keymap, **`/`** → filter mode, type substring, **Esc** clears, **Enter** commits — identical to Issue #16 QA. With user-remapped **`StockFilterToggle`** / **`PortfolioFilterToggle`**, filter still toggles on the **remapped** chord only (existing §24.6); **inside** `filter_input_mode`, keys were **literal** at #136 ship — remappable via **§28** / [Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137).
 7. **§25:** No change to `action_overlay_layers` / merge semantics; no new duplicate-layer defaults required for #136.
 8. **Build:** `cargo clippy -- -D warnings`, `cargo test` green; README Keymap table updated for any **new** `Action` names.
 
@@ -3416,9 +3416,9 @@ After maintainer approval of §25, implementation may proceed per [`.cursor/rule
 
 ---
 
-### 26.7 Out of scope
+### 26.7 Out of scope (at #136 ship; superseded for filter by §28)
 
-- **`BindingLayer::FilterInput`** and remappable keys **inside** `filter_input_mode` (literal `consume_filter_input_key` remains unless filed separately).
+- **`BindingLayer::FilterInput`** — filed as [Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137); spec **§28**.
 - **Per-Unicode** ticker keymap entries for Stock View symbol buffer.
 - Changing **§25** propagation algorithm or adding new multi-layer duplicated defaults for Stock/Alerts “armed” flows.
 - In-app keymap capture UI ([Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12)).
@@ -3436,7 +3436,7 @@ After maintainer approval of §26, implementation may proceed per [`.cursor/rule
 - **Status:** Implemented in-tree. **PR:** [#140](https://github.com/FelipeMorandini/stockterm/pull/140). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — maintainer sign-off pending.
 - **Tracking:** [Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `CORE_DEFAULTS`, `build_default_bindings_with_issue136_rows`, **`SettingsEditDigit`**, **`SettingsEditSymbolChar`**, **`AlertDialogDigitOrDot`**, default chord rows; [`src/app/portfolio.rs`](../src/app/portfolio.rs) — **`PortfolioDialogDigitOrDot`** dispatch; [`src/app/alerts.rs`](../src/app/alerts.rs) — **`AlertDialogDigitOrDot`** dispatch; [`src/app/handlers.rs`](../src/app/handlers.rs) — Settings edit refactor + Stock View §26 comment; [`src/app/app.rs`](../src/app/app.rs) — filter literal note; **[`README.md`](../README.md)** — Keymap wildcard note.
-- **Follow-ups:** [#137](https://github.com/FelipeMorandini/stockterm/issues/137) — `BindingLayer::FilterInput`; [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) — explicit alert symbol/condition keymap actions.
+- **Follow-ups:** [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) — explicit alert symbol/condition keymap actions. **#137** shipped — **§28.11**.
 
 ---
 
@@ -3594,3 +3594,162 @@ After maintainer approval of §27, implementation may proceed per [`.cursor/rule
 - **Status:** Implemented in-tree. **PR:** [#141](https://github.com/FelipeMorandini/stockterm/pull/141). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — maintainer sign-off pending.
 - **Tracking:** [Issue #58](https://github.com/FelipeMorandini/stockterm/issues/58), [Issue #59](https://github.com/FelipeMorandini/stockterm/issues/59).
 - **Code:** [`src/app/open_url.rs`](../src/app/open_url.rs) — `normalize_article_url`, `open_article_url_blocking`, `copy_article_url_blocking`, `run_open_with_copy_fallback`; [`src/app/app.rs`](../src/app/app.rs) — `UrlOpDone` channel, `NewsUrlOpInflightGuard`, `InflightRecovery::NewsUrlOp`; [`src/config/keymap.rs`](../src/config/keymap.rs) — **`NewsCopyUrl`**; [`src/app/handlers.rs`](../src/app/handlers.rs), [`src/app/ui.rs`](../src/app/ui.rs); **[`README.md`](../README.md)** — News tab keymap note.
+
+---
+
+## 28. Issue [#137](https://github.com/FelipeMorandini/stockterm/issues/137) — Keymap: remappable filter-input mode (`BindingLayer::FilterInput`)
+
+**Sources:**
+
+- [GitHub Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137) — deferred from [Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136) / **§26.7**.
+- **§23** / [Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16) — table substring filter on Portfolio holdings and Stock View watchlist.
+- **§24** / [Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13) — configurable keymap; **`StockFilterToggle`** / **`PortfolioFilterToggle`** already enter filter mode from **`BindingLayer::StockView`** / **`Portfolio`**.
+- **§26** — hybrid keymap + wildcard policy; filter literals were intentionally frozen in #136.
+
+**Related:** **§25** — overlay propagation unchanged (filter actions register only on **`FilterInput`**). **§8** — `letter_key_plain` remains authoritative where this slice documents Shift/Caps parity; filter query append keeps **`KeyModifiers::NONE`** only (§23.5 parity). Follow-ons: [#138](https://github.com/FelipeMorandini/stockterm/issues/138) static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) alert symbol/condition keymap actions.
+
+---
+
+### 28.1 Problem inventory (verified in tree, 2026-05-17)
+
+| Area | Location | Gap |
+|------|----------|-----|
+| **Filter mode keys** | [`App::consume_filter_input_key`](../src/app/app.rs) | While **`filter_input_mode`**, **`Esc`**, **`Enter`**, **`Backspace`**, **`/`**, and ASCII alnum are matched with **literal** `KeyCode` arms — not **`ResolvedKeymap`**. |
+| **Filter enter** | [`handle_stock_view_keys`](../src/app/handlers.rs), [`handle_portfolio_events`](../src/app/portfolio.rs) | **`StockFilterToggle`** / **`PortfolioFilterToggle`** are keymap-driven **before** filter mode; **inside** mode, behavior is not. |
+| **Swallow policy** | [`consume_filter_input_key`](../src/app/app.rs) | Unmatched keys return **`true`** (consume) so watchlist/portfolio actions do not leak — must be preserved after keymap routing. |
+| **Docs** | [`README.md`](../README.md) | States filter-in-mode keys are literal (§26); needs update for **`FilterInput`** layer and new **`Action`** names. |
+
+---
+
+### 28.2 Product model
+
+1. **Two layers, two phases:**
+   - **Enter filter mode:** unchanged — **`StockFilterToggle`** on **`BindingLayer::StockView`**, **`PortfolioFilterToggle`** on **`BindingLayer::Portfolio`** (user may remap **`/`** via existing §24.6 rules).
+   - **While `filter_input_mode`:** all filter-editing keys resolve on **`BindingLayer::FilterInput`** only.
+2. **Keymap-first inside filter mode:** Replace literal `match key.code` in **`consume_filter_input_key`** with **`resolved_keymap.action(BindingLayer::FilterInput, key)`** → **`match` on `Action`**. No second literal path for the same effect (§24.11 / §26.3 rule 1).
+3. **Swallow unmatched keys:** If **`filter_input_mode`** and **`action(...)`** is **`None`**, return **`true`** without mutating filter state (same as today’s **`_ => true`**).
+4. **Default parity:** Built-in defaults on **`FilterInput`** reproduce §23 / Issue #16 UX exactly (including **`/`** with empty query exiting input mode).
+5. **No wildcard append:** Filter query characters are explicit default chords (multi-chord → one **`Action`**, same pattern as **`PortfolioDialogDigitOrDot`** / §26) — not a post-keymap wildcard — so users can remap individual letters if desired.
+6. **§25:** **`action_overlay_layers`** for new filter **`Action`** values is a single layer (**`FilterInput`**); no sibling propagation.
+
+---
+
+### 28.3 New `Action` variants and defaults
+
+Add to [`Action`](../src/config/keymap.rs) (names fixed for JSON / README):
+
+| `Action` | Default chord(s) on **`FilterInput`** | Effect (unchanged from §23) |
+|----------|----------------------------------------|-----------------------------|
+| **`FilterClear`** | **`esc`** | Clear **`filter_query`**, **`filter_input_mode = false`**, clamp selections. |
+| **`FilterCommit`** | **`enter`** | **`filter_input_mode = false`** only; keep **`filter_query`**, clamp selections. |
+| **`FilterBackspace`** | **`backspace`** | Pop one char from **`filter_query`**, clamp. |
+| **`FilterSlash`** | **`slash`** | If **`filter_query.is_empty()`** → exit input mode; always consume (idempotent **`/`** when query non-empty). |
+| **`FilterQueryChar`** | **`char:0`…`char:9`**, **`char:a`…`char:z`** (lowercase chord keys only) | Append char when **`filter_query.len() < MAX_FILTER_QUERY_LEN`** ([`table_filter::MAX_FILTER_QUERY_LEN`](../src/app/table_filter.rs)); **`KeyModifiers::NONE`** only. |
+
+**`action_binding_layer`:** all five map to **`BindingLayer::FilterInput`**.
+
+**`default_bindings()`:** register the rows above on **`FilterInput`** only. Do **not** duplicate filter **`Action`** rows on **`StockView`** / **`Portfolio`** (toggle actions stay there).
+
+**Modifier policy:** **`FilterClear`**, **`FilterCommit`**, **`FilterBackspace`**, **`FilterSlash`**, and **`FilterQueryChar`** handlers require **`key.modifiers == KeyModifiers::NONE`** (match §23.5). Shifted alnum does not append (same as pre-#137).
+
+---
+
+### 28.4 Dispatch order (must not regress §23)
+
+**Stock View** ([`handle_stock_view_keys`](../src/app/handlers.rs)) and **Portfolio** ([`handle_portfolio_events`](../src/app/portfolio.rs)):
+
+1. Modal / armed guards (unchanged).
+2. **`if app.consume_filter_input_key(&key) { return; }`** — when **`filter_input_mode`**, this path resolves **`FilterInput`** only and **always returns `true`** for handled or swallowed keys.
+3. Tab-layer keymap (**`StockView`** / **`Portfolio`**) — includes **`StockFilterToggle`** / **`PortfolioFilterToggle`** when not in filter mode.
+
+**`consume_filter_input_key` refactor** ([`app.rs`](../src/app/app.rs)):
+
+```text
+if !filter_input_mode → return false
+if let Some(a) = resolved_keymap.action(FilterInput, key) → apply effect per Action; return true
+return true  // swallow unknown
+```
+
+Remove the literal **`KeyCode`** arms once defaults + tests cover parity.
+
+---
+
+### 28.5 Acceptance criteria
+
+1. **Default keymap:** Issue **#16** / §23 manual QA matrix passes unchanged (filter toggle, live substring, **Esc** clear, **Enter** commit, **Backspace**, empty-**`/`** exit, tab switch clears filter, modal **`/`** blocked).
+2. **Remappable filter-mode keys:** User can remap at least **`FilterClear`** and **`FilterCommit`** (e.g. **`char:x`** / **`char:z`**) in **`~/.stockterm.json`**; relaunch; filter editing uses new chords; old chords do not perform the effect.
+3. **Remappable toggle (regression):** User-remapped **`StockFilterToggle`** / **`PortfolioFilterToggle`** still enters filter mode from list view only (§24.6 / §26.3 item 6 — toggle half unchanged).
+4. **Swallow:** While in filter mode, a key with **no** **`FilterInput`** binding does **not** trigger watchlist **`w`**, portfolio **`a`**, or symbol-buffer append.
+5. **Invalid keymap:** Duplicate chord or unknown action → full default fallback (§24.2); filter UX still works on defaults.
+6. **Build:** `cargo clippy -- -D warnings`, `cargo test` green; README Keymap paragraph updated.
+
+---
+
+### 28.6 Implementation plan (Rust)
+
+#### 28.6.1 `src/config/keymap.rs`
+
+- Add **`FilterInput`** to **`BindingLayer`** (serde not required on layer enum today).
+- Extend **`Action`** with **`FilterClear`**, **`FilterCommit`**, **`FilterBackspace`**, **`FilterSlash`**, **`FilterQueryChar`**.
+- Update **`action_binding_layer`** and **`CORE_DEFAULTS`** (or **`build_default_bindings_with_issue136_rows`** successor) with **`FilterInput`** rows per §28.3.
+- **Unit tests:**
+  1. Default map: **`FilterClear`** on **`esc`**, **`FilterCommit`** on **`enter`**, **`FilterQueryChar`** on **`char:a`** and **`char:5`**.
+  2. Count spot-check: **36** **`FilterQueryChar`** chords (`0`–`9`, `a`–`z`).
+  3. User remap: `"char:x": "FilterClear"` → **`action(FilterInput, x)`** is **`FilterClear`**; default **`esc`** no longer clears (unless also remapped).
+
+#### 28.6.2 `src/app/app.rs`
+
+- Rewrite **`consume_filter_input_key`** to use **`BindingLayer::FilterInput`** dispatch per §28.4.
+- Update module rustdoc (remove “literal / out of scope for #136”; point to §28).
+
+#### 28.6.3 `src/app/handlers.rs` / `src/app/portfolio.rs`
+
+- No structural change to call order; verify **`StockFilterToggle`** / **`PortfolioFilterToggle`** arms still set **`filter_input_mode = true`** only when **`!filter_input_mode`** (redundant guard optional).
+- Status / title strings unchanged (§23.6).
+
+#### 28.6.4 `README.md`
+
+- Keymap section: document **`BindingLayer::FilterInput`** (active only while **`filter_input_mode`** on Stock View or Portfolio).
+- List new **`Action`** names; note filter **toggle** vs **edit** layers; state that filter query typing uses explicit **`FilterQueryChar`** chords (not a wildcard).
+
+#### 28.6.5 Async / channels
+
+- **None** — synchronous input only.
+
+---
+
+### 28.7 Automated verification
+
+- `cargo build --release`, `cargo clippy -- -D warnings`, `cargo test`.
+- **`keymap.rs`** tests per §28.6.1.
+- Optional: thin test that **`consume_filter_input_key`** returns **`false`** when **`!filter_input_mode`** and **`true`** for an unmapped key when mode is active (if test harness can construct **`App`** minimally; otherwise manual-only).
+
+---
+
+### 28.8 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #137** section.
+
+---
+
+### 28.9 Out of scope
+
+- Per-Unicode filter charset beyond ASCII alnum (§23 scope).
+- Persisting filter strings in **`~/.stockterm.json`**.
+- **`letter_key_plain`** / Shifted filter typing (would change §23 UX).
+- In-app keymap editor ([Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12)).
+- [#138](https://github.com/FelipeMorandini/stockterm/issues/138), [#139](https://github.com/FelipeMorandini/stockterm/issues/139).
+
+---
+
+### 28.10 Approval
+
+After maintainer approval of §28, implementation may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137**.
+
+---
+
+### 28.11 Shipment record
+
+- **Status:** Implemented in-tree (2026-05-17). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — maintainer sign-off pending.
+- **Tracking:** [Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137).
+- **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `BindingLayer::FilterInput`, **`FilterClear`** / **`FilterCommit`** / **`FilterBackspace`** / **`FilterSlash`** / **`FilterQueryChar`** + default chords; [`src/app/app.rs`](../src/app/app.rs) — `consume_filter_input_key` keymap dispatch; **[`README.md`](../README.md)** — filter layer + duplicate-chord note.
