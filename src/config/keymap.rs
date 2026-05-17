@@ -1,5 +1,6 @@
 //! User-configurable keyboard shortcuts (GitHub Issue #13 / SPEC §24; Issue #134 / §25;
-//! Issue #136 / SPEC §26 — dialog digit + settings edit buffer actions).
+//! Issue #136 / SPEC §26 — dialog digit + settings edit buffer actions;
+//! Issue #137 / SPEC §28 — filter-input mode layer).
 //!
 //! ## JSON shape
 //!
@@ -30,6 +31,8 @@ pub enum BindingLayer {
     PortfolioDialog,
     Alerts,
     AlertDialog,
+    /// Table filter edit mode on Stock View / Portfolio (Issue #137 / SPEC §28).
+    FilterInput,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -128,6 +131,16 @@ pub enum Action {
     /// Alert add dialog: default chords for digits and `.` on symbol/threshold fields (focus
     /// selects append rules). Symbol letters and condition `a`/`b` stay wildcard — Issue #136 / §26.
     AlertDialogDigitOrDot,
+    /// Filter mode: clear query and exit (default `esc`) — Issue #137 / SPEC §28.
+    FilterClear,
+    /// Filter mode: exit and keep query (default `enter`).
+    FilterCommit,
+    /// Filter mode: delete last query character (default `backspace`).
+    FilterBackspace,
+    /// Filter mode: `/` — exit when query empty (default `slash`).
+    FilterSlash,
+    /// Filter mode: append ASCII alnum to query (`char:0`–`9`, `char:a`–`z` defaults).
+    FilterQueryChar,
 }
 
 #[inline]
@@ -163,6 +176,9 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         AlertDialogEsc | AlertDialogTab | AlertDialogShiftTab | AlertDialogLeft
         | AlertDialogRight | AlertDialogConditionCycleOrFocusNext | AlertDialogEnter
         | AlertDialogBackspace | AlertDialogDigitOrDot => BindingLayer::AlertDialog,
+        FilterClear | FilterCommit | FilterBackspace | FilterSlash | FilterQueryChar => {
+            BindingLayer::FilterInput
+        }
     }
 }
 
@@ -520,15 +536,20 @@ const CORE_DEFAULTS: &[(BindingLayer, &'static str, Action)] = {
     ]
 };
 
-fn build_default_bindings_with_issue136_rows() -> &'static [(BindingLayer, &'static str, Action)] {
+fn build_default_bindings_extended() -> &'static [(BindingLayer, &'static str, Action)] {
     use Action::*;
     use BindingLayer::*;
     let mut v: Vec<(BindingLayer, &'static str, Action)> = CORE_DEFAULTS.to_vec();
+    v.push((FilterInput, "esc", FilterClear));
+    v.push((FilterInput, "enter", FilterCommit));
+    v.push((FilterInput, "backspace", FilterBackspace));
+    v.push((FilterInput, "slash", FilterSlash));
     for d in '0'..='9' {
         let s: &'static str = Box::leak(format!("char:{d}").into_boxed_str());
         v.push((PortfolioDialog, s, PortfolioDialogDigitOrDot));
         v.push((AlertDialog, s, AlertDialogDigitOrDot));
         v.push((SettingsEdit, s, SettingsEditDigit));
+        v.push((FilterInput, s, FilterQueryChar));
     }
     let dot: &'static str = Box::leak(Box::from("char:."));
     v.push((PortfolioDialog, dot, PortfolioDialogDigitOrDot));
@@ -536,6 +557,7 @@ fn build_default_bindings_with_issue136_rows() -> &'static [(BindingLayer, &'sta
     for c in 'a'..='z' {
         let s: &'static str = Box::leak(format!("char:{c}").into_boxed_str());
         v.push((SettingsEdit, s, SettingsEditSymbolChar));
+        v.push((FilterInput, s, FilterQueryChar));
     }
     for sym in ['.', '-'] {
         let s: &'static str = Box::leak(format!("char:{sym}").into_boxed_str());
@@ -546,7 +568,7 @@ fn build_default_bindings_with_issue136_rows() -> &'static [(BindingLayer, &'sta
 
 fn default_bindings() -> &'static [(BindingLayer, &'static str, Action)] {
     static ALL: OnceLock<&'static [(BindingLayer, &'static str, Action)]> = OnceLock::new();
-    ALL.get_or_init(build_default_bindings_with_issue136_rows)
+    ALL.get_or_init(build_default_bindings_extended)
 }
 
 #[cfg(test)]
@@ -801,6 +823,55 @@ mod tests {
         let km = ResolvedKeymap::build(None).0;
         let c = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::NONE);
         assert_eq!(km.action(BindingLayer::News, &c), Some(Action::NewsCopyUrl));
+    }
+
+    #[test]
+    fn issue137_filter_input_defaults() {
+        let (km, err) = ResolvedKeymap::build(None);
+        assert!(err.is_none());
+        let esc = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::FilterInput, &esc),
+            Some(Action::FilterClear)
+        );
+        let enter = KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::FilterInput, &enter),
+            Some(Action::FilterCommit)
+        );
+        let a = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::FilterInput, &a),
+            Some(Action::FilterQueryChar)
+        );
+        let five = KeyEvent::new(KeyCode::Char('5'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::FilterInput, &five),
+            Some(Action::FilterQueryChar)
+        );
+        let n = default_bindings()
+            .iter()
+            .filter(|&&(layer, _, a)| {
+                layer == BindingLayer::FilterInput && a == Action::FilterQueryChar
+            })
+            .count();
+        assert_eq!(n, 36);
+    }
+
+    #[test]
+    fn issue137_remap_filter_clear_to_semicolon() {
+        let mut m = HashMap::new();
+        // `char:;` is free on FilterInput (alnum defaults use a–z / 0–9 only).
+        m.insert("char:;".to_string(), "FilterClear".to_string());
+        let (km, err) = ResolvedKeymap::build(Some(&m));
+        assert!(err.is_none());
+        let semi = KeyEvent::new(KeyCode::Char(';'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::FilterInput, &semi),
+            Some(Action::FilterClear)
+        );
+        let esc = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+        assert_eq!(km.action(BindingLayer::FilterInput, &esc), None);
     }
 
     #[test]
