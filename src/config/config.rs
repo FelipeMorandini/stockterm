@@ -4,6 +4,7 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
+use super::layout::Layout;
 use super::theme::Theme;
 use std::collections::HashMap;
 use crate::models::alerts::Alert;
@@ -35,6 +36,7 @@ pub enum MarketProviderKind {
 /// | `last_tab` | Last focused tab id (`stock_view`, `portfolio`, …). Default: omitted. |
 /// | `last_symbol` | Last active ticker (uppercase) when `watchlist` was empty at launch. Default: omitted. |
 /// | `keymap` | Optional chord → action overrides (see **README** “Keymap” and [`keymap`](crate::config::keymap)). Default: omitted → built-in defaults. |
+/// | `layout` | Shell chrome + pane splits (see §31 / [`layout`](crate::config::layout)). Default: omitted → built-in defaults. |
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
@@ -61,6 +63,9 @@ pub struct Config {
     /// Optional keyboard overrides: JSON object mapping **chord** string → **action** name (PascalCase).
     #[serde(default)]
     pub keymap: Option<HashMap<String, String>>,
+    /// Layout visibility and pane sizing (Issue #15 / §31).
+    #[serde(default)]
+    pub layout: Layout,
 }
 
 fn default_notifications_enabled() -> bool {
@@ -82,6 +87,7 @@ impl Default for Config {
             last_tab: None,
             last_symbol: None,
             keymap: None,
+            layout: Layout::default(),
         }
     }
 }

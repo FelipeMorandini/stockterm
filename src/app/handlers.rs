@@ -357,12 +357,19 @@ fn handle_settings_events(app: &mut App, key: KeyEvent) {
                 if app.settings_row == 3 {
                     app.sync_settings_theme_draft_from_config();
                 }
+                if app.settings_row == 6 {
+                    app.sync_settings_layout_draft_from_config();
+                }
             }
             SettingsThemePrev => {
                 if app.settings_row == 3
                     && (key.code == KeyCode::Left || letter_key_plain(key.modifiers))
                 {
                     app.settings_cycle_theme_draft_prev();
+                } else if app.settings_row == 6
+                    && (key.code == KeyCode::Left || letter_key_plain(key.modifiers))
+                {
+                    app.settings_cycle_layout_draft_prev();
                 }
             }
             SettingsThemeNext => {
@@ -370,6 +377,10 @@ fn handle_settings_events(app: &mut App, key: KeyEvent) {
                     && (key.code == KeyCode::Right || letter_key_plain(key.modifiers))
                 {
                     app.settings_cycle_theme_draft_next();
+                } else if app.settings_row == 6
+                    && (key.code == KeyCode::Right || letter_key_plain(key.modifiers))
+                {
+                    app.settings_cycle_layout_draft_next();
                 }
             }
             SettingsRowDown => {

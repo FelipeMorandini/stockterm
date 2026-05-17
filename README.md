@@ -20,6 +20,36 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 | `last_tab` | string or omitted | omitted | Last tab: `stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `settings` (Issue #19 / §22). |
 | `last_symbol` | string or omitted | omitted | Last active ticker when `watchlist` was empty at launch (normalized). |
 | `keymap` | object or omitted | omitted | Optional chord → action overrides (see **Keymap** below; Issue #13 / [`docs/SPEC.md`](docs/SPEC.md) §24). |
+| `layout` | object | omitted → built-in defaults | Shell chrome and pane sizing (Issue #15 / [`docs/SPEC.md`](docs/SPEC.md) §31). |
+
+#### `layout` object
+
+| Field | Type | Default | Valid range / values |
+|-------|------|---------|----------------------|
+| `show_tab_bar` | boolean or omitted | `true` | Top tab strip (3 rows). |
+| `show_status_bar` | boolean or omitted | `true` | Bottom status line (1 row). |
+| `stock_view_watchlist_pct` | number or omitted | `42` | Stock View watchlist band height **20–80**. |
+| `charts_chart_pct` | number or omitted | `100` | Charts tab chart height **30–100**; **100** = full body (no inner split). |
+| `preset` | string or omitted | omitted | `default`, `compact`, `wide`, `chart_focused` — base values; omitted fields inherit from preset. |
+
+**Examples:**
+
+```json
+"layout": { "show_status_bar": false }
+```
+
+```json
+"layout": { "preset": "chart_focused" }
+```
+
+```json
+"layout": {
+  "stock_view_watchlist_pct": 60,
+  "charts_chart_pct": 70
+}
+```
+
+On **Settings** row **6. Layout**, use **←/→** or **h**/**l** to preview presets and **Enter** to save.
 
 ### Keymap (`keymap` field)
 

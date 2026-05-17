@@ -1,6 +1,7 @@
 use crate::app::alerts::draw_alerts;
 use crate::app::charts::draw_charts;
-use crate::app::layout::centered_rect;
+use crate::app::layout::{centered_rect, shell_vertical_constraints};
+use crate::config::ResolvedLayout;
 use crate::app::portfolio::draw_portfolio;
 use crate::app::styles::ResolvedTheme;
 use crate::app::table_filter::filter_title_suffix;
@@ -22,6 +23,7 @@ use std::time::Instant;
 pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<()> {
     terminal.draw(|f| {
         let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+        let layout = app.layout_for_render();
         let size = f.size();
         // Paint theme background for the whole terminal; otherwise only `fg` is applied and
         // the host's default (often black) stays visible — Light preset looked like dark-on-dark.
@@ -33,48 +35,42 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
         let startup_h = u16::from(app.startup_error.is_some()) * 2;
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(
-                [
-                    Constraint::Length(3),
-                    Constraint::Length(startup_h),
-                    Constraint::Min(0),
-                    Constraint::Length(1),
-                ]
-                .as_ref(),
-            )
+            .constraints(shell_vertical_constraints(&layout, startup_h).as_ref())
             .split(size);
 
-        let titles = [
-            "Stock View",
-            "Portfolio",
-            "Alerts",
-            "Search",
-            "News",
-            "Charts",
-            "Settings",
-        ];
+        if layout.show_tab_bar {
+            let titles = [
+                "Stock View",
+                "Portfolio",
+                "Alerts",
+                "Search",
+                "News",
+                "Charts",
+                "Settings",
+            ];
 
-        let tabs = Tabs::new(titles.iter().map(|t| Line::from(*t)).collect())
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("StockTerm")
-                    .style(rt.canvas())
-                    .border_style(Style::default().fg(rt.border).bg(rt.background)),
-            )
-            .select(match app.active_tab {
-                Tab::StockView => 0,
-                Tab::Portfolio => 1,
-                Tab::Alerts => 2,
-                Tab::Search => 3,
-                Tab::News => 4,
-                Tab::Charts => 5,
-                Tab::Settings => 6,
-            })
-            .style(Style::default())
-            .highlight_style(Style::default().add_modifier(Modifier::BOLD));
+            let tabs = Tabs::new(titles.iter().map(|t| Line::from(*t)).collect())
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title("StockTerm")
+                        .style(rt.canvas())
+                        .border_style(Style::default().fg(rt.border).bg(rt.background)),
+                )
+                .select(match app.active_tab {
+                    Tab::StockView => 0,
+                    Tab::Portfolio => 1,
+                    Tab::Alerts => 2,
+                    Tab::Search => 3,
+                    Tab::News => 4,
+                    Tab::Charts => 5,
+                    Tab::Settings => 6,
+                })
+                .style(Style::default())
+                .highlight_style(Style::default().add_modifier(Modifier::BOLD));
 
-        f.render_widget(tabs, chunks[0]);
+            f.render_widget(tabs, chunks[0]);
+        }
 
         if startup_h > 0 {
             draw_startup_config_banner(f, app, chunks[1], rt);
@@ -84,16 +80,18 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
         let status_area = chunks[3];
 
         match app.active_tab {
-            Tab::StockView => draw_stock_view(f, app, body, rt),
+            Tab::StockView => draw_stock_view(f, app, body, rt, layout),
             Tab::Portfolio => draw_portfolio(f, app, body, rt),
             Tab::Alerts => draw_alerts(f, app, body, rt),
             Tab::Search => draw_search(f, app, body, rt),
             Tab::News => draw_news(f, app, body, rt),
-            Tab::Charts => draw_charts(f, app, body, rt),
+            Tab::Charts => draw_charts(f, app, body, rt, layout),
             Tab::Settings => draw_settings(f, app, body, rt),
         }
 
-        draw_status_bar(f, app, status_area, rt);
+        if layout.show_status_bar {
+            draw_status_bar(f, app, status_area, rt);
+        }
 
         if app.error_log_overlay_open {
             draw_error_log_overlay(f, app, size, rt);
@@ -200,11 +198,11 @@ fn resolve_quote(app: &App) -> Option<&TickerResponse> {
         .or_else(|| app.watchlist_quotes.get(&app.symbol))
 }
 
-fn draw_stock_view(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
+fn draw_stock_view(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme, layout: ResolvedLayout) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage(42),
+            Constraint::Percentage(layout.stock_view_watchlist_pct),
             Constraint::Min(6),
         ])
         .split(area);
@@ -671,6 +669,21 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
     f.render_widget(Paragraph::new(t).block(block), area);
 }
 
+fn layout_row_summary(app: &App) -> String {
+    let saved = app.config.layout.saved_summary_label();
+
+    if app.settings_row == 6 && app.settings_editing.is_none() {
+        let preview = {
+            let mut l = app.config.layout.clone();
+            l.preset = Some(app.settings_layout_draft);
+            l.saved_summary_label()
+        };
+        format!("Preview: {preview} · h/l or ←/→ · Enter save · saved: {saved}")
+    } else {
+        saved
+    }
+}
+
 fn theme_row_summary(app: &App) -> String {
     let saved = app
         .config
@@ -777,6 +790,11 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
         Span::styled("5. Keymap: ", row_style(5)),
         Span::styled(keymap_value, rt.canvas()),
         Span::styled("  (~/.stockterm.json)", rt.fg_muted()),
+    ]));
+    let layout_s = layout_row_summary(app);
+    lines.push(Line::from(vec![
+        Span::styled("6. Layout: ", row_style(6)),
+        Span::styled(layout_s, rt.canvas()),
     ]));
 
     if let Some(e) = &app.settings_inline_error {
