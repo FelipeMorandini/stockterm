@@ -1,6 +1,7 @@
 //! User-configurable keyboard shortcuts (GitHub Issue #13 / SPEC §24; Issue #134 / §25;
 //! Issue #136 / SPEC §26 — dialog digit + settings edit buffer actions;
-//! Issue #137 / SPEC §28 — filter-input mode layer).
+//! Issue #137 / SPEC §28 — filter-input mode layer;
+//! Issue #139 / SPEC §29 — alert dialog symbol + condition actions).
 //!
 //! ## JSON shape
 //!
@@ -128,9 +129,14 @@ pub enum Action {
     AlertDialogConditionCycleOrFocusNext,
     AlertDialogEnter,
     AlertDialogBackspace,
-    /// Alert add dialog: default chords for digits and `.` on symbol/threshold fields (focus
-    /// selects append rules). Symbol letters and condition `a`/`b` stay wildcard — Issue #136 / §26.
+    /// Alert add dialog: digits and `.` on symbol/threshold fields (Issue #136 / §26; threshold + symbol digit paths).
     AlertDialogDigitOrDot,
+    /// Alert add dialog: symbol letters `c`–`z` and `-` (Issue #139 / §29).
+    AlertDialogSymbolChar,
+    /// Alert add dialog: condition **Above** (default `a`; also appends `A` on symbol focus).
+    AlertDialogConditionAbove,
+    /// Alert add dialog: condition **Below** (default `b`; also appends `B` on symbol focus).
+    AlertDialogConditionBelow,
     /// Filter mode: clear query and exit (default `esc`) — Issue #137 / SPEC §28.
     FilterClear,
     /// Filter mode: exit and keep query (default `enter`).
@@ -175,7 +181,8 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         AlertAdd | AlertRemove | AlertRowUp | AlertRowDown => BindingLayer::Alerts,
         AlertDialogEsc | AlertDialogTab | AlertDialogShiftTab | AlertDialogLeft
         | AlertDialogRight | AlertDialogConditionCycleOrFocusNext | AlertDialogEnter
-        | AlertDialogBackspace | AlertDialogDigitOrDot => BindingLayer::AlertDialog,
+        | AlertDialogBackspace | AlertDialogDigitOrDot | AlertDialogSymbolChar
+        | AlertDialogConditionAbove | AlertDialogConditionBelow => BindingLayer::AlertDialog,
         FilterClear | FilterCommit | FilterBackspace | FilterSlash | FilterQueryChar => {
             BindingLayer::FilterInput
         }
@@ -554,6 +561,20 @@ fn build_default_bindings_extended() -> &'static [(BindingLayer, &'static str, A
     let dot: &'static str = Box::leak(Box::from("char:."));
     v.push((PortfolioDialog, dot, PortfolioDialogDigitOrDot));
     v.push((AlertDialog, dot, AlertDialogDigitOrDot));
+    {
+        let a: &'static str = Box::leak(Box::from("char:a"));
+        v.push((AlertDialog, a, AlertDialogConditionAbove));
+        let b: &'static str = Box::leak(Box::from("char:b"));
+        v.push((AlertDialog, b, AlertDialogConditionBelow));
+    }
+    for c in 'c'..='z' {
+        let s: &'static str = Box::leak(format!("char:{c}").into_boxed_str());
+        v.push((AlertDialog, s, AlertDialogSymbolChar));
+    }
+    {
+        let dash: &'static str = Box::leak(Box::from("char:-"));
+        v.push((AlertDialog, dash, AlertDialogSymbolChar));
+    }
     for c in 'a'..='z' {
         let s: &'static str = Box::leak(format!("char:{c}").into_boxed_str());
         v.push((SettingsEdit, s, SettingsEditSymbolChar));
@@ -872,6 +893,72 @@ mod tests {
         );
         let esc = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
         assert_eq!(km.action(BindingLayer::FilterInput, &esc), None);
+    }
+
+    #[test]
+    fn issue139_alert_dialog_symbol_and_condition_defaults() {
+        let (km, err) = ResolvedKeymap::build(None);
+        assert!(err.is_none());
+        let z = KeyEvent::new(KeyCode::Char('z'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::AlertDialog, &z),
+            Some(Action::AlertDialogSymbolChar)
+        );
+        let a = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::AlertDialog, &a),
+            Some(Action::AlertDialogConditionAbove)
+        );
+        let b = KeyEvent::new(KeyCode::Char('b'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::AlertDialog, &b),
+            Some(Action::AlertDialogConditionBelow)
+        );
+        let five = KeyEvent::new(KeyCode::Char('5'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::AlertDialog, &five),
+            Some(Action::AlertDialogDigitOrDot)
+        );
+        let n_symbol = default_bindings()
+            .iter()
+            .filter(|&&(layer, _, a)| {
+                layer == BindingLayer::AlertDialog && a == Action::AlertDialogSymbolChar
+            })
+            .count();
+        assert_eq!(n_symbol, 25);
+        let n_above = default_bindings()
+            .iter()
+            .filter(|&&(layer, _, a)| {
+                layer == BindingLayer::AlertDialog && a == Action::AlertDialogConditionAbove
+            })
+            .count();
+        assert_eq!(n_above, 1);
+        let n_below = default_bindings()
+            .iter()
+            .filter(|&&(layer, _, a)| {
+                layer == BindingLayer::AlertDialog && a == Action::AlertDialogConditionBelow
+            })
+            .count();
+        assert_eq!(n_below, 1);
+    }
+
+    #[test]
+    fn issue139_remap_condition_above_to_comma() {
+        let mut m = HashMap::new();
+        // `char:,` is free on AlertDialog (symbol defaults are c–z + `-`; `;` is cycle/focus).
+        m.insert(
+            "char:,".to_string(),
+            "AlertDialogConditionAbove".to_string(),
+        );
+        let (km, err) = ResolvedKeymap::build(Some(&m));
+        assert!(err.is_none(), "overlay error: {err:?}");
+        let comma = KeyEvent::new(KeyCode::Char(','), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::AlertDialog, &comma),
+            Some(Action::AlertDialogConditionAbove)
+        );
+        let a = KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE);
+        assert_eq!(km.action(BindingLayer::AlertDialog, &a), None);
     }
 
     #[test]
