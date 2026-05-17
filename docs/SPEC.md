@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -1577,6 +1577,7 @@ After maintainer approval of §16, implementation may proceed per `.cursor/rules
 - **`cargo test`:** add **`#[cfg(test)]`** fixtures in **`yahoo.rs`**:
   - v7 JSON snippet → mapped **`TickerResult`** matches expected floats and **`t`** scaling.
   - v7 empty / error-shaped body → fallback path returns same shape as v8 success **or** returns the same error variant as today’s chart path (pick one and assert).
+- **Two-request orchestration (deferred at #2 ship):** covered by **§32** / [Issue #89](https://github.com/FelipeMorandini/stockterm/issues/89) — **`wiremock`** asserts **`yahoo_latest_quote`** issues a failing **`v7`** GET then a successful **`v8`** GET and returns the chart-mapped **`TickerResponse`** (no live network).
 
 ### 17.7 Out of scope
 
@@ -4405,3 +4406,134 @@ After maintainer approval of §31, implementation may proceed per [`.cursor/rule
 - **Status:** Implemented in-tree (2026-05-17). **PR:** [#145](https://github.com/FelipeMorandini/stockterm/pull/145). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**.
 - **Tracking:** [Issue #15](https://github.com/FelipeMorandini/stockterm/issues/15).
 - **Code:** [`src/config/layout.rs`](../src/config/layout.rs) — `Layout`, `LayoutPreset`, `resolve`; [`src/app/layout.rs`](../src/app/layout.rs) — `shell_vertical_constraints`; [`src/app/ui.rs`](../src/app/ui.rs), [`src/app/charts.rs`](../src/app/charts.rs) — draw paths; [`src/app/app.rs`](../src/app/app.rs) — Settings layout row + `layout_for_render`; [`README.md`](../README.md) — `layout` config table.
+
+---
+
+## 32. Issue [#89](https://github.com/FelipeMorandini/stockterm/issues/89) — Yahoo `yahoo_latest_quote` v7→v8 integration test
+
+**Sources:**
+
+- [GitHub Issue #89](https://github.com/FelipeMorandini/stockterm/issues/89) — integration-style coverage for the **two-request** quote orchestration deferred at [Issue #2](https://github.com/FelipeMorandini/stockterm/issues/2) ship (2026-05-11).
+- [`docs/SCRATCHPAD.md`](SCRATCHPAD.md) — filed from #2 ship notes.
+
+**Related:** [Issue #2](https://github.com/FelipeMorandini/stockterm/issues/2) / **§17** (v7 primary + v8 fallback — **shipped** [PR #92](https://github.com/FelipeMorandini/stockterm/pull/92)); [Issue #53](https://github.com/FelipeMorandini/stockterm/issues/53) / **§9.15** (batched **`v7`** + per-symbol **`yahoo_latest_quote`** fallback — separate scope); [Issue #90](https://github.com/FelipeMorandini/stockterm/issues/90) (fallback observability / tracing); [Issue #91](https://github.com/FelipeMorandini/stockterm/issues/91) (v7 row symbol match). **§19.8** — existing **`wiremock`** patterns in [`src/api/retry.rs`](../src/api/retry.rs) and [`src/api/http_fetch.rs`](../src/api/http_fetch.rs).
+
+### 32.1 Tree audit vs Issue #89
+
+| Requirement | Current tree (2026-05-17) | §32 action |
+|-------------|---------------------------|------------|
+| **`yahoo_latest_quote`** tries **`v7`** then **`v8`** on failure or empty bars | Implemented in [`src/api/yahoo.rs`](../src/api/yahoo.rs) (`yahoo_quote_v7` → `yahoo_quote` / `chart_to_ticker`) | **Verify** via new tests; **no** product behavior change unless tests expose a bug |
+| Unit tests for **`v7_envelope_to_ticker`** / batch mapping | Present in **`yahoo.rs`** `#[cfg(test)]` | **Keep** |
+| Integration test: stub **`v7`** fail + stub **`v8`** OK → mapped **`TickerResponse`** | **Missing** | **Add** |
+| **`cargo test`** without network | Retry/http_fetch already use **`wiremock`**; Yahoo quote paths hard-code **`QUERY1`** | **Add** test-only base URL seam (§32.3) |
+| **`wiremock`** only in **`dev-dependencies`** | Already in [`Cargo.toml`](../Cargo.toml) | **Reuse** |
+
+**Conclusion:** Production orchestration is in place; #89 closes the **test gap** left in §17.6 with black-box HTTP stubs. **No** UI / **`TickerResult`** schema changes.
+
+### 32.2 Product acceptance
+
+1. **Behavior unchanged** for operators — same Yahoo quote semantics as §17 / §9.15.4.
+2. **Automated proof** that when **`v7/finance/quote`** does not yield a usable bar, the code performs a second GET to **`v8/finance/chart/{symbol}?range=1d&interval=1d`** and returns **`chart_to_ticker`** output.
+3. **`YahooProvider::get_quote`** remains a thin delegate to **`yahoo_latest_quote`** (one smoke test optional).
+
+### 32.3 Implementation plan (Rust)
+
+**Files:** [`src/api/yahoo.rs`](../src/api/yahoo.rs) only (tests colocated; no new crate).
+
+#### 32.3.1 Test seam — injectable `query1` base (no production env vars)
+
+Today URLs are built as `{QUERY1}/v7/...` and `{QUERY1}/v8/...`. **`wiremock::MockServer::uri()`** must replace **`QUERY1`** in tests without touching live Yahoo hosts.
+
+1. Add **private** helpers (production + test):
+
+   ```rust
+   fn v7_quote_url(query_base: &str, symbol: &str) -> String { ... }
+   fn v8_chart_latest_url(query_base: &str, symbol: &str) -> String { ... }
+   ```
+
+2. Refactor **`yahoo_quote_v7`**, **`yahoo_quote`**, and **`yahoo_latest_quote`** into **`_*_at(symbol, query_base)`** internals; public wrappers call **`_*_at(..., QUERY1)`**:
+
+   ```rust
+   async fn yahoo_latest_quote(symbol: &str) -> ProviderResult<TickerResponse> {
+       yahoo_latest_quote_at(symbol, QUERY1).await
+   }
+
+   async fn yahoo_latest_quote_at(symbol: &str, query_base: &str) -> ProviderResult<TickerResponse> {
+       match yahoo_quote_v7_at(symbol, query_base).await {
+           Ok(t) if !t.results.is_empty() => Ok(t),
+           Ok(_) | Err(_) => yahoo_quote_at(symbol, query_base).await,
+       }
+   }
+   ```
+
+3. **`#[cfg(test)]`** — `pub(crate) use` or thin alias so the **`wiremock`** module can call **`yahoo_latest_quote_at`** / **`YahooProvider::get_quote`** against **`mock_base`**. **Do not** export test hooks from **`lib.rs`**; keep **`pub(crate)`** inside **`api::yahoo`**.
+
+4. **Batch path** (`yahoo_latest_quotes_for_symbols`, **`yahoo_quote_v7_batch_chunk`**) continues to use **`QUERY1`** only — out of scope for #89 (orchestration under test is **single-symbol** `yahoo_latest_quote`).
+
+#### 32.3.2 `wiremock` test module
+
+Add **`#[cfg(test)] mod wiremock_quote_fallback_tests`** in **`yahoo.rs`** (mirror **`retry::wiremock_tests`** — same file, not a new **`tests/*.rs`** binary, unless lifecycle becomes awkward).
+
+**Harness:**
+
+- `MockServer::start().await`
+- `mock_base = srv.uri()` (no trailing slash)
+- Mount **path** matchers (not full Yahoo host):
+  - **`GET`** `/v7/finance/quote` — failure response(s) per scenario
+  - **`GET`** `/v8/finance/chart/{SYMBOL}` — **`200`** + body from [`tests/fixtures/yahoo_chart_aapl.json`](../tests/fixtures/yahoo_chart_aapl.json) (reuse existing fixture; **`include_str!`** in test)
+
+**Prefer fast, non-retry v7 failures for CI** (§19.5 retries **5xx** up to **`MAX_ATTEMPTS`** with backoff — avoid making #89’s primary case a lone **500** unless the mock expects **5** v7 responses and the team accepts wall-clock delay):
+
+| Test name (suggested) | v7 stub | v8 stub | Assert |
+|----------------------|---------|---------|--------|
+| **`v7_malformed_json_falls_back_to_v8`** | **`200`** + body `not-json` → **`ProviderError::Json`** (non-transient) | **`200`** + chart fixture | **`yahoo_latest_quote_at("AAPL", &mock_base)`** → **`Ok`**; **`latest_result().c`** matches fixture meta (**~293.32**); mock **`v7`** **1×**, **`v8`** **1×** |
+| **`v7_empty_result_falls_back_to_v8`** | **`200`** + `{"quoteResponse":{"result":[],"error":null}}` | chart fixture | Same price assertion; **2** GETs total |
+| **`v7_api_error_envelope_falls_back_to_v8`** | **`200`** + `quoteResponse.error` (logged-in style) | chart fixture | Same; confirms **`Err` from mapper** triggers fallback |
+| **`yahoo_provider_get_quote_delegates_to_latest`** (optional) | same as malformed case | chart fixture | **`YahooProvider.get_quote("AAPL", &Config::default()).await`** with **`query_base` seam** — if provider cannot see mock base without seam, call **`yahoo_latest_quote_at`** only and document provider test as duplicate of orchestration test |
+
+**Mock expectations:** use **`.expect(1)`** on each mount so accidental extra Yahoo calls fail the test.
+
+**Symbol:** use **`AAPL`** consistently; encode path as `/v8/finance/chart/AAPL` (URL-encoded symbol in query not required for path-style v8 URL used in tree).
+
+#### 32.3.3 Dependencies & async
+
+- **`wiremock`** — already **`dev-dependencies`**; **no** new crates.
+- Tests: **`#[tokio::test]`** async; reuse production **`fetch_text` → `execute_get_text_with_retry`** (hits **`shared_client()`** — fine for **`wiremock`** localhost).
+- **No** `println!` / stderr in tests.
+
+### 32.4 Automated verification
+
+```bash
+cargo build --release
+cargo clippy -- -D warnings
+cargo test
+```
+
+**New tests must pass offline.** Filter locally:
+
+```bash
+cargo test yahoo_latest_quote wiremock_quote_fallback v7_malformed v7_empty v7_api_error
+```
+
+### 32.5 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #89** (automated-first; optional live Yahoo smoke).
+
+### 32.6 Out of scope
+
+- Changing **`yahoo_latest_quote`** fallback rules or §9.15 batch semantics.
+- **`wiremock`** coverage for **`yahoo_latest_quotes_for_symbols`** chunk / **401** batch path (track under #53 regression QA).
+- [Issue #90](https://github.com/FelipeMorandini/stockterm/issues/90) tracing / metrics when fallback runs.
+- [Issue #91](https://github.com/FelipeMorandini/stockterm/issues/91) v7 row **`symbol`** matching hardening.
+- Moving **`wiremock`** to a non–**`dev-dependencies`** crate.
+- v7 **HTTP 500** as the **only** required CI case (acceptable as an optional slow test; malformed JSON satisfies Issue #89 AC).
+
+### 32.7 Approval
+
+After maintainer approval of §32, implementation may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89**.
+
+### 32.8 Shipment record
+
+- **Status:** Implemented in-tree (2026-05-17). **PR:** [#146](https://github.com/FelipeMorandini/stockterm/pull/146). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** (sign-off pending).
+- **Tracking:** [Issue #89](https://github.com/FelipeMorandini/stockterm/issues/89).
+- **Code:** [`src/api/yahoo.rs`](../src/api/yahoo.rs) — `v7_quote_url` / `v8_chart_latest_url`, `yahoo_quote_v7_at` / `yahoo_quote_at` / `yahoo_latest_quote_at`; `wiremock_quote_fallback_tests` (malformed JSON, empty v7, API error envelope → v8 chart fixture).
