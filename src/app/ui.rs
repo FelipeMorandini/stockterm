@@ -649,7 +649,7 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
         let list = List::new(items)
             .block(
                 block.title(format!(
-                    "{} (j/k · Enter open)",
+                    "{} (j/k · Enter open · c copy)",
                     title
                 )),
             )
@@ -804,6 +804,8 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
             "Searching…",
             rt.fg_accent(),
         )])
+    } else if let Some(flash) = app.news_url_flash_line() {
+        Line::from(vec![Span::styled(flash, rt.success_text())])
     } else if app.active_tab == Tab::News && app.news_refresh_inflight {
         Line::from(vec![Span::styled(
             "Loading news…",
@@ -843,7 +845,9 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
             Tab::News => Line::from(vec![
                 Span::styled("q quit · Tab tabs · ", rt.canvas()),
                 Span::styled("Enter", rt.fg_border()),
-                Span::styled(" open URL · ", rt.canvas()),
+                Span::styled(" open · ", rt.canvas()),
+                Span::styled("c", rt.fg_border()),
+                Span::styled(" copy · ", rt.canvas()),
                 Span::styled("j/k", rt.fg_border()),
                 Span::styled(" scroll", rt.canvas()),
             ]),

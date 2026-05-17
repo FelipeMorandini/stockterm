@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7). **[Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16)** covers substring filter on **Portfolio** holdings and **Stock View** watchlist (`/`, **Esc** clears, **Enter** commits, **Tab** unchanged — see [`docs/SPEC.md`](SPEC.md) §23).
+Use the sections below per milestone. **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7). **[Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16)** covers substring filter on **Portfolio** holdings and **Stock View** watchlist (`/`, **Esc** clears, **Enter** commits, **Tab** unchanged — see [`docs/SPEC.md`](SPEC.md) §23). **Issues [#58](https://github.com/FelipeMorandini/stockterm/issues/58), [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** cover News clipboard copy and non-blocking **`http`/`https`** URL open (see [`docs/SPEC.md`](SPEC.md) §27).
 
 ## Issues #19, #103 — Config persistence & alerts-save / quote error coordination
 
@@ -2074,3 +2074,73 @@ Introduce a deliberate duplicate-chord or unknown **`Action`** if §26 adds vali
 | Shift/Caps symbol typing (**§8**) on Stock View + dialogs | | | |
 | At least one remap spot-check + restore defaults | | | |
 | README Keymap table lists any **new** `Action` names from §26 | | | |
+
+---
+
+## Issues #58, #59 — News: clipboard copy + non-blocking URL open
+
+**Scope:**
+
+- [Issue #58](https://github.com/FelipeMorandini/stockterm/issues/58) — copy selected article URL to the system clipboard (`pbcopy` / `wl-copy` / `xclip` / Windows `clip`); dedicated **`c`** key (default); optional fallback when browser open fails.
+- [Issue #59](https://github.com/FelipeMorandini/stockterm/issues/59) — open URL via OS helper **without blocking** the TUI main loop (`spawn_blocking` + async result channel); reject non-**`http`/`https`** URLs before spawn.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §27.
+
+**Prerequisite:** Implementation matches §27.4–§27.5.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0; unit tests for **`normalize_article_url`** and default **`NewsCopyUrl`** binding per §27.5.
+
+### Manual — Non-blocking open (#59)
+
+**Prep:** `cargo run --release`, symbol with news (**`AAPL`**), open **News** tab, wait for headlines.
+
+1. Highlight a row with a normal **`https://`** article link. Press **Enter**.  
+   **Pass:** Browser opens (or OS handler runs); **immediately** press **j**/**k** or **Tab** — list selection / tab switch works with **no** multi-second freeze.
+
+2. Rapid **Enter** twice on the same row.  
+   **Pass:** At most one open attempt in flight; no runaway lag or panic.
+
+3. **Invalid URL (if reproducible):** Use a feed row with empty URL or inject test data with **`javascript:…`** if available. Press **Enter**.  
+   **Pass:** Status shows a clear rejection; OS handler **not** invoked; no panic.
+
+### Manual — Clipboard copy (#58)
+
+**Platform note:** Record which helper worked (**`pbcopy`** on macOS, **`wl-copy`** / **`xclip`** on Linux, **`clip`** on Windows).
+
+1. With a row selected, press **`c`** (default **`NewsCopyUrl`**).  
+   **Pass:** Short status flash **“URL copied”** (or equivalent); paste in another app shows the full **`article_url`**.
+
+2. Remap **`NewsCopyUrl`** in `~/.stockterm.json` to another chord (e.g. **`char:y`**), relaunch, repeat copy.  
+   **Pass:** New chord copies; old **`c`** does not (unless still bound elsewhere).
+
+### Manual — Open failure → copy fallback (#58 + #59)
+
+1. On a platform where open can fail safely (e.g. Linux without **`DISPLAY`** / misconfigured **`xdg-open`**), press **Enter** on a valid **https** row.  
+   **Pass:** Either browser opens, **or** URL lands on clipboard with a message that open failed but copy succeeded, **or** a single combined error if both fail — no hang, no panic.
+
+### Manual — Regression (M3 News)
+
+Re-run the **News** rows from **Manual — News (#11 / #29)** above: list load, **j/k** scroll, symbol change refresh.  
+**Pass:** Unchanged apart from new hints (**`c copy`**) and non-blocking **Enter**.
+
+### Sign-off — Issues #58, #59
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests + §27.5 unit tests | | | |
+| Enter open: TUI stays responsive (#59) | | | |
+| **c** copy URL (#58) | | | |
+| http(s) rejection (#59) | | | |
+| Open-fail → copy fallback (platform-dependent) | | | |
+| README / UI hints mention copy key | | | |
+| M3 News regression (list / scroll / symbol change) | | | |

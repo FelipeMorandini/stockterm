@@ -243,6 +243,9 @@ fn handle_news_events(app: &mut App, key: KeyEvent) {
             NewsEnter if key.modifiers == KeyModifiers::NONE => {
                 app.news_try_open_selected();
             }
+            NewsCopyUrl if key.modifiers == KeyModifiers::NONE => {
+                app.news_try_copy_selected();
+            }
             _ => {}
         }
     }

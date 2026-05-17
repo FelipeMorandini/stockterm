@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -808,7 +808,7 @@ After maintainer approval of §10, implementation may proceed per `.cursor/rules
 - **Tracking:** [Issue #29](https://github.com/FelipeMorandini/stockterm/issues/29), [#5](https://github.com/FelipeMorandini/stockterm/issues/5), [#11](https://github.com/FelipeMorandini/stockterm/issues/11), [#12](https://github.com/FelipeMorandini/stockterm/issues/12).
 - **PR:** https://github.com/FelipeMorandini/stockterm/pull/61
 - **Code:** `src/app/{app,handlers,ui,open_url}.rs`; `FetchDone::Search`; Settings via `Config::try_save`; Yahoo `get_news` uses `query1` search + RSS before `query2` (`src/api/yahoo.rs`).
-- **Follow-up issues:** [#58](https://github.com/FelipeMorandini/stockterm/issues/58) (clipboard), [#59](https://github.com/FelipeMorandini/stockterm/issues/59) (non-blocking open), [#60](https://github.com/FelipeMorandini/stockterm/issues/60) (Search Esc vs global error).
+- **Follow-up issues:** [#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59) — **shipped §27** (see §27.9); [#60](https://github.com/FelipeMorandini/stockterm/issues/60) (Search Esc vs global error).
 
 ---
 
@@ -3437,3 +3437,160 @@ After maintainer approval of §26, implementation may proceed per [`.cursor/rule
 - **Tracking:** [Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `CORE_DEFAULTS`, `build_default_bindings_with_issue136_rows`, **`SettingsEditDigit`**, **`SettingsEditSymbolChar`**, **`AlertDialogDigitOrDot`**, default chord rows; [`src/app/portfolio.rs`](../src/app/portfolio.rs) — **`PortfolioDialogDigitOrDot`** dispatch; [`src/app/alerts.rs`](../src/app/alerts.rs) — **`AlertDialogDigitOrDot`** dispatch; [`src/app/handlers.rs`](../src/app/handlers.rs) — Settings edit refactor + Stock View §26 comment; [`src/app/app.rs`](../src/app/app.rs) — filter literal note; **[`README.md`](../README.md)** — Keymap wildcard note.
 - **Follow-ups:** [#137](https://github.com/FelipeMorandini/stockterm/issues/137) — `BindingLayer::FilterInput`; [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) — explicit alert symbol/condition keymap actions.
+
+---
+
+## 27. Issues [#58](https://github.com/FelipeMorandini/stockterm/issues/58), [#59](https://github.com/FelipeMorandini/stockterm/issues/59) — News: clipboard copy + non-blocking URL open
+
+**Sources:**
+
+- [GitHub Issue #58](https://github.com/FelipeMorandini/stockterm/issues/58) — best-effort **copy article URL** to the system clipboard (`pbcopy` / `wl-copy` / `xclip`), dedicated key and/or fallback when browser open fails (deferred from M3 / Issue #11).
+- [GitHub Issue #59](https://github.com/FelipeMorandini/stockterm/issues/59) — run **`open` / `xdg-open` / `cmd start`** off the Tokio runtime task via **`spawn_blocking`**; surface failures on **`App`** asynchronously; optional **`http` / `https`** scheme allowlist before invoking the OS handler (audit note 2026-05-12).
+
+**Related:** **§10** / [Issue #11](https://github.com/FelipeMorandini/stockterm/issues/11) — News tab shipped with synchronous **`open_article_url`** ([`src/app/open_url.rs`](../src/app/open_url.rs), [`App::news_try_open_selected`](../src/app/app.rs)). **§20** — runtime errors use **`ErrorSourceDomain::NewsOpenUrl`** today for open failures. **§24** — add **`NewsCopyUrl`** to the keymap; default **`char:c`** on **`BindingLayer::News`**. **§16** — main loop already uses **`tokio::select!`**; this slice adds a **second** unbounded channel for OS URL work (do **not** overload **`FetchDone`**).
+
+---
+
+### 27.1 Problem inventory (verified in tree, 2026-05-16)
+
+| Area | Location | Gap |
+|------|----------|-----|
+| **Blocking open** | [`open_article_url`](../src/app/open_url.rs) → [`news_try_open_selected`](../src/app/app.rs) | **`Command::status()`** runs **inline** on the Tokio worker handling input; slow or hung helpers freeze redraw/input (**#59**). |
+| **No clipboard** | — | Issue #11 acceptance mentioned copy when open is undesirable; only open path exists (**#58**). |
+| **No scheme guard** | [`open_article_url`](../src/app/open_url.rs) | Any non-empty string is passed to the OS; **`javascript:`**, **`file:`**, etc. are not rejected (**#59** optional allowlist). |
+| **UI hints** | [`draw_news`](../src/app/ui.rs), status bar **`Tab::News`** | Title shows **`Enter open`** only; no **`c` copy** hint. |
+| **Keymap** | [`Action`](../src/config/keymap.rs) | **`NewsEnter`** exists; no **`NewsCopyUrl`**. |
+
+---
+
+### 27.2 Product behavior
+
+#### 27.2.1 URL validation (Issue #59)
+
+- Add **`validate_article_url(url: &str) -> Result<(), &'static str>`** (pure, unit-tested):
+  - Reject **empty** / whitespace-only.
+  - Parse with a **lightweight** check (no new crate required): trim, require case-insensitive prefix **`http://`** or **`https://`**, and reject embedded **NUL** / raw **control** characters in the remainder.
+  - **Out of scope for v1:** full WHATWG URL parsing, punycode, credential stripping, or IDN normalization.
+- Call validation **before** spawning any OS work (open **or** copy). On failure, **`surface_runtime_error`** with **`ErrorSourceDomain::NewsOpenUrl`** and message like **`Only http(s) URLs can be opened`** (exact copy per implementation).
+
+#### 27.2.2 Non-blocking open (Issue #59)
+
+- **`news_try_open_selected`** (rename optional → keep name) becomes **enqueue-only**:
+  1. Resolve selected **`NewsItem::article_url`** (same selection rules as today).
+  2. **`validate_article_url`**; return early on error.
+  3. If **`news_url_op_inflight`**, ignore duplicate **Enter** (no queue stacking).
+  4. Set **`news_url_op_inflight = true`**, **`tokio::spawn`** a task that runs **`tokio::task::spawn_blocking(|| open_article_url_blocking(&url))`** (blocking body extracted from today’s **`open_article_url`**).
+  5. Send **`UrlOpDone { kind: Open, result }`** on a dedicated **`mpsc::UnboundedSender`** wired into **`App::run`**’s **`select!`** (same pattern as **`FetchDone`** / **`InflightRecovery`**).
+- **`apply_url_op_done`** on the main task:
+  - Clear **`news_url_op_inflight`**.
+  - On **`Ok(())`**: clear **`NewsOpenUrl`** sticky runtime error if present; optional short **success** status flash (**`Copied URL`** / **`Opened URL`**) for **2 s** (reuse an existing flash field or add **`news_url_flash_until: Option<Instant>`** — prefer **one** flash helper shared by open/copy).
+  - On **`Err`**: for **`Open`**, attempt **clipboard fallback** (§27.2.3) **once** before surfacing final error; if fallback **`Ok`**, flash **“Opened failed; URL copied”** (wording tunable) instead of hard error.
+
+#### 27.2.3 Clipboard copy (Issue #58)
+
+- Dedicated key **`NewsCopyUrl`** (default chord **`char:c`**, **`KeyModifiers::NONE`**, **`BindingLayer::News`**) — same validation + **`spawn_blocking`** path with **`UrlOpKind::Copy`**.
+- **`copy_article_url_blocking(url: &str) -> Result<(), String>`** in [`open_url.rs`](../src/app/open_url.rs):
+  - **macOS:** `pbcopy` (stdin write).
+  - **Linux:** try **`wl-copy`** first (Wayland), else **`xclip -selection clipboard`** if executable discovery succeeds; if neither exists, return a clear **`No clipboard helper found`** error.
+  - **Windows:** **`clip.exe`** via stdin (no **`pbcopy`**).
+  - **No** runtime `which` crate — use **`std::process::Command::new("wl-copy").arg("--version")`** (or **`--help`**) style probe, or document fixed command order per platform QA.
+- **Open-failure fallback:** when **`Open`** returns **`Err`** and copy helper exists, spawn **one** blocking copy of the same URL; only if **both** fail, surface **`Could not open URL: …`** (append copy error if useful).
+- **Success UX:** status line flash **“URL copied”** (2 s); do **not** open the browser on copy-only path.
+
+#### 27.2.4 Keymap & handlers
+
+- **`src/config/keymap.rs`:** `Action::NewsCopyUrl`, default **`(News, "char:c", NewsCopyUrl)`**, **`action_binding_layer`** arm.
+- **`handle_news_events`:** `NewsCopyUrl if key.modifiers == KeyModifiers::NONE => app.news_try_copy_selected()` (symmetric helper next to open).
+- User may remap **`NewsCopyUrl`** via **`keymap`** JSON per **§24**; README Keymap table gains one row.
+
+#### 27.2.5 UI copy
+
+- List block title: **`(j/k · Enter open · c copy)`** (or keymap-aware summary if copy chord is remapped — v1 may stay static literal like other tabs).
+- Status bar **`Tab::News`:** add **`c copy URL`** between **Enter** and **j/k**.
+
+---
+
+### 27.3 Acceptance criteria (closure checklist)
+
+1. **Responsiveness (#59):** With **`STOCKTERM_DEBUG_HTTP_DELAY_MS`** unset, on **News**, press **Enter** on a row with a valid **`https://`** URL — TUI **continues** accepting **j/k**, **Tab**, and **q** while the browser opens (no multi-second freeze attributable to **`Command::status()`** on the runtime thread).
+2. **Validation (#59):** Feed or test row with **`javascript:alert(1)`** or empty URL — **Enter** does **not** spawn OS handler; categorized error on status line; no panic.
+3. **Copy key (#58):** **c** (default) copies **`article_url`** to clipboard on macOS dev kit **or** documented Linux helper; status flash confirms.
+4. **Open fallback (#58):** When open fails (simulate: unset **`DISPLAY`** on Linux CI optional, or unit-test the orchestration), copy is attempted; user sees copy success or combined error.
+5. **Inflight guard:** Rapid double **Enter** does not spawn unbounded blocking tasks.
+6. **§24 regression:** Remap **`NewsEnter`** / **`NewsCopyUrl`** in JSON — behavior follows remap; invalid map still falls back per §24.2.
+7. **Build:** `cargo clippy -- -D warnings`, `cargo test` green.
+
+---
+
+### 27.4 Implementation plan (Rust)
+
+#### 27.4.1 `src/app/open_url.rs`
+
+- Split **`open_article_url`** → **`open_article_url_blocking`** (existing platform **`Command`** bodies).
+- Add **`copy_article_url_blocking`**, **`validate_article_url`**, and (test-only if needed) **`clipboard_helper_available()`**.
+- Keep module **crate-private** (`pub(crate)`); no new dependencies.
+
+#### 27.4.2 `src/app/app.rs`
+
+- Types:
+
+  ```rust
+  pub(crate) enum UrlOpKind { Open, Copy }
+  pub(crate) struct UrlOpDone {
+      pub kind: UrlOpKind,
+      pub result: Result<(), String>,
+  }
+  ```
+
+- Fields: **`url_op_tx: Option<UnboundedSender<UrlOpDone>>`**, **`news_url_op_inflight: bool`**, optional **`news_url_flash_until: Option<Instant>`**.
+- Methods: **`news_try_open_selected`**, **`news_try_copy_selected`**, **`spawn_url_op(kind, url: String)`**, **`apply_url_op_done`**, **`news_selected_article_url() -> Option<String>`** (shared selection/index logic).
+- **`App::run`:** create **`url_op` channel**; add **`select!`** branch **`Some(msg) = url_op_rx.recv()`** → **`apply_url_op_done`**.
+- Error domain: reuse **`ErrorSourceDomain::NewsOpenUrl`** for validation, open, and copy failures (message distinguishes).
+
+#### 27.4.3 `src/app/handlers.rs` + `src/config/keymap.rs` + `src/app/ui.rs`
+
+- Wire **`NewsCopyUrl`** as in §27.2.4–27.2.5.
+- Status rendering: prefer **`news_url_flash_until`** over generic loading line when set.
+
+#### 27.4.4 Async / channels
+
+- **No** change to **`FetchDone`** or news **HTTP** inflight flags.
+- OS work **only** via **`spawn_blocking`** + **`UrlOpDone`** channel (bounded fan-out: at most one in-flight news URL op).
+
+---
+
+### 27.5 Automated verification
+
+- `cargo build --release`, `cargo clippy -- -D warnings`, `cargo test`.
+- **Unit tests (`open_url.rs`):**
+  - **`validate_article_url`** accepts `https://example.com/path`, `http://host`, rejects `javascript:…`, `file:///etc/passwd`, `""`, `"   "`, strings with embedded control chars.
+  - Optional: **`copy_article_url_blocking`** / **`open_article_url_blocking`** behind **`#[cfg(test)]`** mocks are **not** required if platform CI is unreliable — document manual clipboard QA.
+- **Unit tests (`keymap.rs`):** default map binds **`NewsCopyUrl`** to **`char:c`** on **`News`** layer.
+
+---
+
+### 27.6 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issues #58, #59** section (clipboard, non-blocking open, validation, fallback).
+
+---
+
+### 27.7 Out of scope
+
+- In-app browser, **`curl`** download, or opening non-http(s) schemes “safely”.
+- Rust clipboard crates (**`arboard`**, etc.) — shell helpers only per Issue #58.
+- Queued URL-op backlog, progress UI, or cancel-in-flight.
+- Remappable per-URL chooser dialog.
+- [Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60) — Search **Esc** vs global error (unchanged).
+
+---
+
+### 27.8 Approval
+
+After maintainer approval of §27, implementation may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58** and **#59**.
+
+### 27.9 Shipment record
+
+- **Status:** Implemented in-tree. **PR:** [#141](https://github.com/FelipeMorandini/stockterm/pull/141). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — maintainer sign-off pending.
+- **Tracking:** [Issue #58](https://github.com/FelipeMorandini/stockterm/issues/58), [Issue #59](https://github.com/FelipeMorandini/stockterm/issues/59).
+- **Code:** [`src/app/open_url.rs`](../src/app/open_url.rs) — `normalize_article_url`, `open_article_url_blocking`, `copy_article_url_blocking`, `run_open_with_copy_fallback`; [`src/app/app.rs`](../src/app/app.rs) — `UrlOpDone` channel, `NewsUrlOpInflightGuard`, `InflightRecovery::NewsUrlOp`; [`src/config/keymap.rs`](../src/config/keymap.rs) — **`NewsCopyUrl`**; [`src/app/handlers.rs`](../src/app/handlers.rs), [`src/app/ui.rs`](../src/app/ui.rs); **[`README.md`](../README.md)** — News tab keymap note.
