@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -3435,8 +3435,8 @@ After maintainer approval of §26, implementation may proceed per [`.cursor/rule
 
 - **Status:** Implemented in-tree. **PR:** [#140](https://github.com/FelipeMorandini/stockterm/pull/140). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — maintainer sign-off pending.
 - **Tracking:** [Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136).
-- **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — `CORE_DEFAULTS`, `build_default_bindings_with_issue136_rows`, **`SettingsEditDigit`**, **`SettingsEditSymbolChar`**, **`AlertDialogDigitOrDot`**, default chord rows; [`src/app/portfolio.rs`](../src/app/portfolio.rs) — **`PortfolioDialogDigitOrDot`** dispatch; [`src/app/alerts.rs`](../src/app/alerts.rs) — **`AlertDialogDigitOrDot`** dispatch; [`src/app/handlers.rs`](../src/app/handlers.rs) — Settings edit refactor + Stock View §26 comment; [`src/app/app.rs`](../src/app/app.rs) — filter literal note; **[`README.md`](../README.md)** — Keymap wildcard note.
-- **Follow-ups:** [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) — explicit alert symbol/condition keymap actions — **§29** (planned). **#137** shipped — **§28.11**.
+- **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — **`DEFAULT_BINDINGS`** (compile-time table; extended rows via macros), **`SettingsEditDigit`**, **`SettingsEditSymbolChar`**, **`AlertDialogDigitOrDot`**, default chord rows; [`src/app/portfolio.rs`](../src/app/portfolio.rs) — **`PortfolioDialogDigitOrDot`** dispatch; [`src/app/alerts.rs`](../src/app/alerts.rs) — **`AlertDialogDigitOrDot`** dispatch; [`src/app/handlers.rs`](../src/app/handlers.rs) — Settings edit refactor + Stock View §26 comment; [`src/app/app.rs`](../src/app/app.rs) — filter literal note; **[`README.md`](../README.md)** — Keymap wildcard note.
+- **Follow-ups:** [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — compile-time default chord table — **§30** (shipped — **§30.10**). [#139](https://github.com/FelipeMorandini/stockterm/issues/139) — explicit alert symbol/condition keymap actions — **§29** (shipped — **§29.9**). **#137** shipped — **§28.11**.
 
 ---
 
@@ -3606,7 +3606,7 @@ After maintainer approval of §27, implementation may proceed per [`.cursor/rule
 - **§24** / [Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13) — configurable keymap; **`StockFilterToggle`** / **`PortfolioFilterToggle`** already enter filter mode from **`BindingLayer::StockView`** / **`Portfolio`**.
 - **§26** — hybrid keymap + wildcard policy; filter literals were intentionally frozen in #136.
 
-**Related:** **§25** — overlay propagation unchanged (filter actions register only on **`FilterInput`**). **§8** — `letter_key_plain` remains authoritative where this slice documents Shift/Caps parity; filter query append keeps **`KeyModifiers::NONE`** only (§23.5 parity). Follow-ons: [#138](https://github.com/FelipeMorandini/stockterm/issues/138) static default chord table; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) alert symbol/condition keymap actions — **§29**.
+**Related:** **§25** — overlay propagation unchanged (filter actions register only on **`FilterInput`**). **§8** — `letter_key_plain` remains authoritative where this slice documents Shift/Caps parity; filter query append keeps **`KeyModifiers::NONE`** only (§23.5 parity). Follow-ons: [#138](https://github.com/FelipeMorandini/stockterm/issues/138) compile-time default chord table — **§30**; [#139](https://github.com/FelipeMorandini/stockterm/issues/139) alert symbol/condition keymap actions — **§29** (shipped).
 
 ---
 
@@ -3691,7 +3691,7 @@ Remove the literal **`KeyCode`** arms once defaults + tests cover parity.
 
 - Add **`FilterInput`** to **`BindingLayer`** (serde not required on layer enum today).
 - Extend **`Action`** with **`FilterClear`**, **`FilterCommit`**, **`FilterBackspace`**, **`FilterSlash`**, **`FilterQueryChar`**.
-- Update **`action_binding_layer`** and **`CORE_DEFAULTS`** (or **`build_default_bindings_with_issue136_rows`** successor) with **`FilterInput`** rows per §28.3.
+- Update **`action_binding_layer`** and **`DEFAULT_BINDINGS`** (or its successor) with **`FilterInput`** rows per §28.3.
 - **Unit tests:**
   1. Default map: **`FilterClear`** on **`esc`**, **`FilterCommit`** on **`enter`**, **`FilterQueryChar`** on **`char:a`** and **`char:5`**.
   2. Count spot-check: **36** **`FilterQueryChar`** chords (`0`–`9`, `a`–`z`).
@@ -3738,7 +3738,7 @@ Remove the literal **`KeyCode`** arms once defaults + tests cover parity.
 - Persisting filter strings in **`~/.stockterm.json`**.
 - **`letter_key_plain`** / Shifted filter typing (would change §23 UX).
 - In-app keymap editor ([Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12)).
-- [#138](https://github.com/FelipeMorandini/stockterm/issues/138) (§29 defers static table to that issue).
+- [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — **§30** (compile-time default table; orthogonal).
 
 ---
 
@@ -3765,7 +3765,7 @@ After maintainer approval of §28, implementation may proceed per [`.cursor/rule
 - **§8** / [Issue #44](https://github.com/FelipeMorandini/stockterm/issues/44) — **`letter_key_plain`** remains authoritative for letter-class typing (Shift/Caps parity).
 - **§24** / [Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13) — user `keymap` JSON overrides.
 
-**Related:** **§25** — no new duplicate-layer defaults expected. **§28** — filter layer unchanged. [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — static default chord table (orthogonal).
+**Related:** **§25** — no new duplicate-layer defaults expected. **§28** — filter layer unchanged. [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — compile-time default chord table — **§30** (orthogonal).
 
 ---
 
@@ -3879,7 +3879,7 @@ After maintainer approval of §28, implementation may proceed per [`.cursor/rule
 - Per-Unicode ticker symbols beyond ASCII alnum + **`.`** + **`-`** (unchanged [`append_symbol_char`](../src/app/alerts.rs) charset).
 - Splitting **`AlertDialogDigitOrDot`** into a renamed **`AlertDialogThresholdDigitOrDot`** enum variant (behavioral narrow only; rename optional).
 - In-app keymap editor ([Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12)).
-- [#138](https://github.com/FelipeMorandini/stockterm/issues/138) static default chord table export.
+- [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — **§30** (compile-time default table; orthogonal).
 
 ---
 
@@ -3894,3 +3894,207 @@ After maintainer approval of §29, implementation may proceed per [`.cursor/rule
 - **Status:** Implemented in-tree (2026-05-17). **PR:** [#143](https://github.com/FelipeMorandini/stockterm/pull/143). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#139** — maintainer sign-off pending.
 - **Tracking:** [Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139).
 - **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — **`AlertDialogSymbolChar`**, **`AlertDialogConditionAbove`**, **`AlertDialogConditionBelow`** + default chords; [`src/app/alerts.rs`](../src/app/alerts.rs) — focus dispatch, wildcard removed, unmatched-key fallback; **[`README.md`](../README.md)** — Keymap paragraph updated.
+
+---
+
+## 30. Issue [#138](https://github.com/FelipeMorandini/stockterm/issues/138) — Keymap: compile-time default chord table (remove runtime `Box::leak`)
+
+**Sources:**
+
+- [GitHub Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138) — deferred tech debt from [Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136) audit.
+- **§24** / [Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13) — configurable keymap baseline.
+- **§26** / [Issue #136](https://github.com/FelipeMorandini/stockterm/issues/136) — programmatic digit/symbol default rows for dialogs, Settings edit, and filter query.
+- **§28** / [Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137) — **`FilterInput`** layer rows (merged into the same extended default table today).
+- **§29** / [Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139) — alert dialog symbol/condition rows (same extended table).
+
+**Related:** **§25** — `overlay_layer_index` / `action_overlay_layers` unchanged (still derived from [`default_bindings()`](../src/config/keymap.rs)). **§28.9** / **§29.7** — this slice is **internal-only**; no new `Action` variants or handler changes.
+
+---
+
+### 30.1 Problem inventory (verified in tree, 2026-05-17)
+
+| Area | Location | Gap |
+|------|----------|-----|
+| **Runtime table build** | [`build_default_bindings_extended`](../src/config/keymap.rs) | Clones **`CORE_DEFAULTS`** into a **`Vec`**, then **`Box::leak`s** ~90 chord strings (`format!("char:{d}")`, `format!("char:{c}")`, etc.) and finally **`Box::leak`s** the slice — first call via **`OnceLock`** in **`default_bindings()`**. |
+| **Init cost** | `default_bindings()` → `insert_defaults` / `ResolvedKeymap::build` | ~40+ heap allocations on cold start (issue estimate); behavior is correct but avoidable. |
+| **Maintainability** | Split **`CORE_DEFAULTS`** + runtime extended builder | Two sources of truth for “full default map”; easy to drift row counts vs §26 / §28 / §29 tests. |
+
+**Non-goals:** Changing chord strings, `Action` assignments, layer placement, or user-visible keymap semantics.
+
+---
+
+### 30.2 Product model
+
+1. **Single compile-time table:** Replace **`build_default_bindings_extended`** + **`OnceLock<&'static [_]>`** with one **`const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)]`** (name may differ) that contains **all** rows today returned by **`default_bindings()`**.
+2. **`default_bindings()`** becomes a trivial accessor:
+
+   ```rust
+   fn default_bindings() -> &'static [(BindingLayer, &'static str, Action)] {
+       DEFAULT_BINDINGS
+   }
+   ```
+
+3. **No `Box::leak` in the default-binding construction path** — chord literals are **`&'static str`** tokens produced at compile time (macro `concat!`, repeated macro arms, or checked-in `include!` output).
+4. **`CORE_DEFAULTS`:** Either inlined into **`DEFAULT_BINDINGS`** or kept as a **`const`** sub-slice **only** if merged without runtime allocation (preferred: one macro expansion emits core + extended rows in one `&[...]`).
+5. **`overlay_layer_index`:** May keep its existing **`OnceLock<HashMap<…>>`** (built once from **`default_bindings()`**); out of scope unless a trivial const map is already available — not required for #138 acceptance.
+
+---
+
+### 30.3 Row inventory (must match pre-refactor semantics)
+
+The static table must reproduce **exactly** the same multiset of **`(BindingLayer, chord, Action)`** rows as the union of **`CORE_DEFAULTS`** and the current **`build_default_bindings_extended`** output (duplicate detection in **`insert_defaults`** depends on identical `(layer, chord)` pairs; row order in the slice is not semantically significant).
+
+**A. Core rows (`CORE_DEFAULTS` today, **93** rows)** — global, tabs, portfolio, alerts shell, alert dialog chrome (`esc`, `tab`, arrows, `char:;`, `enter`, `backspace`), etc. — **unchanged** chord strings.
+
+**B. Extended rows (today appended after core clone)**
+
+| Block | Layers | Chords | `Action` |
+|-------|--------|--------|----------|
+| Filter mode chrome | **`FilterInput`** | `esc`, `enter`, `backspace`, `slash` | **`FilterClear`**, **`FilterCommit`**, **`FilterBackspace`**, **`FilterSlash`** |
+| Digits `0`–`9` | **`PortfolioDialog`**, **`AlertDialog`**, **`SettingsEdit`**, **`FilterInput`** | `char:0` … `char:9` (10 each) | **`PortfolioDialogDigitOrDot`**, **`AlertDialogDigitOrDot`**, **`SettingsEditDigit`**, **`FilterQueryChar`** |
+| Dot | **`PortfolioDialog`**, **`AlertDialog`** | `char:.` | **`PortfolioDialogDigitOrDot`**, **`AlertDialogDigitOrDot`** |
+| Alert condition | **`AlertDialog`** | `char:a`, `char:b` | **`AlertDialogConditionAbove`**, **`AlertDialogConditionBelow`** |
+| Alert symbol letters | **`AlertDialog`** | `char:c` … `char:z`, `char:-` | **`AlertDialogSymbolChar`** (25 rows) |
+| Settings symbol | **`SettingsEdit`** | `char:a` … `char:z`, `char:.`, `char:-` | **`SettingsEditSymbolChar`** (28 rows) |
+| Filter query letters | **`FilterInput`** | `char:a` … `char:z` | **`FilterQueryChar`** (26 rows) |
+
+**Spot-check counts** (existing unit tests must stay green):
+
+| `Action` | Layer filter | Expected count |
+|----------|--------------|----------------|
+| **`PortfolioDialogDigitOrDot`** | any | **11** |
+| **`AlertDialogDigitOrDot`** | **`AlertDialog`** | **11** |
+| **`SettingsEditDigit`** | any | **10** |
+| **`FilterQueryChar`** | **`FilterInput`** | **36** |
+| **`AlertDialogSymbolChar`** | **`AlertDialog`** | **25** |
+| **`AlertDialogConditionAbove`** / **`Below`** | **`AlertDialog`** | **1** each |
+
+**Total row count:** **`DEFAULT_BINDINGS.len() == 220`** (93 core + 127 extended); add a unit test locking this constant so future edits update the spec intentionally.
+
+---
+
+### 30.4 Acceptance criteria (closure checklist)
+
+1. **Semantic parity:** With **`keymap` absent**, every tab/dialog/filter path behaves **identically** to the pre–#138 tree (re-run [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#13**, **#136**, **#137**, **#139** regression spot-checks — see §30.8).
+2. **No runtime leak path:** `rg 'Box::leak' src/config/keymap.rs` returns **no matches** inside default-binding construction (module-level tests may still use heap elsewhere — none expected).
+3. **No `OnceLock` for default table:** `default_bindings()` does not call `get_or_init` on the binding slice.
+4. **Duplicate safety:** `insert_defaults` still rejects duplicate `(BindingLayer, Chord)` pairs; `ResolvedKeymap::build(None)` succeeds.
+5. **Existing tests:** All **`issue136_*`**, **`issue137_*`**, **`issue139_*`**, overlay propagation, and parse/remap tests in [`keymap.rs`](../src/config/keymap.rs) pass unchanged (except new §30.6 assertions).
+6. **Build:** `cargo clippy -- -D warnings`, `cargo test` green.
+7. **Docs:** No README change required (user-facing chord grammar unchanged); module rustdoc updated to cite §30 and remove “programmatic leak” wording.
+
+---
+
+### 30.5 Implementation plan (Rust)
+
+#### 30.5.1 `src/config/keymap.rs` — macro helpers (recommended)
+
+Add private `macro_rules!` helpers at the top of the module (after imports), for example:
+
+```rust
+/// One default row: `(BindingLayer, chord_literal, Action)`.
+macro_rules! bind_row {
+    ($layer:ident, $chord:literal, $action:ident) => {
+        (BindingLayer::$layer, $chord, Action::$action)
+    };
+}
+
+/// `char:0` … `char:9` on one layer → one action.
+macro_rules! bind_digit_rows {
+    ($layer:ident, $action:ident) => {
+        bind_row!($layer, "char:0", $action),
+        bind_row!($layer, "char:1", $action),
+        // … through char:9 …
+    };
+}
+
+/// `char:a` … `char:z` on one layer → one action.
+macro_rules! bind_lowercase_letter_rows {
+    ($layer:ident, $action:ident) => { /* 26 arms */ };
+}
+```
+
+Then define:
+
+```rust
+const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = &[
+    // Former CORE_DEFAULTS rows (copy verbatim or `include!` once)
+    bind_row!(Global, "q", Quit),
+    // …
+    bind_row!(FilterInput, "esc", FilterClear),
+    bind_row!(FilterInput, "enter", FilterCommit),
+    bind_row!(FilterInput, "backspace", FilterBackspace),
+    bind_row!(FilterInput, "slash", FilterSlash),
+    bind_digit_rows!(PortfolioDialog, PortfolioDialogDigitOrDot),
+    bind_digit_rows!(AlertDialog, AlertDialogDigitOrDot),
+    bind_digit_rows!(SettingsEdit, SettingsEditDigit),
+    bind_digit_rows!(FilterInput, FilterQueryChar),
+    bind_row!(PortfolioDialog, "char:.", PortfolioDialogDigitOrDot),
+    bind_row!(AlertDialog, "char:.", AlertDialogDigitOrDot),
+    bind_row!(AlertDialog, "char:a", AlertDialogConditionAbove),
+    bind_row!(AlertDialog, "char:b", AlertDialogConditionBelow),
+    bind_lowercase_letter_rows!(AlertDialog, AlertDialogSymbolChar), // skip a,b in macro or add rows manually
+    bind_row!(AlertDialog, "char:-", AlertDialogSymbolChar),
+    bind_lowercase_letter_rows!(SettingsEdit, SettingsEditSymbolChar),
+    bind_row!(SettingsEdit, "char:.", SettingsEditSymbolChar),
+    bind_row!(SettingsEdit, "char:-", SettingsEditSymbolChar),
+    bind_lowercase_letter_rows!(FilterInput, FilterQueryChar),
+];
+```
+
+**Alert symbol letters:** `bind_lowercase_letter_rows!` must emit **`char:c`…`char:z`** only (not **`a`/`b`**, which are condition actions). Implement via a dedicated `bind_alert_symbol_letter_rows!` macro or explicit `c`…`z` arms.
+
+**Alternative (acceptable):** `build.rs` or `xtask` writes `keymap_defaults.inc.rs` with a `&[...]` literal and `include!` it — only if macros become unwieldy; prefer in-module macros for this repo size.
+
+#### 30.5.2 Delete runtime builder
+
+- Remove **`build_default_bindings_extended`**, the **`ALL` `OnceLock`**, and **`CORE_DEFAULTS`** as a separate merge source once folded into **`DEFAULT_BINDINGS`**.
+- Update module docs (lines 1–4) to cite **Issue #138 / §30**.
+
+#### 30.5.3 `overlay_layer_index`
+
+- Leave **`OnceLock<HashMap<Action, Vec<BindingLayer>>>`** as-is unless a drive-by const map is trivial; behavior must remain identical.
+
+#### 30.5.4 Async / channels
+
+- **None.**
+
+---
+
+### 30.6 Automated verification
+
+- `cargo build --release`, `cargo clippy -- -D warnings`, `cargo test`.
+- **Keep** all existing **`keymap.rs`** tests (§26 / §28 / §29 counts and remap cases).
+- **Add:**
+  1. **`default_bindings_total_row_count`** — `assert_eq!(default_bindings().len(), 220);`
+  2. **`default_bindings_slice_is_static`** — call `default_bindings()` twice; `assert_eq!(a.as_ptr(), b.as_ptr());` (guards accidental reintroduction of `OnceLock` init).
+  3. Optional: **`insert_defaults_succeeds_on_static_table`** — `insert_defaults(&mut HashMap::new())` is `Ok(())` (duplicate detector smoke).
+
+---
+
+### 30.7 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #138** section (regression-only; no new product keys).
+
+---
+
+### 30.8 Out of scope
+
+- New `Action` variants or handler dispatch changes.
+- In-app keymap editor ([Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12)).
+- Const-building **`overlay_layer_index`** (separate optimization).
+- Changing **`parse_chord`** or JSON overlay grammar.
+
+---
+
+### 30.9 Approval
+
+After maintainer approval of §30, implementation may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138**.
+
+---
+
+### 30.10 Shipment record
+
+- **Status:** Implemented in-tree (2026-05-17). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off **2026-05-17**.
+- **Tracking:** [Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138).
+- **Code:** [`src/config/keymap.rs`](../src/config/keymap.rs) — **`DEFAULT_BINDINGS`** (single `const` slice, 220 rows); removed **`build_default_bindings_extended`** and per-chord **`Box::leak`**; **`default_bindings_total_row_count`** / **`default_bindings_slice_is_static`** tests.

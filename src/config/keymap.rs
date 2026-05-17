@@ -1,7 +1,8 @@
 //! User-configurable keyboard shortcuts (GitHub Issue #13 / SPEC §24; Issue #134 / §25;
 //! Issue #136 / SPEC §26 — dialog digit + settings edit buffer actions;
 //! Issue #137 / SPEC §28 — filter-input mode layer;
-//! Issue #139 / SPEC §29 — alert dialog symbol + condition actions).
+//! Issue #139 / SPEC §29 — alert dialog symbol + condition actions;
+//! Issue #138 / SPEC §30 — compile-time [`DEFAULT_BINDINGS`] table).
 //!
 //! ## JSON shape
 //!
@@ -441,9 +442,9 @@ fn apply_user_overlay(
     Ok(out)
 }
 
-/// Built-in rows before Issue #136 programmatic digit/symbol chords (see [`default_bindings`]).
+/// Full built-in default chord table (Issue #138 / SPEC §30 — compile-time static slice).
 #[allow(clippy::redundant_static_lifetimes)]
-const CORE_DEFAULTS: &[(BindingLayer, &'static str, Action)] = {
+const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = {
     use Action::*;
     use BindingLayer::*;
     &[
@@ -540,56 +541,138 @@ const CORE_DEFAULTS: &[(BindingLayer, &'static str, Action)] = {
         (AlertDialog, "char:;", AlertDialogConditionCycleOrFocusNext),
         (AlertDialog, "enter", AlertDialogEnter),
         (AlertDialog, "backspace", AlertDialogBackspace),
+        (FilterInput, "esc", FilterClear),
+        (FilterInput, "enter", FilterCommit),
+        (FilterInput, "backspace", FilterBackspace),
+        (FilterInput, "slash", FilterSlash),
+        (PortfolioDialog, "char:.", PortfolioDialogDigitOrDot),
+        (AlertDialog, "char:.", AlertDialogDigitOrDot),
+        (AlertDialog, "char:a", AlertDialogConditionAbove),
+        (AlertDialog, "char:b", AlertDialogConditionBelow),
+        (PortfolioDialog, "char:0", PortfolioDialogDigitOrDot),
+        (PortfolioDialog, "char:1", PortfolioDialogDigitOrDot),
+        (PortfolioDialog, "char:2", PortfolioDialogDigitOrDot),
+        (PortfolioDialog, "char:3", PortfolioDialogDigitOrDot),
+        (PortfolioDialog, "char:4", PortfolioDialogDigitOrDot),
+        (PortfolioDialog, "char:5", PortfolioDialogDigitOrDot),
+        (PortfolioDialog, "char:6", PortfolioDialogDigitOrDot),
+        (PortfolioDialog, "char:7", PortfolioDialogDigitOrDot),
+        (PortfolioDialog, "char:8", PortfolioDialogDigitOrDot),
+        (PortfolioDialog, "char:9", PortfolioDialogDigitOrDot),
+        (AlertDialog, "char:0", AlertDialogDigitOrDot),
+        (AlertDialog, "char:1", AlertDialogDigitOrDot),
+        (AlertDialog, "char:2", AlertDialogDigitOrDot),
+        (AlertDialog, "char:3", AlertDialogDigitOrDot),
+        (AlertDialog, "char:4", AlertDialogDigitOrDot),
+        (AlertDialog, "char:5", AlertDialogDigitOrDot),
+        (AlertDialog, "char:6", AlertDialogDigitOrDot),
+        (AlertDialog, "char:7", AlertDialogDigitOrDot),
+        (AlertDialog, "char:8", AlertDialogDigitOrDot),
+        (AlertDialog, "char:9", AlertDialogDigitOrDot),
+        (SettingsEdit, "char:0", SettingsEditDigit),
+        (SettingsEdit, "char:1", SettingsEditDigit),
+        (SettingsEdit, "char:2", SettingsEditDigit),
+        (SettingsEdit, "char:3", SettingsEditDigit),
+        (SettingsEdit, "char:4", SettingsEditDigit),
+        (SettingsEdit, "char:5", SettingsEditDigit),
+        (SettingsEdit, "char:6", SettingsEditDigit),
+        (SettingsEdit, "char:7", SettingsEditDigit),
+        (SettingsEdit, "char:8", SettingsEditDigit),
+        (SettingsEdit, "char:9", SettingsEditDigit),
+        (FilterInput, "char:0", FilterQueryChar),
+        (FilterInput, "char:1", FilterQueryChar),
+        (FilterInput, "char:2", FilterQueryChar),
+        (FilterInput, "char:3", FilterQueryChar),
+        (FilterInput, "char:4", FilterQueryChar),
+        (FilterInput, "char:5", FilterQueryChar),
+        (FilterInput, "char:6", FilterQueryChar),
+        (FilterInput, "char:7", FilterQueryChar),
+        (FilterInput, "char:8", FilterQueryChar),
+        (FilterInput, "char:9", FilterQueryChar),
+        (AlertDialog, "char:c", AlertDialogSymbolChar),
+        (AlertDialog, "char:d", AlertDialogSymbolChar),
+        (AlertDialog, "char:e", AlertDialogSymbolChar),
+        (AlertDialog, "char:f", AlertDialogSymbolChar),
+        (AlertDialog, "char:g", AlertDialogSymbolChar),
+        (AlertDialog, "char:h", AlertDialogSymbolChar),
+        (AlertDialog, "char:i", AlertDialogSymbolChar),
+        (AlertDialog, "char:j", AlertDialogSymbolChar),
+        (AlertDialog, "char:k", AlertDialogSymbolChar),
+        (AlertDialog, "char:l", AlertDialogSymbolChar),
+        (AlertDialog, "char:m", AlertDialogSymbolChar),
+        (AlertDialog, "char:n", AlertDialogSymbolChar),
+        (AlertDialog, "char:o", AlertDialogSymbolChar),
+        (AlertDialog, "char:p", AlertDialogSymbolChar),
+        (AlertDialog, "char:q", AlertDialogSymbolChar),
+        (AlertDialog, "char:r", AlertDialogSymbolChar),
+        (AlertDialog, "char:s", AlertDialogSymbolChar),
+        (AlertDialog, "char:t", AlertDialogSymbolChar),
+        (AlertDialog, "char:u", AlertDialogSymbolChar),
+        (AlertDialog, "char:v", AlertDialogSymbolChar),
+        (AlertDialog, "char:w", AlertDialogSymbolChar),
+        (AlertDialog, "char:x", AlertDialogSymbolChar),
+        (AlertDialog, "char:y", AlertDialogSymbolChar),
+        (AlertDialog, "char:z", AlertDialogSymbolChar),
+        (AlertDialog, "char:-", AlertDialogSymbolChar),
+        (SettingsEdit, "char:a", SettingsEditSymbolChar),
+        (SettingsEdit, "char:b", SettingsEditSymbolChar),
+        (SettingsEdit, "char:c", SettingsEditSymbolChar),
+        (SettingsEdit, "char:d", SettingsEditSymbolChar),
+        (SettingsEdit, "char:e", SettingsEditSymbolChar),
+        (SettingsEdit, "char:f", SettingsEditSymbolChar),
+        (SettingsEdit, "char:g", SettingsEditSymbolChar),
+        (SettingsEdit, "char:h", SettingsEditSymbolChar),
+        (SettingsEdit, "char:i", SettingsEditSymbolChar),
+        (SettingsEdit, "char:j", SettingsEditSymbolChar),
+        (SettingsEdit, "char:k", SettingsEditSymbolChar),
+        (SettingsEdit, "char:l", SettingsEditSymbolChar),
+        (SettingsEdit, "char:m", SettingsEditSymbolChar),
+        (SettingsEdit, "char:n", SettingsEditSymbolChar),
+        (SettingsEdit, "char:o", SettingsEditSymbolChar),
+        (SettingsEdit, "char:p", SettingsEditSymbolChar),
+        (SettingsEdit, "char:q", SettingsEditSymbolChar),
+        (SettingsEdit, "char:r", SettingsEditSymbolChar),
+        (SettingsEdit, "char:s", SettingsEditSymbolChar),
+        (SettingsEdit, "char:t", SettingsEditSymbolChar),
+        (SettingsEdit, "char:u", SettingsEditSymbolChar),
+        (SettingsEdit, "char:v", SettingsEditSymbolChar),
+        (SettingsEdit, "char:w", SettingsEditSymbolChar),
+        (SettingsEdit, "char:x", SettingsEditSymbolChar),
+        (SettingsEdit, "char:y", SettingsEditSymbolChar),
+        (SettingsEdit, "char:z", SettingsEditSymbolChar),
+        (SettingsEdit, "char:.", SettingsEditSymbolChar),
+        (SettingsEdit, "char:-", SettingsEditSymbolChar),
+        (FilterInput, "char:a", FilterQueryChar),
+        (FilterInput, "char:b", FilterQueryChar),
+        (FilterInput, "char:c", FilterQueryChar),
+        (FilterInput, "char:d", FilterQueryChar),
+        (FilterInput, "char:e", FilterQueryChar),
+        (FilterInput, "char:f", FilterQueryChar),
+        (FilterInput, "char:g", FilterQueryChar),
+        (FilterInput, "char:h", FilterQueryChar),
+        (FilterInput, "char:i", FilterQueryChar),
+        (FilterInput, "char:j", FilterQueryChar),
+        (FilterInput, "char:k", FilterQueryChar),
+        (FilterInput, "char:l", FilterQueryChar),
+        (FilterInput, "char:m", FilterQueryChar),
+        (FilterInput, "char:n", FilterQueryChar),
+        (FilterInput, "char:o", FilterQueryChar),
+        (FilterInput, "char:p", FilterQueryChar),
+        (FilterInput, "char:q", FilterQueryChar),
+        (FilterInput, "char:r", FilterQueryChar),
+        (FilterInput, "char:s", FilterQueryChar),
+        (FilterInput, "char:t", FilterQueryChar),
+        (FilterInput, "char:u", FilterQueryChar),
+        (FilterInput, "char:v", FilterQueryChar),
+        (FilterInput, "char:w", FilterQueryChar),
+        (FilterInput, "char:x", FilterQueryChar),
+        (FilterInput, "char:y", FilterQueryChar),
+        (FilterInput, "char:z", FilterQueryChar),
     ]
 };
 
-fn build_default_bindings_extended() -> &'static [(BindingLayer, &'static str, Action)] {
-    use Action::*;
-    use BindingLayer::*;
-    let mut v: Vec<(BindingLayer, &'static str, Action)> = CORE_DEFAULTS.to_vec();
-    v.push((FilterInput, "esc", FilterClear));
-    v.push((FilterInput, "enter", FilterCommit));
-    v.push((FilterInput, "backspace", FilterBackspace));
-    v.push((FilterInput, "slash", FilterSlash));
-    for d in '0'..='9' {
-        let s: &'static str = Box::leak(format!("char:{d}").into_boxed_str());
-        v.push((PortfolioDialog, s, PortfolioDialogDigitOrDot));
-        v.push((AlertDialog, s, AlertDialogDigitOrDot));
-        v.push((SettingsEdit, s, SettingsEditDigit));
-        v.push((FilterInput, s, FilterQueryChar));
-    }
-    let dot: &'static str = Box::leak(Box::from("char:."));
-    v.push((PortfolioDialog, dot, PortfolioDialogDigitOrDot));
-    v.push((AlertDialog, dot, AlertDialogDigitOrDot));
-    {
-        let a: &'static str = Box::leak(Box::from("char:a"));
-        v.push((AlertDialog, a, AlertDialogConditionAbove));
-        let b: &'static str = Box::leak(Box::from("char:b"));
-        v.push((AlertDialog, b, AlertDialogConditionBelow));
-    }
-    for c in 'c'..='z' {
-        let s: &'static str = Box::leak(format!("char:{c}").into_boxed_str());
-        v.push((AlertDialog, s, AlertDialogSymbolChar));
-    }
-    {
-        let dash: &'static str = Box::leak(Box::from("char:-"));
-        v.push((AlertDialog, dash, AlertDialogSymbolChar));
-    }
-    for c in 'a'..='z' {
-        let s: &'static str = Box::leak(format!("char:{c}").into_boxed_str());
-        v.push((SettingsEdit, s, SettingsEditSymbolChar));
-        v.push((FilterInput, s, FilterQueryChar));
-    }
-    for sym in ['.', '-'] {
-        let s: &'static str = Box::leak(format!("char:{sym}").into_boxed_str());
-        v.push((SettingsEdit, s, SettingsEditSymbolChar));
-    }
-    Box::leak(v.into_boxed_slice())
-}
-
 fn default_bindings() -> &'static [(BindingLayer, &'static str, Action)] {
-    static ALL: OnceLock<&'static [(BindingLayer, &'static str, Action)]> = OnceLock::new();
-    ALL.get_or_init(build_default_bindings_extended)
+    DEFAULT_BINDINGS
 }
 
 #[cfg(test)]
@@ -976,5 +1059,24 @@ mod tests {
             km.action(BindingLayer::PortfolioRemoveArmed, &j),
             Some(Action::PortfolioRowDown)
         );
+    }
+
+    #[test]
+    fn default_bindings_total_row_count() {
+        assert_eq!(default_bindings().len(), 220);
+    }
+
+    #[test]
+    fn default_bindings_slice_is_static() {
+        let a = default_bindings();
+        let b = default_bindings();
+        assert_eq!(a.as_ptr(), b.as_ptr());
+    }
+
+    #[test]
+    fn insert_defaults_succeeds_on_static_table() {
+        let mut layers = HashMap::new();
+        insert_defaults(&mut layers).expect("static default table must have no duplicate chords");
+        assert!(!layers.is_empty());
     }
 }
