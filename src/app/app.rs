@@ -1205,6 +1205,9 @@ impl App {
     }
 
     /// Clear search UI and invalidate in-flight responses (Esc).
+    ///
+    /// Issue #60 / SPEC §33 — clears [`Self::active_runtime_error`] only when
+    /// [`ErrorSourceDomain::Search`]; cross-tab errors (e.g. Stock quotes) persist.
     pub fn search_esc_reset(&mut self) {
         self.search_query.clear();
         self.search_results = None;
@@ -2633,6 +2636,81 @@ mod tests {
         assert!(search_result_matches_current(1, 1, "appl", "appl"));
         assert!(!search_result_matches_current(1, 2, "appl", "appl"));
         assert!(!search_result_matches_current(1, 1, "ap", "appl"));
+    }
+
+    #[test]
+    fn search_esc_reset_preserves_stock_runtime_error() {
+        use crate::app::app_error::{
+            ActiveErrorState, AppError, ErrorPersistence, ErrorSourceDomain,
+        };
+        use std::time::Instant;
+
+        let mut app = App::new();
+        app.search_query = "AAPL".into();
+        app.active_runtime_error = Some(ActiveErrorState::new(
+            AppError::Internal("quote failed".into()),
+            ErrorPersistence::Sticky,
+            Instant::now(),
+            ErrorSourceDomain::Stock,
+        ));
+
+        app.search_esc_reset();
+
+        assert!(app.search_query.is_empty());
+        assert!(app.search_results.is_none());
+        assert_eq!(
+            app.error_message().as_deref(),
+            Some("[int] quote failed")
+        );
+    }
+
+    #[test]
+    fn search_esc_reset_clears_search_domain_error() {
+        use crate::app::app_error::{
+            ActiveErrorState, AppError, ErrorPersistence, ErrorSourceDomain,
+        };
+        use std::time::Instant;
+
+        let mut app = App::new();
+        app.search_query = "ZZ".into();
+        app.active_runtime_error = Some(ActiveErrorState::new(
+            AppError::Internal("search failed".into()),
+            ErrorPersistence::Sticky,
+            Instant::now(),
+            ErrorSourceDomain::Search,
+        ));
+
+        app.search_esc_reset();
+
+        assert!(app.search_query.is_empty());
+        assert!(app.error_message().is_none());
+    }
+
+    #[test]
+    fn search_esc_reset_preserves_alerts_save_banner() {
+        use crate::app::alerts::ALERTS_SAVE_ERROR_PREFIX;
+        use crate::app::app_error::{
+            ActiveErrorState, AppError, ErrorPersistence, ErrorSourceDomain,
+        };
+        use std::time::Instant;
+
+        let mut app = App::new();
+        app.search_query = "X".into();
+        app.active_runtime_error = Some(ActiveErrorState::new(
+            AppError::ConfigSave(format!("{ALERTS_SAVE_ERROR_PREFIX} simulated")),
+            ErrorPersistence::Sticky,
+            Instant::now(),
+            ErrorSourceDomain::Alerts,
+        ));
+
+        app.search_esc_reset();
+
+        assert!(app.search_query.is_empty());
+        assert!(app.preserves_alerts_save_banner());
+        assert!(
+            app.error_message()
+                .is_some_and(|m| m.contains(ALERTS_SAVE_ERROR_PREFIX))
+        );
     }
 
     #[test]

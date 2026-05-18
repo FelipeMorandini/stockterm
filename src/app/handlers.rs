@@ -176,6 +176,7 @@ fn handle_search_events(app: &mut App, key: KeyEvent) {
     if let Some(a) = app.resolved_keymap.action(BindingLayer::Search, &key) {
         match a {
             SearchEsc if key.modifiers == KeyModifiers::NONE => {
+                // Issue #60 / SPEC §33 — domain-gated error clear inside `search_esc_reset`.
                 app.search_esc_reset();
             }
             SearchBackspace if key.modifiers == KeyModifiers::NONE => {
