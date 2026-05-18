@@ -10,7 +10,7 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 |-------|------|---------|--------|
 | `portfolio` | array | `[]` | Holdings (symbol, shares, cost). |
 | `watchlist` | array of strings | `[]` | Stock View symbols (uppercase). |
-| `refresh_rate` | number | `0` | Quote poll interval in seconds (app may enforce a minimum). |
+| `refresh_rate` | number | `0` | Quote/charts/news poll interval in seconds (`0` → 30 s effective; minimum 5 s). |
 | `api_key` | string | `""` | Polygon key; optional if `STOCKTERM_API_KEY` is set. |
 | `alerts` | array | `[]` | Price alerts. |
 | `default_symbol` | string | `""` | Startup symbol when `watchlist` is empty (empty → `AAPL`). |

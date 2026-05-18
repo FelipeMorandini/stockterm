@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -8,7 +8,7 @@
 
 **Related issues (dependencies / alignment):**
 
-- [#4](https://github.com/FelipeMorandini/stockterm/issues/4) — `Config.refresh_rate` drives quote refresh cadence (seconds); UI tick stays fast (~200 ms).
+- [#4](https://github.com/FelipeMorandini/stockterm/issues/4) — `Config.refresh_rate` drives network poll cadence (seconds); UI tick stays ~200 ms — **§35** (canonical plan; shipped in-tree with #3 / #12 / #16 / #17).
 - [#17](https://github.com/FelipeMorandini/stockterm/issues/17) — Network I/O must not sit inline between redraws; input stays responsive during slow API.
 - [#18](https://github.com/FelipeMorandini/stockterm/issues/18) — Shared HTTP client, timeouts, 429/backoff, concurrency cap (this SPEC adopts a **minimal** cap for watchlist fan-out; full `ProviderError` work can extend #18).
 - [#19](https://github.com/FelipeMorandini/stockterm/issues/19) — Surface `Config::try_save` failures via `App::error_message()` / `active_runtime_error`; avoid silent persistence loss; session fields in **§22**. [#103](https://github.com/FelipeMorandini/stockterm/issues/103) — Do not drop **`Failed to save alerts:`** when quote errors overwrite runtime error (**§22.2**). [#34](https://github.com/FelipeMorandini/stockterm/issues/34) — document plaintext **`api_key`** + **`STOCKTERM_API_KEY`** (**§22.7.1**). [#35](https://github.com/FelipeMorandini/stockterm/issues/35) — no silent **`try_load`** failures on the **`App::new`** path (**§22.7.2**). [#40](https://github.com/FelipeMorandini/stockterm/issues/40) — optional non-blocking **`try_save`** (**§22.7.3**). [#129](https://github.com/FelipeMorandini/stockterm/issues/129) — debounce / coalesce frequent session JSON writes (**§22.7.4**).
@@ -4872,3 +4872,173 @@ After maintainer approval of §34, implementation may proceed per [`.cursor/rule
 - **Status:** Implemented in-tree (2026-05-18). **PR:** [#148](https://github.com/FelipeMorandini/stockterm/pull/148).
 - **Tracking:** [Issue #90](https://github.com/FelipeMorandini/stockterm/issues/90), [Issue #91](https://github.com/FelipeMorandini/stockterm/issues/91).
 - **Code:** [`src/api/yahoo.rs`](../src/api/yahoo.rs) — **`v7_select_item_for_symbol`**, **`yahoo_latest_quote_orchestrate`** (single-symbol stderr via **`STOCKTERM_DEBUG_YAHOO_QUOTE=1`**; batch uses **`yahoo_latest_quote_at`** without logging); [`README.md`](../README.md) — debug env table.
+
+---
+
+## 35. Issue [#4](https://github.com/FelipeMorandini/stockterm/issues/4) — Configurable data refresh interval (`Config.refresh_rate`)
+
+**Sources:**
+
+- [GitHub Issue #4](https://github.com/FelipeMorandini/stockterm/issues/4) — decouple UI redraw cadence from quote (and related) network refresh; honor **`refresh_rate`** in seconds; skip overlapping fetches; surface in-flight state.
+- [`docs/ROADMAP.md`](ROADMAP.md) §4.1 — “Partial — configurable refresh” (this §35 closes the gap analysis).
+
+**Related:** **§3** / [Issue #3](https://github.com/FelipeMorandini/stockterm/issues/3) (watchlist fan-out + throttle hooks); **§10** / [Issue #12](https://github.com/FelipeMorandini/stockterm/issues/12) (Settings editor for **`refresh_rate`**); **§16** / [#17](https://github.com/FelipeMorandini/stockterm/issues/17) / [#46](https://github.com/FelipeMorandini/stockterm/issues/46) / [#77](https://github.com/FelipeMorandini/stockterm/issues/77) (non-blocking **`tokio::spawn`** + **`stock_refresh_inflight`** / **`stock_refresh_pending`**); **§19** / [Issue #18](https://github.com/FelipeMorandini/stockterm/issues/18) (HTTP robustness — failures must not stop the poll loop); **§20** — **`Ctrl+R`** retry respects throttle unless documented bypass.
+
+**Note:** The GitHub issue body (2026-05-09) states **`refresh_rate` is unused** — that is **stale**. The tree audit below reflects the current codebase (2026-05-18).
+
+### 35.1 Problem (original vs tree)
+
+| Concern | Issue #4 text | Tree (2026-05-18) |
+|---------|---------------|-------------------|
+| **`refresh_rate` wired** | “currently unused” | **Used** via **`App::data_poll_interval()`** and **`last_*_network_poll`** throttles |
+| **UI tick** | Hard-coded 200 ms in **`event.rs`** | **Still 200 ms** — **`spawn_event_thread`** emits **`Event::Tick`** only for redraw/input |
+| **Data refresh timer** | Separate background timer | **Tick-driven throttle** on **`on_background_tick`** (no second OS timer — acceptable; see §35.3) |
+| **Settings exposure** | Depends on #12 | **Shipped** — Settings row **0** edits **`refresh_rate`**, persists **`try_save_config_with_session`** |
+| **In-flight guard** | Skip if previous fetch running | **`stock_refresh_inflight`** + **`hist_refresh_inflight`** + **`news_refresh_inflight`**; quote path also **`stock_refresh_pending`** |
+| **Status indicator** | Surface skip/pile-up | **Shipped** — status line **“Refreshing quotes…”** when **`stock_refresh_inflight`** ([`draw_status_line`](../src/app/ui.rs)); News **“Loading news…”** |
+
+### 35.2 Acceptance criteria (product)
+
+1. **`refresh_rate = 5`** in config → watchlist / active-symbol quotes refresh on a cadence of **≥ 5 s** between successful batch completions (see §35.4 floor).
+2. **`refresh_rate = 60`** → refresh roughly every **60 s** on **Stock View** / **Alerts** while those tabs are active.
+3. **UI redraw** remains **~200 ms** regardless of **`refresh_rate`** (tabs, cursor, status animations).
+4. **Network failure** on one poll does **not** panic and does **not** permanently stop later polls (**`last_stock_network_poll`** still advances on batch completion; errors surface via §20).
+5. **No pile-up:** while a quote batch is in flight, **`try_spawn_stock_poll_throttled`** does not start a second batch; user **`request_immediate_stock_poll`** sets **`stock_refresh_pending`** for one follow-up after completion.
+6. **Settings:** user can change **`refresh_rate`** at runtime (integer **≥ 1**); value persists to **`~/.stockterm.json`**.
+
+### 35.3 Architecture — two clocks
+
+```mermaid
+flowchart LR
+  subgraph ui [UI clock ~200ms]
+    ET[spawn_event_thread]
+    T[Event::Tick]
+    D[terminal.draw]
+    ET --> T --> D
+  end
+  subgraph net [Network clock refresh_rate seconds]
+    OB[on_background_tick]
+    TS[try_spawn_*_throttled]
+    SP[tokio::spawn HTTP]
+    FD[FetchDone channel]
+    OB --> TS --> SP --> FD
+  end
+  T --> OB
+  FD --> APPLY[apply_fetch_done]
+  APPLY --> D
+```
+
+- **UI clock:** [`src/app/event.rs`](../src/app/event.rs) — **`tick_rate = Duration::from_millis(200)`**; blocking **`event::poll`** with timeout; emits **`Event::Tick`** when elapsed. **No HTTP** in this thread.
+- **Network clock:** Not a separate **`tokio::time::interval`** task. On each **`Event::Tick`**, [`App::on_background_tick`](../src/app/app.rs) checks whether **`last_<domain>_network_poll.elapsed() >= data_poll_interval()`** before spawning work. This is **intentional** (single loop, §16 pattern): effective period is **`refresh_rate`** plus up to **one tick** (~200 ms) jitter.
+- **Tab gating:** Quote throttle runs on **`Tab::StockView | Tab::Alerts`**; historical on **`Tab::Charts`**; news on **`Tab::News`**; search uses its own debounce (**§10**), not **`refresh_rate`**.
+
+### 35.4 `data_poll_interval()` contract
+
+**Location:** private **`App::data_poll_interval`** in [`src/app/app.rs`](../src/app/app.rs).
+
+| `config.refresh_rate` | Effective interval |
+|-----------------------|--------------------|
+| **`0`** (JSON default / unset) | **30 s** |
+| **`1`…`4`** | **5 s** (floor — protects APIs / Polygon free tier) |
+| **`n ≥ 5`** | **`n` s** |
+
+```rust
+fn data_poll_interval(&self) -> Duration {
+    let secs = match self.config.refresh_rate {
+        0 => 30,
+        s => s,
+    };
+    Duration::from_secs(secs.max(5))
+}
+```
+
+**Documentation deltas vs Issue #4 GitHub text:**
+
+- Default when absent: issue suggests **15 s**; product uses **`0` → 30 s** (document in README + Settings row helper text — §35.5.3).
+- Minimum: issue examples use **5 s**; code enforces **`max(5)`** even when Settings allows typing **`1`…`4`** (§10.4 inline note — optional polish).
+
+### 35.5 Tree audit — modules & fields
+
+| Piece | Location | Role |
+|-------|----------|------|
+| Config field | [`src/config/config.rs`](../src/config/config.rs) **`refresh_rate: u64`** | Persisted seconds; serde default **0** |
+| Poll interval | [`src/app/app.rs`](../src/app/app.rs) **`data_poll_interval`** | Maps config → **`Duration`** |
+| Quote throttle | **`try_spawn_stock_poll_throttled`**, **`last_stock_network_poll`** | Stock/Alerts tab ticks |
+| Quote spawn | **`spawn_stock_fetch_task`**, **`run_stock_quote_batch`** | **`tokio::spawn`** + generation |
+| In-flight | **`stock_refresh_inflight`**, **`stock_fetch_generation`** | Single-flight + stale drop (§16.2.1) |
+| Pending coalesce | **`stock_refresh_pending`**, **`request_immediate_stock_poll`** | User Enter / portfolio jump |
+| Charts throttle | **`try_spawn_historical_fetch`**, **`last_charts_network_poll`**, **`hist_refresh_inflight`** | Same **`data_poll_interval`** |
+| News throttle | **`try_spawn_news_fetch`**, **`last_news_network_poll`**, **`news_refresh_inflight`** | Same interval |
+| Status UI | [`src/app/ui.rs`](../src/app/ui.rs) **`draw_status_line`** | **“Refreshing quotes…”** / **“Loading news…”** |
+| Settings | **`settings_commit_edit`** **`SettingsEdit::RefreshRate`** | Parse **≥ 1**, **`try_save_config_with_session`** |
+| README | [`README.md`](../README.md) config table | **`refresh_rate`** row exists |
+
+### 35.6 Implementation plan (build slice)
+
+**Status:** Core behavior **already shipped** with Issues #3, #12, #16, and #17. The build phase is **verification closure** plus optional polish — **no** second background timer or new crate.
+
+#### 35.6.1 Required for Issue #4 close
+
+1. **Unit tests** (`src/app/app.rs` **`#[cfg(test)]`** or small pure helper in `app`):
+   - **`data_poll_interval_zero_means_thirty_seconds`**
+   - **`data_poll_interval_enforces_five_second_floor`**
+   - **`data_poll_interval_honors_configured_value`**
+   Extract **`data_poll_interval_secs(refresh_rate: u64) -> u64`** if needed to avoid constructing full **`App`** in tests.
+
+2. **Manual QA** — dedicated [**Issue #4**](../QA_PLAN.md) section (promoted from Issue #3 “Refresh cadence” subsection).
+
+3. **ROADMAP** — mark §4.1 configurable refresh **Implemented** after sign-off.
+
+#### 35.6.2 Recommended polish (same PR or follow-up)
+
+| Item | Rationale | Sketch |
+|------|-----------|--------|
+| **Reset poll clocks on Settings commit** | Changing **`refresh_rate`** mid-session should not wait for the **previous** interval to elapse | On successful **`SettingsEdit::RefreshRate`** commit: **`last_stock_network_poll = None`**, **`last_charts_network_poll = None`**, **`last_news_network_poll = None`** (next tick may spawn immediately if inflight false) |
+| **Settings effective-interval hint** | §10.4 documents floor; UI does not show it yet | When row **0** focused or editing, append muted **“(effective ≥ 5s; 0 → 30s default)”** in [`draw_settings`](../src/app/ui.rs) |
+| **README default note** | Align operator docs with §35.4 | Extend **`refresh_rate`** row: **`0` = 30 s effective** |
+
+#### 35.6.3 Explicit non-goals
+
+- Separate **`refresh_rate`** per domain (quotes vs charts vs news) — single interval is acceptable for MVP.
+- Sub-second **`refresh_rate`** or wall-clock **`tokio::interval`** task — tick-coalesced throttle is the shipped design.
+- Charts tab status **“Loading chart…”** for **`hist_refresh_inflight`** — optional UX; not required to close #4 (quotes status is the issue’s primary indicator).
+
+### 35.7 Failure & recovery (must hold)
+
+- **`apply_stock_fetch_done`**: always clears **`stock_refresh_inflight`** for matching **`generation`**; sets **`last_stock_network_poll`** even when **`errors`** non-empty.
+- **Panic in batch task:** **`catch_unwind`** → empty/partial **`FetchDone`**; **`InflightRecovery::Stock`** if channel closed (§16).
+- **Provider errors:** surface on status line; **next** throttle window still schedules via **`on_background_tick`** (no “stuck stopped” state).
+
+### 35.8 Automated verification
+
+```bash
+cargo build --release
+cargo clippy -- -D warnings
+cargo test data_poll_interval
+```
+
+Full suite before merge:
+
+```bash
+cargo test
+```
+
+### 35.9 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #4** section. Re-run **Issue #3** sign-off row **`refresh_rate` honored** as regression when touching throttle code.
+
+### 35.10 Out of scope
+
+- WebSocket / streaming quotes.
+- Provider-specific rate-limit dashboards.
+- Changing **`SEARCH_DEBOUNCE`** or search inflight rules under #4.
+
+### 35.11 Approval
+
+After maintainer approval of §35, the **engineer** may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc): add §35.6.1 tests, optional §35.6.2 polish, run QA, then close [Issue #4](https://github.com/FelipeMorandini/stockterm/issues/4).
+
+### 35.12 Shipment record
+
+- **Status:** Shipped (2026-05-18) — §35.6.1 unit tests, §35.6.2 polish (poll-clock reset on Settings commit, Settings hint, README). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** (sign-off **2026-05-18**).
+- **Tracking:** [Issue #4](https://github.com/FelipeMorandini/stockterm/issues/4). **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149).
+- **Code (primary):** [`src/app/event.rs`](../src/app/event.rs), [`src/app/app.rs`](../src/app/app.rs) (`data_poll_interval`, `on_background_tick`, inflight flags), [`src/app/ui.rs`](../src/app/ui.rs) (status line), [`src/config/config.rs`](../src/config/config.rs), Settings commit in **`app.rs`**.

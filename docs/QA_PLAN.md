@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **[Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60)** covers Search **Esc** not clearing runtime errors from other tabs (see [`docs/SPEC.md`](SPEC.md) §33). **[Issue #89](https://github.com/FelipeMorandini/stockterm/issues/89)** covers automated **`wiremock`** proof that Yahoo **`yahoo_latest_quote`** falls back from **`v7/finance/quote`** to **`v8/finance/chart`** (see [`docs/SPEC.md`](SPEC.md) §32). **[Issues #90](https://github.com/FelipeMorandini/stockterm/issues/90) and [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** cover optional v7→v8 stderr diagnostics and v7 multi-row **symbol** matching (see [`docs/SPEC.md`](SPEC.md) §34). **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issue #15** covers **layout / widget visibility** (`Config.layout`, shell chrome, Stock View + Charts pane splits — see [`docs/SPEC.md`](SPEC.md) §31). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7). **[Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16)** covers substring filter on **Portfolio** holdings and **Stock View** watchlist (`/`, **Esc** clears, **Enter** commits, **Tab** unchanged — see [`docs/SPEC.md`](SPEC.md) §23). **Issues [#58](https://github.com/FelipeMorandini/stockterm/issues/58), [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** cover News clipboard copy and non-blocking **`http`/`https`** URL open (see [`docs/SPEC.md`](SPEC.md) §27). **[Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137)** covers remappable filter-input mode (`BindingLayer::FilterInput` — see [`docs/SPEC.md`](SPEC.md) §28). **[Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139)** covers explicit alert add-dialog symbol + condition keymap actions (see [`docs/SPEC.md`](SPEC.md) §29). **[Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138)** covers compile-time default keymap chord table refactor — no user-visible behavior change (see [`docs/SPEC.md`](SPEC.md) §30; manual sign-off **2026-05-17**).
+Use the sections below per milestone. **[Issue #4](https://github.com/FelipeMorandini/stockterm/issues/4)** covers **`Config.refresh_rate`** vs the ~200 ms UI tick, in-flight quote guards, and Settings persistence (see [`docs/SPEC.md`](SPEC.md) §35; sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60)** covers Search **Esc** not clearing runtime errors from other tabs (see [`docs/SPEC.md`](SPEC.md) §33). **[Issue #89](https://github.com/FelipeMorandini/stockterm/issues/89)** covers automated **`wiremock`** proof that Yahoo **`yahoo_latest_quote`** falls back from **`v7/finance/quote`** to **`v8/finance/chart`** (see [`docs/SPEC.md`](SPEC.md) §32). **[Issues #90](https://github.com/FelipeMorandini/stockterm/issues/90) and [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** cover optional v7→v8 stderr diagnostics and v7 multi-row **symbol** matching (see [`docs/SPEC.md`](SPEC.md) §34). **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issue #15** covers **layout / widget visibility** (`Config.layout`, shell chrome, Stock View + Charts pane splits — see [`docs/SPEC.md`](SPEC.md) §31). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7). **[Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16)** covers substring filter on **Portfolio** holdings and **Stock View** watchlist (`/`, **Esc** clears, **Enter** commits, **Tab** unchanged — see [`docs/SPEC.md`](SPEC.md) §23). **Issues [#58](https://github.com/FelipeMorandini/stockterm/issues/58), [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** cover News clipboard copy and non-blocking **`http`/`https`** URL open (see [`docs/SPEC.md`](SPEC.md) §27). **[Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137)** covers remappable filter-input mode (`BindingLayer::FilterInput` — see [`docs/SPEC.md`](SPEC.md) §28). **[Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139)** covers explicit alert add-dialog symbol + condition keymap actions (see [`docs/SPEC.md`](SPEC.md) §29). **[Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138)** covers compile-time default keymap chord table refactor — no user-visible behavior change (see [`docs/SPEC.md`](SPEC.md) §30; manual sign-off **2026-05-17**).
 
 ## Issues #19, #103 — Config persistence & alerts-save / quote error coordination
 
@@ -1747,6 +1747,8 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 
 ## Manual — Refresh cadence (#4)
 
+**Canonical sign-off:** use the dedicated [**Issue #4**](#issue-4--configurable-data-refresh-interval-refresh_rate) section below. Steps here remain a quick regression subset for Issue #3 runs.
+
 1. Set `refresh_rate` in `~/.stockterm.json` to **5** (seconds). Restart app.
 
 2. Observe quote **Last** / **Change** (or network activity) over ~15–20 s on Stock View.  
@@ -2686,3 +2688,102 @@ No live-Yahoo manual step is required — behavior is parser-level. Optional: if
 | §53 batch row-index regression | maintainer | 2026-05-18 | Pass |
 | README lists `STOCKTERM_DEBUG_YAHOO_QUOTE` | maintainer | 2026-05-18 | Pass |
 | Optional: stderr smoke with `=1` | maintainer | 2026-05-18 | Pass |
+
+---
+
+## Issue #4 — Configurable data refresh interval (`refresh_rate`)
+
+**Scope:** [GitHub Issue #4](https://github.com/FelipeMorandini/stockterm/issues/4) — **`Config.refresh_rate`** (seconds) controls how often background network polls run for quotes (Stock View / Alerts), historical (Charts), and news (News). The UI redraw tick stays **~200 ms** via [`spawn_event_thread`](../src/app/event.rs). Overlapping quote batches must not pile up; in-flight work surfaces on the status line.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §35.
+
+**Prerequisite:** Core throttle is already in-tree (shipped with Issues #3, #12, #16, #17). This section is the **canonical** sign-off for Issue #4 (supersedes the informal “Manual — Refresh cadence (#4)” bullets under **Issue #3**).
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test data_poll_interval
+   ```
+
+   **Pass:** All exit 0. After §35.6.1 lands, **`data_poll_interval_*`** unit tests must be green.
+
+2. Optional — full regression:
+
+   ```bash
+   cargo test
+   ```
+
+   **Pass:** Exit 0.
+
+### Manual — JSON `refresh_rate` (5 s)
+
+**Prep:** Edit **`~/.stockterm.json`**: set **`refresh_rate`** to **`5`**, ensure **`watchlist`** has at least one symbol (e.g. **AAPL**). Restart **`cargo run --release`**.
+
+1. Open **Stock View**. Note the **Last** price (or **Change**) for a watchlist row.
+2. Wait **~15–20 s** without pressing keys that force an immediate poll (**Enter** on symbol, portfolio jump, etc.).
+   **Pass:** Values update on a cadence of roughly **every ≥ 5 s** (not on every screen flicker / 200 ms tick). Updates may lag by up to **~200 ms** plus network time (tick-coalesced throttle per §35.3).
+3. While quotes are fetching, glance at the bottom status line.
+   **Pass:** **“Refreshing quotes…”** appears during **`stock_refresh_inflight`**; returns to normal hints when done.
+
+### Manual — JSON `refresh_rate` (60 s)
+
+1. Set **`refresh_rate`** to **`60`** in JSON. Restart the app. Stay on **Stock View** with a populated watchlist.
+2. Observe over **~90 s**.
+   **Pass:** No more than **~2** full watchlist refresh cycles in that window (allow network + jitter); UI remains responsive (**j**/**k**, **Tab**, typing still work).
+
+### Manual — UI tick vs data refresh
+
+1. With **`refresh_rate`** at **60**, press **Tab** rapidly and move the watchlist selection.
+   **Pass:** Highlight and layout redraw smoothly (~5 Hz feel); quote **Last** does **not** change every 200 ms.
+
+### Manual — In-flight / no pile-up
+
+**Prep:** Use a slow network (VPN throttle, **`wiremock`** dev build, or very large watchlist on a slow link) so a quote batch takes **> 5 s**.
+
+1. With **`refresh_rate`** at **5**, stay on **Stock View** through at least two throttle windows while the first batch is still running.
+   **Pass:** Status shows **“Refreshing quotes…”**; you do **not** see multiple overlapping “refresh storms” (no unbounded parallel fan-out). After the batch completes, a later tick may start the next poll.
+2. During a slow refresh, press **Enter** on the active symbol (immediate poll request).
+   **Pass:** App remains responsive; when the in-flight batch finishes, **one** follow-up poll may run (**`stock_refresh_pending`** — §35.5).
+
+### Manual — Network failure does not stop polling
+
+1. Provoke a quote failure (invalid symbol, offline, or Polygon without API key when provider is **polygon**).
+   **Pass:** Error appears on the status line (§20); app does **not** exit. After restoring network / fixing config, wait through **`refresh_rate`** interval.
+   **Pass:** Subsequent polls still run (prices may update again).
+
+### Manual — Settings tab (runtime edit)
+
+1. Open **Settings**. Row **0** — **Refresh (seconds)**. Press **Enter**, type **`10`**, commit.
+   **Pass:** **`~/.stockterm.json`** contains **`"refresh_rate":10`** after save; no panic.
+2. Return to **Stock View** and observe over **~25 s**.
+   **Pass:** Refresh cadence reflects **~10 s** (not the previous JSON value); after commit, poll clocks reset so the new interval can apply on the next tick (§35.6.2).
+
+3. Try committing **`3`** in Settings.
+   **Pass:** Save succeeds (integer **≥ 1**); effective poll interval is still **≥ 5 s** (floor per §35.4).
+
+### Manual — Default `refresh_rate: 0`
+
+1. Set **`refresh_rate`** to **`0`** in JSON (or omit field on a fresh config). Restart.
+   **Pass:** Quotes still refresh on a **~30 s** cadence on Stock View (not disabled, not 200 ms).
+
+### Regression — Issue #3 (spot)
+
+1. Re-run **Issue #3** sign-off row **`refresh_rate` honored (≥ min)`** if throttle code changed in the same PR.
+
+### Sign-off — Issue #4
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo test data_poll_interval` | maintainer | 2026-05-18 | Pass |
+| JSON `refresh_rate` 5 s cadence | maintainer | 2026-05-18 | Pass |
+| JSON `refresh_rate` 60 s cadence | maintainer | 2026-05-18 | Pass |
+| UI tick independent of refresh | maintainer | 2026-05-18 | Pass |
+| In-flight status + no pile-up | maintainer | 2026-05-18 | Pass |
+| Failure → later polls resume | maintainer | 2026-05-18 | Pass |
+| Settings edit + persist | maintainer | 2026-05-18 | Pass |
+| Default `0` → ~30 s effective | maintainer | 2026-05-18 | Pass |
+| Issue #3 regression (if touched) | maintainer | 2026-05-18 | Pass |
