@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); manual QA pending). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — **sign-off pending**). **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — **sign-off pending**). **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — **sign-off pending**). **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off pending). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -808,7 +808,7 @@ After maintainer approval of §10, implementation may proceed per `.cursor/rules
 - **Tracking:** [Issue #29](https://github.com/FelipeMorandini/stockterm/issues/29), [#5](https://github.com/FelipeMorandini/stockterm/issues/5), [#11](https://github.com/FelipeMorandini/stockterm/issues/11), [#12](https://github.com/FelipeMorandini/stockterm/issues/12).
 - **PR:** https://github.com/FelipeMorandini/stockterm/pull/61
 - **Code:** `src/app/{app,handlers,ui,open_url}.rs`; `FetchDone::Search`; Settings via `Config::try_save`; Yahoo `get_news` uses `query1` search + RSS before `query2` (`src/api/yahoo.rs`).
-- **Follow-up issues:** [#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59) — **shipped §27** (see §27.9); [#60](https://github.com/FelipeMorandini/stockterm/issues/60) (Search Esc vs global error).
+- **Follow-up issues:** [#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59) — **shipped §27** (see §27.9); [#60](https://github.com/FelipeMorandini/stockterm/issues/60) — Search **Esc** vs global error — **§33**.
 
 ---
 
@@ -3582,7 +3582,7 @@ After maintainer approval of §26, implementation may proceed per [`.cursor/rule
 - Rust clipboard crates (**`arboard`**, etc.) — shell helpers only per Issue #58.
 - Queued URL-op backlog, progress UI, or cancel-in-flight.
 - Remappable per-URL chooser dialog.
-- [Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60) — Search **Esc** vs global error (unchanged).
+- [Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60) — Search **Esc** vs global error — **shipped §33** (see §33.10).
 
 ---
 
@@ -4537,3 +4537,129 @@ After maintainer approval of §32, implementation may proceed per [`.cursor/rule
 - **Status:** Implemented in-tree (2026-05-17). **PR:** [#146](https://github.com/FelipeMorandini/stockterm/pull/146). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** (sign-off pending).
 - **Tracking:** [Issue #89](https://github.com/FelipeMorandini/stockterm/issues/89).
 - **Code:** [`src/api/yahoo.rs`](../src/api/yahoo.rs) — `v7_quote_url` / `v8_chart_latest_url`, `yahoo_quote_v7_at` / `yahoo_quote_at` / `yahoo_latest_quote_at`; `wiremock_quote_fallback_tests` (malformed JSON, empty v7, API error envelope → v8 chart fixture).
+
+---
+
+## 33. Issue [#60](https://github.com/FelipeMorandini/stockterm/issues/60) — Search Esc must not clear cross-tab runtime errors
+
+**Sources:**
+
+- [GitHub Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60) — deferred from post-M3 audit / [`docs/SCRATCHPAD.md`](SCRATCHPAD.md).
+- **§10** / M3 Search tab — **`SearchEsc`** → [`App::search_esc_reset`](../src/app/app.rs).
+- **§20** / [Issue #20](https://github.com/FelipeMorandini/stockterm/issues/20) — **`ActiveErrorState`** + **`ErrorSourceDomain`** for domain-aware success/clear paths.
+
+**Related:** [Issue #103](https://github.com/FelipeMorandini/stockterm/issues/103) / **§22.2** — alerts-save banner must survive unrelated fetch errors (orthogonal; **`preserves_alerts_save_banner`** is separate from Search Esc). Portfolio watchlist save clears only **`ErrorSourceDomain::Portfolio`** (§22.2 audit note).
+
+### 33.1 Problem (verified)
+
+Historically, **`search_esc_reset`** cleared the global status error whenever the operator pressed **Esc** on the Search tab. **`App::error_message()`** is a single **`active_runtime_error`** slot shared across tabs (§20). A quote/API failure surfaced on **Stock View** (`ErrorSourceDomain::Stock`) could disappear when the user cleared the Search query with **Esc** — confusing cross-tab UX.
+
+### 33.2 Product acceptance
+
+1. **Esc on Search** still clears the query buffer, results table, debounce timer, and invalidates in-flight search responses (**unchanged** M3 behavior).
+2. **Esc on Search** clears the status-line runtime error **only** when the active error’s **`source_domain == ErrorSourceDomain::Search`** (e.g. failed typeahead / missing Polygon key while on Search).
+3. **Esc on Search** does **not** clear runtime errors from **Stock**, **Charts**, **News**, **Portfolio**, **Alerts**, **Settings**, or **`NewsOpenUrl`** domains.
+4. When a **Search**-domain error is active, **Esc** clears it (operator dismisses the search failure together with the query).
+5. **Error log** (`Ctrl+E` overlay) is **unchanged** — Esc does not prune historical log lines; only the **active** status slot is domain-gated.
+
+### 33.3 Design decision (reject per-tab error slots)
+
+Issue #60 listed alternatives: per-tab error slots, “only clear Search-originated errors”, or skip clearing when unrelated.
+
+**Chosen (v1):** Reuse existing **`ErrorSourceDomain`** on **`ActiveErrorState`** — same pattern as successful **`FetchDone::Search`** (clears only Search domain), Settings edit cancel, Portfolio watchlist mutations, and News URL ops. **No** new `HashMap<Tab, AppError>` or second status line.
+
+**Rejected for v1:**
+
+| Alternative | Why not |
+|-------------|---------|
+| Per-tab error map | Duplicates §20 single status line; larger migration; no product ask beyond Search Esc |
+| Never clear on Search Esc | Leaves stale Search errors after query cleared |
+| Heuristic match on error text | Fragile vs **`[net]`** / merged §22.2 strings |
+
+### 33.4 Tree audit (2026-05-18)
+
+| Area | Location | State |
+|------|----------|--------|
+| Search Esc handler | [`handle_search_events`](../src/app/handlers.rs) → **`SearchEsc`** | Calls **`search_esc_reset()`** |
+| Domain-gated clear | [`App::search_esc_reset`](../src/app/app.rs) | Clears **`active_runtime_error`** only when **`source_domain == ErrorSourceDomain::Search`** |
+| Search success clear | [`apply_fetch_done`](../src/app/app.rs) **`FetchDone::Search`** | Same domain check + **`clear_active_runtime_unless_alerts_save()`** |
+| Stock quote errors | **`surface_runtime_error(..., ErrorSourceDomain::Stock, ...)`** | Must survive Search Esc |
+| Unit tests | [`app.rs`](../src/app/app.rs) **`#[cfg(test)]`** | **`search_esc_reset_preserves_stock_runtime_error`**, **`search_esc_reset_clears_search_domain_error`**, **`search_esc_reset_preserves_alerts_save_banner`** — shipped 2026-05-18 |
+
+### 33.5 Implementation plan (Rust)
+
+**Files:** [`src/app/app.rs`](../src/app/app.rs) (primary), optional one-line comment in [`src/app/handlers.rs`](../src/app/handlers.rs) beside **`SearchEsc`** if helpful — **no** keymap / UI copy change required.
+
+#### 33.5.1 `search_esc_reset` contract (document + keep)
+
+```rust
+pub fn search_esc_reset(&mut self) {
+    self.search_query.clear();
+    self.search_results = None;
+    self.search_table_state.select(None);
+    self.search_debounce_deadline = None;
+    self.search_request_generation = self.search_request_generation.wrapping_add(1);
+    if self
+        .active_runtime_error
+        .as_ref()
+        .is_some_and(|a| a.source_domain == ErrorSourceDomain::Search)
+    {
+        self.active_runtime_error = None;
+    }
+}
+```
+
+**Do not** call **`clear_active_runtime_unless_alerts_save()`** here — Search Esc is an explicit user dismiss; alerts-save sticky errors use **`ErrorSourceDomain::Alerts`**, not Search, so they are already preserved.
+
+#### 33.5.2 Unit tests (`app.rs` `#[cfg(test)]`) — shipped
+
+**`search_esc_reset_preserves_stock_runtime_error`**:
+
+1. Construct **`App`** via existing test helpers (minimal config).
+2. Seed **`active_runtime_error`** with **`AppError::Provider(...)`** or **`Internal("quote failed")`**, **`ErrorSourceDomain::Stock`**, **`ErrorPersistence::Sticky`**.
+3. Set **`search_query`** to non-empty, optional dummy **`search_results`**.
+4. Call **`search_esc_reset()`**.
+5. **Assert:** **`search_query`** empty, **`search_results`** **`None`**, **`error_message()`** still **`Some`** and unchanged substance.
+
+**`search_esc_reset_clears_search_domain_error`**:
+
+1. Seed **`active_runtime_error`** with **`ErrorSourceDomain::Search`**.
+2. Call **`search_esc_reset()`**.
+3. **Assert:** **`error_message()`** is **`None`**.
+
+Optional: **`search_esc_reset_preserves_alerts_save_banner`** — seed **`ErrorSourceDomain::Alerts`** with **`ALERTS_SAVE_ERROR_PREFIX`** line; Esc → banner predicate still true.
+
+#### 33.5.3 Regression guard
+
+- Grep / review: **`search_esc_reset`** must remain the **only** Search Esc clear path; no unconditional **`active_runtime_error = None`** in that function.
+- **M3 QA** “Search: Esc clears query” still passes; add §33 manual case for cross-tab error persistence.
+
+### 33.6 Automated verification
+
+```bash
+cargo build --release
+cargo clippy -- -D warnings
+cargo test search_esc_reset
+```
+
+### 33.7 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #60** section.
+
+### 33.8 Out of scope
+
+- Changing **`ErrorSourceDomain`** enum or adding per-tab status bars.
+- Remapping **`SearchEsc`** (§24 / §26).
+- Clearing **`error_log`** ring buffer on Search Esc.
+- **`Ctrl+R`** retry semantics (§20).
+- Auto-clear TTL behavior for transient Stock errors (§20 tick).
+
+### 33.9 Approval
+
+After maintainer approval of §33, implementation may proceed per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60**.
+
+### 33.10 Shipment record
+
+- **Status:** Implemented in-tree (2026-05-18). **PR:** [#147](https://github.com/FelipeMorandini/stockterm/pull/147). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** (sign-off **2026-05-18**).
+- **Tracking:** [Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60).
+- **Code:** [`src/app/app.rs`](../src/app/app.rs) — **`search_esc_reset`** (domain-gated clear) + **`search_esc_reset_*`** unit tests; [`src/app/handlers.rs`](../src/app/handlers.rs) — **`SearchEsc`**.
