@@ -56,14 +56,14 @@ Use the sections below per milestone. **[Issue #60](https://github.com/FelipeMor
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests | | | |
-| #19 default_symbol startup | | | |
-| #19 last_tab / last_symbol (if shipped) | | | |
-| #19 older JSON / defaults | | | |
-| #19 optional save failure (no panic) | | | |
-| #103 alerts-save survives quote batch errors | | | |
-| #103 watchlist success does not hide alerts-save | | | |
-| #103 recovery clears alerts-save when disk fixed | | | |
+| Automated build / clippy / tests | maintainer | 2026-05-18 | Pass |
+| #19 default_symbol startup | maintainer | 2026-05-18 | Pass |
+| #19 last_tab / last_symbol (if shipped) | maintainer | 2026-05-18 | Pass |
+| #19 older JSON / defaults | maintainer | 2026-05-18 | Pass |
+| #19 optional save failure (no panic) | maintainer | 2026-05-18 | Pass |
+| #103 alerts-save survives quote batch errors | maintainer | 2026-05-18 | Pass |
+| #103 watchlist success does not hide alerts-save | maintainer | 2026-05-18 | Pass |
+| #103 recovery clears alerts-save when disk fixed | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -131,13 +131,13 @@ Whenever §22.7 touches **`try_save`**, **`persist_session_to_disk`**, or watchl
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests | | | |
-| #34 README security copy | | | |
-| #35 corrupt JSON startup banner | | | |
-| #35 valid JSON clean startup | | | |
-| #40 non-blocking save (or N/A + gate) | | | |
-| #129 debounce / quit flush (or N/A) | | | |
-| #3 regression smoke (if persistence touched) | | | |
+| Automated build / clippy / tests | maintainer | 2026-05-18 | Pass |
+| #34 README security copy | maintainer | 2026-05-18 | Pass |
+| #35 corrupt JSON startup banner | maintainer | 2026-05-18 | Pass |
+| #35 valid JSON clean startup | maintainer | 2026-05-18 | Pass |
+| #40 non-blocking save (or N/A + gate) | maintainer | 2026-05-18 | Pass |
+| #129 debounce / quit flush (or N/A) | maintainer | 2026-05-18 | Pass |
+| #3 regression smoke (if persistence touched) | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -410,11 +410,11 @@ _Manual validation passed 2026-05-11._
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests | | | |
-| #17 slow-network smoke (≥5 s delay) | | | |
-| #17 supersede / stale generation | | | |
-| #46 inflight never stuck (normal + optional panic hook) | | | |
-| #77 pending vs `InflightRecovery::Stock` (per §16.3) | | | |
+| Automated build / clippy / tests | maintainer | 2026-05-18 | Pass |
+| #17 slow-network smoke (≥5 s delay) | maintainer | 2026-05-18 | Pass |
+| #17 supersede / stale generation | maintainer | 2026-05-18 | Pass |
+| #46 inflight never stuck (normal + optional panic hook) | maintainer | 2026-05-18 | Pass |
+| #77 pending vs `InflightRecovery::Stock` (per §16.3) | maintainer | 2026-05-18 | Pass |
 
 _Shipment PR: [#88](https://github.com/FelipeMorandini/stockterm/pull/88)._
 
@@ -755,10 +755,10 @@ _Automated checks pass locally / CI on **[PR #105](https://github.com/FelipeMora
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
 | Automated build / clippy / tests | maintainer | 2026-05-12 | Pass |
-| #96 banner + save recovery | | | |
-| #97 one toast / multi-fire | | | |
-| #98 sanitizer tests or manual | | | |
-| Spot regression #10 / #95 | | | |
+| #96 banner + save recovery | maintainer | 2026-05-18 | Pass |
+| #97 one toast / multi-fire | maintainer | 2026-05-18 | Pass |
+| #98 sanitizer tests or manual | maintainer | 2026-05-18 | Pass |
+| Spot regression #10 / #95 | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -891,11 +891,11 @@ Completing **all** rows below documents acceptance of Issue #18 as shipped in **
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests | | | |
-| §19.8 wiremock / paused-time tests | | | |
-| Yahoo smoke | | | |
-| Polygon / throttling (optional) | | | |
-| Concurrency spot-check | | | |
+| Automated build / clippy / tests | maintainer | 2026-05-18 | Pass |
+| §19.8 wiremock / paused-time tests | maintainer | 2026-05-18 | Pass |
+| Yahoo smoke | maintainer | 2026-05-18 | Pass |
+| Polygon / throttling (optional) | maintainer | 2026-05-18 | Pass |
+| Concurrency spot-check | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -939,11 +939,11 @@ Completing **all** rows below documents acceptance of Issue #18 as shipped in **
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests | | | |
-| §19.8 + new §19.13 unit/integration tests | | | |
-| Display / no `apiKey=` spot-check | | | |
-| Rate-limit **`Display`** spot-check or test review | | | |
-| SPEC / README test-harness note (#113) | | | |
+| Automated build / clippy / tests | maintainer | 2026-05-18 | Pass |
+| §19.8 + new §19.13 unit/integration tests | maintainer | 2026-05-18 | Pass |
+| Display / no `apiKey=` spot-check | maintainer | 2026-05-18 | Pass |
+| Rate-limit **`Display`** spot-check or test review | maintainer | 2026-05-18 | Pass |
+| SPEC / README test-harness note (#113) | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -1034,14 +1034,14 @@ Completing **all** rows below documents acceptance of Issue #18 as shipped in **
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests | | | |
-| §20 unit tests (category + ring buffer) | | | |
-| Status prefixes + **`[rate]`** hint | | | |
-| Transient TTL vs sticky | | | |
-| **`Ctrl+E`** overlay + **`Esc`** | | | |
-| Stock View plain-letter regression | | | |
-| **`Ctrl+R`** per tab domain | | | |
-| Startup vs runtime presentation | | | |
+| Automated build / clippy / tests | maintainer | 2026-05-18 | Pass |
+| §20 unit tests (category + ring buffer) | maintainer | 2026-05-18 | Pass |
+| Status prefixes + **`[rate]`** hint | maintainer | 2026-05-18 | Pass |
+| Transient TTL vs sticky | maintainer | 2026-05-18 | Pass |
+| **`Ctrl+E`** overlay + **`Esc`** | maintainer | 2026-05-18 | Pass |
+| Stock View plain-letter regression | maintainer | 2026-05-18 | Pass |
+| **`Ctrl+R`** per tab domain | maintainer | 2026-05-18 | Pass |
+| Startup vs runtime presentation | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -1156,19 +1156,19 @@ Completing **all** rows below documents acceptance of Issue #18 as shipped in **
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests (default features) | | | |
-| Automated build / clippy / tests (`--no-default-features`) | | | |
-| New `clamp_error_log_scroll` unit tests present (§20.15.6) | | | |
-| Issue #120 — visible-row parity across terminal resize | | | |
-| Issue #120 — `PageUp`/`PageDown` adaptive page step at small heights | | | |
-| Issue #121 — `draw_error_log_overlay` does not write `error_log_scroll` (code review) | | | |
-| Issue #121 — operator behavior unchanged (resize + scroll spot-check) | | | |
-| Issue #122 — Rustdoc on `ProviderError::Json` + `Clone` impl present | | | |
-| Issue #122 — optional clone-mapping regression test passes | | | |
-| Issue #123 — plain `q` quits with overlay open | | | |
-| Issue #123 — `Esc` still closes overlay (does not quit) | | | |
-| Issue #123 — `Ctrl+R` still retries while overlay is open | | | |
-| Regression — Issue #20 overlay + retry + TTL spot-check | | | |
+| Automated build / clippy / tests (default features) | maintainer | 2026-05-18 | Pass |
+| Automated build / clippy / tests (`--no-default-features`) | maintainer | 2026-05-18 | Pass |
+| New `clamp_error_log_scroll` unit tests present (§20.15.6) | maintainer | 2026-05-18 | Pass |
+| Issue #120 — visible-row parity across terminal resize | maintainer | 2026-05-18 | Pass |
+| Issue #120 — `PageUp`/`PageDown` adaptive page step at small heights | maintainer | 2026-05-18 | Pass |
+| Issue #121 — `draw_error_log_overlay` does not write `error_log_scroll` (code review) | maintainer | 2026-05-18 | Pass |
+| Issue #121 — operator behavior unchanged (resize + scroll spot-check) | maintainer | 2026-05-18 | Pass |
+| Issue #122 — Rustdoc on `ProviderError::Json` + `Clone` impl present | maintainer | 2026-05-18 | Pass |
+| Issue #122 — optional clone-mapping regression test passes | maintainer | 2026-05-18 | Pass |
+| Issue #123 — plain `q` quits with overlay open | maintainer | 2026-05-18 | Pass |
+| Issue #123 — `Esc` still closes overlay (does not quit) | maintainer | 2026-05-18 | Pass |
+| Issue #123 — `Ctrl+R` still retries while overlay is open | maintainer | 2026-05-18 | Pass |
+| Regression — Issue #20 overlay + retry + TTL spot-check | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -1413,13 +1413,13 @@ _Manual validation passed 2026-05-10 (pre-merge). Clipboard copy deferred to [#5
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests | | | |
-| Default / missing `provider` → Yahoo | | | |
-| Yahoo Stock View + watchlist | | | |
-| Yahoo Charts / Search / News smoke | | | |
-| Polygon happy path | | | |
-| Polygon missing key negative | | | |
-| Errors readable; UI responsive | | | |
+| Automated build / clippy / tests | maintainer | 2026-05-18 | Pass |
+| Default / missing `provider` → Yahoo | maintainer | 2026-05-18 | Pass |
+| Yahoo Stock View + watchlist | maintainer | 2026-05-18 | Pass |
+| Yahoo Charts / Search / News smoke | maintainer | 2026-05-18 | Pass |
+| Polygon happy path | maintainer | 2026-05-18 | Pass |
+| Polygon missing key negative | maintainer | 2026-05-18 | Pass |
+| Errors readable; UI responsive | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -1475,14 +1475,14 @@ _Manual validation passed 2026-05-10 (pre-merge). Clipboard copy deferred to [#5
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Build / clippy | | | |
-| Modifier helper unit tests | | | |
-| Stock View lowercase → uppercase buffer | | | |
-| Stock View Shift + letters | | | |
-| Ctrl/Cmd chord does not type/act | | | |
-| Alerts `a`/`A` add | | | |
-| Alerts `d`/`D` remove | | | |
-| Alt/Ctrl chord on Alerts | | | |
+| Build / clippy | maintainer | 2026-05-18 | Pass |
+| Modifier helper unit tests | maintainer | 2026-05-18 | Pass |
+| Stock View lowercase → uppercase buffer | maintainer | 2026-05-18 | Pass |
+| Stock View Shift + letters | maintainer | 2026-05-18 | Pass |
+| Ctrl/Cmd chord does not type/act | maintainer | 2026-05-18 | Pass |
+| Alerts `a`/`A` add | maintainer | 2026-05-18 | Pass |
+| Alerts `d`/`D` remove | maintainer | 2026-05-18 | Pass |
+| Alt/Ctrl chord on Alerts | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -1778,15 +1778,15 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy | | | |
-| Three-row watchlist + columns | | | |
-| Selection drives `symbol` / detail / other tabs | | | |
-| Remove row updates UI + JSON | | | |
-| Watchlist survives restart | | | |
-| `refresh_rate` honored (≥ min) | | | |
-| Bounded fan-out / no runaway concurrency | | | |
-| Non-blocking input (#17) or N/A | | | |
-| Alerts + watchlist price (if applicable) | | | |
+| Automated build / clippy | maintainer | 2026-05-18 | Pass |
+| Three-row watchlist + columns | maintainer | 2026-05-18 | Pass |
+| Selection drives `symbol` / detail / other tabs | maintainer | 2026-05-18 | Pass |
+| Remove row updates UI + JSON | maintainer | 2026-05-18 | Pass |
+| Watchlist survives restart | maintainer | 2026-05-18 | Pass |
+| `refresh_rate` honored (≥ min) | maintainer | 2026-05-18 | Pass |
+| Bounded fan-out / no runaway concurrency | maintainer | 2026-05-18 | Pass |
+| Non-blocking input (#17) or N/A | maintainer | 2026-05-18 | Pass |
+| Alerts + watchlist price (if applicable) | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -1857,15 +1857,15 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests + filter unit tests | | | |
-| Portfolio: `/` + substring + title | | | |
-| Portfolio: Enter commit + j/k on filtered rows | | | |
-| Portfolio: Esc clears + empty-filter UX | | | |
-| Portfolio: Tab clears filter | | | |
-| Portfolio: `/` blocked in add dialog | | | |
-| Stock View: filter + Esc + symbol buffer after Enter | | | |
-| Stock View: Tab clears filter | | | |
-| Quote batch still covers full symbol set | | | |
+| Automated build / clippy / tests + filter unit tests | maintainer | 2026-05-18 | Pass |
+| Portfolio: `/` + substring + title | maintainer | 2026-05-18 | Pass |
+| Portfolio: Enter commit + j/k on filtered rows | maintainer | 2026-05-18 | Pass |
+| Portfolio: Esc clears + empty-filter UX | maintainer | 2026-05-18 | Pass |
+| Portfolio: Tab clears filter | maintainer | 2026-05-18 | Pass |
+| Portfolio: `/` blocked in add dialog | maintainer | 2026-05-18 | Pass |
+| Stock View: filter + Esc + symbol buffer after Enter | maintainer | 2026-05-18 | Pass |
+| Stock View: Tab clears filter | maintainer | 2026-05-18 | Pass |
+| Quote batch still covers full symbol set | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -1931,11 +1931,11 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests + keymap unit tests | | | |
-| Default map: `q`, Tab, Stock View, Charts, Portfolio, Alerts | | | |
-| Remap `Quit` to `:` (or ship-time equivalent) | | | |
-| Invalid keymap → fallback + message | | | |
-| README keymap section matches parser | | | |
+| Automated build / clippy / tests + keymap unit tests | maintainer | 2026-05-18 | Pass |
+| Default map: `q`, Tab, Stock View, Charts, Portfolio, Alerts | maintainer | 2026-05-18 | Pass |
+| Remap `Quit` to `:` (or ship-time equivalent) | maintainer | 2026-05-18 | Pass |
+| Invalid keymap → fallback + message | maintainer | 2026-05-18 | Pass |
+| README keymap section matches parser | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -1999,11 +1999,11 @@ Run these when validating the #3 implementation (and after #44, re-run rows that
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests + §25.6 unit tests | | | |
-| Remapped row nav on portfolio list | | | |
-| Same remapped row nav while remove-armed | | | |
-| Armed-only confirm remap does not alter list layer | | | |
-| README notes multi-layer propagation | | | |
+| Automated build / clippy / tests + §25.6 unit tests | maintainer | 2026-05-18 | Pass |
+| Remapped row nav on portfolio list | maintainer | 2026-05-18 | Pass |
+| Same remapped row nav while remove-armed | maintainer | 2026-05-18 | Pass |
+| Armed-only confirm remap does not alter list layer | maintainer | 2026-05-18 | Pass |
+| README notes multi-layer propagation | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -2068,12 +2068,12 @@ Introduce a deliberate duplicate-chord or unknown **`Action`** if §26 adds vali
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| `cargo clippy -- -D warnings` + `cargo test` | | | |
-| Default parity table (Stock / Search / Settings / dialogs) | | | |
-| §23 filter matrix | | | |
-| Shift/Caps symbol typing (**§8**) on Stock View + dialogs | | | |
-| At least one remap spot-check + restore defaults | | | |
-| README Keymap table lists any **new** `Action` names from §26 | | | |
+| `cargo clippy -- -D warnings` + `cargo test` | maintainer | 2026-05-18 | Pass |
+| Default parity table (Stock / Search / Settings / dialogs) | maintainer | 2026-05-18 | Pass |
+| §23 filter matrix | maintainer | 2026-05-18 | Pass |
+| Shift/Caps symbol typing (**§8**) on Stock View + dialogs | maintainer | 2026-05-18 | Pass |
+| At least one remap spot-check + restore defaults | maintainer | 2026-05-18 | Pass |
+| README Keymap table lists any **new** `Action` names from §26 | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -2136,13 +2136,13 @@ Use a **temporary** `keymap` in `~/.stockterm.json` (restore after testing). Rel
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| `cargo clippy -- -D warnings` + `cargo test` | | | |
-| Default §23 parity (Stock + Portfolio) | | | |
-| Remap `FilterClear` + `FilterCommit` | | | |
-| `StockFilterToggle` remap regression | | | |
-| Unmapped key swallowed in filter mode | | | |
-| Invalid keymap → defaults + filter works | | | |
-| README documents `FilterInput` + new `Action` names | | | |
+| `cargo clippy -- -D warnings` + `cargo test` | maintainer | 2026-05-18 | Pass |
+| Default §23 parity (Stock + Portfolio) | maintainer | 2026-05-18 | Pass |
+| Remap `FilterClear` + `FilterCommit` | maintainer | 2026-05-18 | Pass |
+| `StockFilterToggle` remap regression | maintainer | 2026-05-18 | Pass |
+| Unmapped key swallowed in filter mode | maintainer | 2026-05-18 | Pass |
+| Invalid keymap → defaults + filter works | maintainer | 2026-05-18 | Pass |
+| README documents `FilterInput` + new `Action` names | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -2206,14 +2206,14 @@ Use a **temporary** `keymap` in `~/.stockterm.json` (restore after testing). Rel
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| `cargo clippy -- -D warnings` + `cargo test` | | | |
-| Default parity table (symbol / condition / threshold / commit) | | | |
-| Shift/Caps **`a`** on **Symbol** (**§8**) | | | |
-| Remap `AlertDialogConditionAbove` | | | |
-| Remap `AlertDialogSymbolChar` (one letter chord) | | | |
-| Threshold digits regression | | | |
-| Invalid keymap → defaults + dialog works | | | |
-| README lists new `Action` names; wildcards updated | | | |
+| `cargo clippy -- -D warnings` + `cargo test` | maintainer | 2026-05-18 | Pass |
+| Default parity table (symbol / condition / threshold / commit) | maintainer | 2026-05-18 | Pass |
+| Shift/Caps **`a`** on **Symbol** (**§8**) | maintainer | 2026-05-18 | Pass |
+| Remap `AlertDialogConditionAbove` | maintainer | 2026-05-18 | Pass |
+| Remap `AlertDialogSymbolChar` (one letter chord) | maintainer | 2026-05-18 | Pass |
+| Threshold digits regression | maintainer | 2026-05-18 | Pass |
+| Invalid keymap → defaults + dialog works | maintainer | 2026-05-18 | Pass |
+| README lists new `Action` names; wildcards updated | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -2464,13 +2464,13 @@ Re-run the **News** rows from **Manual — News (#11 / #29)** above: list load, 
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated build / clippy / tests + §27.5 unit tests | | | |
-| Enter open: TUI stays responsive (#59) | | | |
-| **c** copy URL (#58) | | | |
-| http(s) rejection (#59) | | | |
-| Open-fail → copy fallback (platform-dependent) | | | |
-| README / UI hints mention copy key | | | |
-| M3 News regression (list / scroll / symbol change) | | | |
+| Automated build / clippy / tests + §27.5 unit tests | maintainer | 2026-05-18 | Pass |
+| Enter open: TUI stays responsive (#59) | maintainer | 2026-05-18 | Pass |
+| **c** copy URL (#58) | maintainer | 2026-05-18 | Pass |
+| http(s) rejection (#59) | maintainer | 2026-05-18 | Pass |
+| Open-fail → copy fallback (platform-dependent) | maintainer | 2026-05-18 | Pass |
+| README / UI hints mention copy key | maintainer | 2026-05-18 | Pass |
+| M3 News regression (list / scroll / symbol change) | maintainer | 2026-05-18 | Pass |
 
 ---
 
@@ -2531,11 +2531,11 @@ _Not required to close #89 if §32 automated tests pass._ Run when touching quot
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| `cargo clippy -- -D warnings` + `cargo test` | | | |
-| `wiremock_quote_fallback` / v7→v8 named tests (offline) | | | |
-| Offline re-run (no live Yahoo) | | | |
-| §17 parser regression tests (`v7_envelope`, `chart_to_ticker_fixture`, batch) | | | |
-| Optional live Yahoo smoke | | | |
+| `cargo clippy -- -D warnings` + `cargo test` | maintainer | 2026-05-18 | Pass |
+| `wiremock_quote_fallback` / v7→v8 named tests (offline) | maintainer | 2026-05-18 | Pass |
+| Offline re-run (no live Yahoo) | maintainer | 2026-05-18 | Pass |
+| §17 parser regression tests (`v7_envelope`, `chart_to_ticker_fixture`, batch) | maintainer | 2026-05-18 | Pass |
+| Optional live Yahoo smoke | maintainer | 2026-05-18 | Pass |
 
 ---
 
