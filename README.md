@@ -88,6 +88,7 @@ These environment variables are supported for local diagnosis. Any other `STOCKT
 | `STOCKTERM_DEBUG_ALERT_NOTIFY` | Build with the default **`desktop-notify`** Cargo feature | Set to exactly `1` (no trimming; no other value enables it). After `notify-rust` `Notification::show()`, StockTerm may `eprintln!` the `Result` to stderr on the **coalesced** desktop notify path (including `Ok(())`) so you can confirm the call completed. |
 | `STOCKTERM_DEBUG_HTTP_DELAY_MS` | Any build | Non-negative integer: milliseconds to sleep **once per stock quote batch** before HTTP fan-out (`src/api/http.rs`). `0`, unset, or invalid → no delay. See `docs/SPEC.md` §16. |
 | `STOCKTERM_DEBUG_YAHOO_QUOTE` | Any build | Set to exactly `1` (no trimming; no other value enables it). When Yahoo **`yahoo_latest_quote`** falls back from **`v7/finance/quote`** to **`v8/finance/chart`**, one line is written to **stderr** with the symbol and reason (`empty_v7` or `v7_error`). See `docs/SPEC.md` §34. |
+| `STOCKTERM_DEBUG_YAHOO_NEWS` | Any build | Set to exactly `1` (no trimming; no other value enables it). When Yahoo news is fetched, one **stderr** line per attempt (`search`, `rss`, `query2`) with outcome tokens such as `ok_items(n)`, `ok_empty`, `parse_mismatch`, or `err(…)`. See `docs/SPEC.md` §36. |
 
 Run from the repo root, for example:
 
@@ -95,4 +96,5 @@ Run from the repo root, for example:
 STOCKTERM_DEBUG_HTTP_DELAY_MS=5000 cargo run --release
 STOCKTERM_DEBUG_ALERT_NOTIFY=1 cargo run --release
 STOCKTERM_DEBUG_YAHOO_QUOTE=1 cargo run --release 2> yahoo-quote.log
+STOCKTERM_DEBUG_YAHOO_NEWS=1 cargo run --release 2> yahoo-news.log
 ```

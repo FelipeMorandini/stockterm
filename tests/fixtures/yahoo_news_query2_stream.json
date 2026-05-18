@@ -1,0 +1,20 @@
+{
+  "data": {
+    "main": {
+      "stream": [
+        {
+          "id": "n1",
+          "content": {
+            "title": "Test Headline",
+            "canonicalUrl": { "url": "https://example.com/article" },
+            "pubDate": "2024-06-01T12:00:00Z",
+            "summary": "Summary text"
+          },
+          "provider": {
+            "displayName": "Yahoo Finance"
+          }
+        }
+      ]
+    }
+  }
+}
