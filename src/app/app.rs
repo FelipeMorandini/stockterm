@@ -756,11 +756,14 @@ impl App {
     }
 
     fn data_poll_interval(&self) -> Duration {
-        let secs = match self.config.refresh_rate {
-            0 => 30,
-            s => s,
-        };
-        Duration::from_secs(secs.max(5))
+        Duration::from_secs(data_poll_interval_secs(self.config.refresh_rate))
+    }
+
+    /// Clears throttle timestamps so the next tick may poll immediately (Issue #4 / SPEC §35.6.2).
+    fn reset_network_poll_clocks(&mut self) {
+        self.last_stock_network_poll = None;
+        self.last_charts_network_poll = None;
+        self.last_news_network_poll = None;
     }
 
     pub(crate) fn collect_symbols_for_quote_fetch(&self) -> Vec<String> {
@@ -1580,6 +1583,7 @@ impl App {
                     }) {
                         self.active_runtime_error = None;
                     }
+                    self.reset_network_poll_clocks();
                     self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
                 }
             }
@@ -2332,7 +2336,9 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize_symbol, search_result_matches_current, App};
+    use super::{
+        data_poll_interval_secs, normalize_symbol, search_result_matches_current, App,
+    };
     use crate::app::app_error::{push_error_log, ErrorLogEntry, UiErrorCategory, ERROR_LOG_CAP};
     use crate::app::Tab;
     use std::collections::VecDeque;
@@ -2750,6 +2756,37 @@ mod tests {
         assert!(!msg.is_empty(), "expected inline_error");
         assert!(app.active_runtime_error.is_none());
     }
+
+    /// Issue #4 / SPEC §35.4 — JSON default `refresh_rate: 0` maps to 30 s effective poll.
+    #[test]
+    fn data_poll_interval_zero_means_thirty_seconds() {
+        assert_eq!(data_poll_interval_secs(0), 30);
+    }
+
+    /// Issue #4 / SPEC §35.4 — values below 5 clamp to the API-safe floor.
+    #[test]
+    fn data_poll_interval_enforces_five_second_floor() {
+        assert_eq!(data_poll_interval_secs(1), 5);
+        assert_eq!(data_poll_interval_secs(4), 5);
+    }
+
+    /// Issue #4 / SPEC §35.4 — configured values at or above the floor are honored.
+    #[test]
+    fn data_poll_interval_honors_configured_value() {
+        assert_eq!(data_poll_interval_secs(5), 5);
+        assert_eq!(data_poll_interval_secs(60), 60);
+    }
+}
+
+/// Effective network poll interval in seconds for [`Config::refresh_rate`] (Issue #4 / SPEC §35.4).
+///
+/// `0` (unset JSON default) → 30 s; values below 5 clamp to 5.
+pub(crate) fn data_poll_interval_secs(refresh_rate: u64) -> u64 {
+    let secs = match refresh_rate {
+        0 => 30,
+        s => s,
+    };
+    secs.max(5)
 }
 
 /// Stale-guard for `FetchDone::Search` (SPEC §10.2).

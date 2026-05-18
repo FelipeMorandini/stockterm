@@ -750,7 +750,7 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
         Span::styled("0. Refresh (seconds): ", row_style(0)),
         Span::styled(rr_display, rt.canvas()),
         Span::styled(
-            "  (effective minimum poll: 5s)",
+            "  (effective ≥ 5s; 0 → 30s default)",
             rt.fg_muted(),
         ),
     ]));
