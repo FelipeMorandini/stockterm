@@ -4660,6 +4660,6 @@ After maintainer approval of §33, implementation may proceed per [`.cursor/rule
 
 ### 33.10 Shipment record
 
-- **Status:** Implemented in-tree (2026-05-18). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** (sign-off **2026-05-18**).
+- **Status:** Implemented in-tree (2026-05-18). **PR:** [#147](https://github.com/FelipeMorandini/stockterm/pull/147). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** (sign-off **2026-05-18**).
 - **Tracking:** [Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60).
 - **Code:** [`src/app/app.rs`](../src/app/app.rs) — **`search_esc_reset`** (domain-gated clear) + **`search_esc_reset_*`** unit tests; [`src/app/handlers.rs`](../src/app/handlers.rs) — **`SearchEsc`**.
