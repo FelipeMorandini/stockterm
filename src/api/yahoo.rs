@@ -182,6 +182,28 @@ fn v7_item_to_ticker_response(q: &V7QuoteItem, requested: &str) -> ProviderResul
     })
 }
 
+/// Pick the v7 row for `requested`, or `None` when `items` is empty (Issue #91 / SPEC §34.5).
+fn v7_select_item_for_symbol<'a>(
+    items: &'a [V7QuoteItem],
+    requested: &str,
+) -> Option<&'a V7QuoteItem> {
+    if items.is_empty() {
+        return None;
+    }
+    if items.len() == 1 {
+        return Some(&items[0]);
+    }
+    let key = normalize_v7_symbol_key(requested);
+    items
+        .iter()
+        .find(|it| {
+            it.symbol
+                .as_deref()
+                .is_some_and(|s| normalize_v7_symbol_key(s) == key)
+        })
+        .or_else(|| items.first())
+}
+
 /// Maps Yahoo **`v7/finance/quote`** payload into [`TickerResponse`] (one synthetic bar).
 ///
 /// | Yahoo field | `TickerResult` |
@@ -204,7 +226,7 @@ fn v7_envelope_to_ticker(env: &V7QuoteEnvelope, requested: &str) -> ProviderResu
     let Some(items) = env.quote_response.result.as_ref() else {
         return Ok(empty_v7_ticker_response());
     };
-    let Some(q) = items.first() else {
+    let Some(q) = v7_select_item_for_symbol(items, requested) else {
         return Ok(empty_v7_ticker_response());
     };
 
@@ -336,7 +358,7 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
         let sem = sem.clone();
         set.spawn(async move {
             let _permit = sem.acquire().await.ok();
-            let res = yahoo_latest_quote(&sym).await;
+            let res = yahoo_latest_quote_at(&sym, QUERY1).await;
             (sym, res)
         });
     }
@@ -391,19 +413,72 @@ async fn yahoo_quote_at(symbol: &str, query_base: &str) -> ProviderResult<Ticker
     chart_to_ticker(&env, symbol)
 }
 
+/// Enabled when `STOCKTERM_DEBUG_YAHOO_QUOTE` is exactly `1` (Issue #90 / SPEC §34.4).
+fn yahoo_quote_fallback_debug_enabled() -> bool {
+    std::env::var("STOCKTERM_DEBUG_YAHOO_QUOTE")
+        .map(|s| s == "1")
+        .unwrap_or(false)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum YahooV7FallbackReason {
+    EmptyV7,
+    V7Failed,
+}
+
+impl YahooV7FallbackReason {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::EmptyV7 => "empty_v7",
+            Self::V7Failed => "v7_error",
+        }
+    }
+}
+
+/// Stderr diagnostic when v7 is unusable and v8 chart fallback runs (Issue #90 / SPEC §34.4).
+fn maybe_log_yahoo_v7_fallback(symbol: &str, reason: YahooV7FallbackReason) {
+    if !yahoo_quote_fallback_debug_enabled() {
+        return;
+    }
+    eprintln!(
+        "stockterm: yahoo quote {symbol}: v7 unusable ({}), using v8 chart",
+        reason.as_str()
+    );
+}
+
 /// Try **`v7/finance/quote`** first; on failure or empty body, use v8 chart ([`yahoo_quote_at`]).
 async fn yahoo_latest_quote(symbol: &str) -> ProviderResult<TickerResponse> {
-    yahoo_latest_quote_at(symbol, QUERY1).await
+    yahoo_latest_quote_orchestrate(symbol, QUERY1, true).await
 }
 
 /// Same orchestration as [`yahoo_latest_quote`] with an injectable Yahoo **`query1`** base (Issue #89 / SPEC §32).
+/// Does not emit §34 fallback stderr diagnostics (batch recovery and tests use this entry point).
 pub(crate) async fn yahoo_latest_quote_at(
     symbol: &str,
     query_base: &str,
 ) -> ProviderResult<TickerResponse> {
+    yahoo_latest_quote_orchestrate(symbol, query_base, false).await
+}
+
+async fn yahoo_latest_quote_orchestrate(
+    symbol: &str,
+    query_base: &str,
+    log_v7_fallback: bool,
+) -> ProviderResult<TickerResponse> {
     match yahoo_quote_v7_at(symbol, query_base).await {
         Ok(t) if !t.results.is_empty() => Ok(t),
-        Ok(_) | Err(_) => yahoo_quote_at(symbol, query_base).await,
+        Ok(_) => {
+            if log_v7_fallback {
+                maybe_log_yahoo_v7_fallback(symbol, YahooV7FallbackReason::EmptyV7);
+            }
+            yahoo_quote_at(symbol, query_base).await
+        }
+        Err(_) => {
+            if log_v7_fallback {
+                maybe_log_yahoo_v7_fallback(symbol, YahooV7FallbackReason::V7Failed);
+            }
+            yahoo_quote_at(symbol, query_base).await
+        }
     }
 }
 
@@ -1120,6 +1195,118 @@ mod tests {
         );
         let flat: Vec<_> = chunks.iter().flatten().collect();
         assert_eq!(flat.len(), syms.len());
+    }
+
+    #[test]
+    fn v7_envelope_picks_matching_symbol_among_many() {
+        let json = r#"{
+            "quoteResponse": {
+                "result": [
+                    {
+                        "symbol": "MSFT",
+                        "regularMarketPrice": 400.0,
+                        "regularMarketOpen": 399.0,
+                        "regularMarketDayHigh": 401.0,
+                        "regularMarketDayLow": 398.0,
+                        "regularMarketVolume": 1000,
+                        "regularMarketTime": 1700000001
+                    },
+                    {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 195.5,
+                        "regularMarketOpen": 194.0,
+                        "regularMarketDayHigh": 196.25,
+                        "regularMarketDayLow": 193.5,
+                        "regularMarketVolume": 52800000,
+                        "regularMarketTime": 1700000000
+                    }
+                ],
+                "error": null
+            }
+        }"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
+        let tr = v7_envelope_to_ticker(&env, "AAPL").expect("map");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 195.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn v7_envelope_case_insensitive_symbol_match() {
+        let json = r#"{
+            "quoteResponse": {
+                "result": [{
+                    "symbol": "aapl",
+                    "regularMarketPrice": 195.5,
+                    "regularMarketOpen": 194.0,
+                    "regularMarketDayHigh": 196.25,
+                    "regularMarketDayLow": 193.5,
+                    "regularMarketVolume": 52800000,
+                    "regularMarketTime": 1700000000
+                }],
+                "error": null
+            }
+        }"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
+        let tr = v7_envelope_to_ticker(&env, "AAPL").expect("map");
+        assert_eq!(tr.ticker, "aapl");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 195.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn v7_envelope_no_symbol_match_falls_back_to_first() {
+        let json = r#"{
+            "quoteResponse": {
+                "result": [
+                    {
+                        "symbol": "MSFT",
+                        "regularMarketPrice": 400.0,
+                        "regularMarketOpen": 399.0,
+                        "regularMarketDayHigh": 401.0,
+                        "regularMarketDayLow": 398.0,
+                        "regularMarketVolume": 1000,
+                        "regularMarketTime": 1700000001
+                    },
+                    {
+                        "symbol": "GOOG",
+                        "regularMarketPrice": 140.0,
+                        "regularMarketOpen": 139.0,
+                        "regularMarketDayHigh": 141.0,
+                        "regularMarketDayLow": 138.0,
+                        "regularMarketVolume": 2000,
+                        "regularMarketTime": 1700000002
+                    }
+                ],
+                "error": null
+            }
+        }"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
+        let tr = v7_envelope_to_ticker(&env, "AAPL").expect("map");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 400.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn yahoo_quote_fallback_debug_enabled_respects_exact_one() {
+        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let prev = std::env::var("STOCKTERM_DEBUG_YAHOO_QUOTE").ok();
+        std::env::set_var("STOCKTERM_DEBUG_YAHOO_QUOTE", "1");
+        assert!(yahoo_quote_fallback_debug_enabled());
+        std::env::set_var("STOCKTERM_DEBUG_YAHOO_QUOTE", "0");
+        assert!(!yahoo_quote_fallback_debug_enabled());
+        std::env::set_var("STOCKTERM_DEBUG_YAHOO_QUOTE", "true");
+        assert!(!yahoo_quote_fallback_debug_enabled());
+        match prev {
+            Some(v) => std::env::set_var("STOCKTERM_DEBUG_YAHOO_QUOTE", v),
+            None => std::env::remove_var("STOCKTERM_DEBUG_YAHOO_QUOTE"),
+        }
+    }
+
+    #[test]
+    fn maybe_log_yahoo_v7_fallback_no_panic_when_disabled() {
+        maybe_log_yahoo_v7_fallback("AAPL", YahooV7FallbackReason::EmptyV7);
+        maybe_log_yahoo_v7_fallback("MSFT", YahooV7FallbackReason::V7Failed);
     }
 
     #[test]
