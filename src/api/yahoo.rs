@@ -1854,8 +1854,13 @@ mod wiremock_quote_fallback_tests {
         assert_eq!(tr.ticker, "AAPL");
     }
 
+    fn ensure_http_client() {
+        crate::api::http::ensure_shared_client_for_tests();
+    }
+
     #[tokio::test]
     async fn v7_malformed_json_falls_back_to_v8() {
+        ensure_http_client();
         let srv = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v7/finance/quote"))
@@ -1873,6 +1878,7 @@ mod wiremock_quote_fallback_tests {
 
     #[tokio::test]
     async fn v7_empty_result_falls_back_to_v8() {
+        ensure_http_client();
         let srv = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v7/finance/quote"))
@@ -1892,6 +1898,7 @@ mod wiremock_quote_fallback_tests {
 
     #[tokio::test]
     async fn v7_api_error_envelope_falls_back_to_v8() {
+        ensure_http_client();
         let srv = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v7/finance/quote"))

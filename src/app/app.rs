@@ -170,12 +170,42 @@ pub enum FetchDone {
     },
 }
 
-fn warn_fetch_channel_closed(context: &str, err: &SendError<FetchDone>) {
-    eprintln!("stockterm: dropped {context} (channel closed): {err}");
+fn warn_fetch_channel_closed(context: &str, _err: &SendError<FetchDone>) {
+    tracing::warn!(
+        target: "stockterm::fetch",
+        context,
+        "dropped fetch result (channel closed)"
+    );
 }
 
-fn warn_inflight_recovery_send_failed(kind: &str, err: SendError<InflightRecovery>) {
-    eprintln!("stockterm: failed inflight recovery send ({kind}): {err}");
+fn warn_inflight_recovery_send_failed(kind: &str, _err: SendError<InflightRecovery>) {
+    tracing::warn!(
+        target: "stockterm::fetch",
+        kind,
+        "inflight recovery send failed"
+    );
+}
+
+#[cfg(debug_assertions)]
+fn log_quote_batch_panic(payload: &(dyn std::any::Any + Send)) {
+    if let Some(s) = payload.downcast_ref::<&str>() {
+        tracing::warn!(
+            target: "stockterm::fetch",
+            panic = %s,
+            "quote batch task panicked"
+        );
+    } else if let Some(s) = payload.downcast_ref::<String>() {
+        tracing::warn!(
+            target: "stockterm::fetch",
+            panic = %s,
+            "quote batch task panicked"
+        );
+    } else {
+        tracing::warn!(
+            target: "stockterm::fetch",
+            "quote batch task panicked (non-string payload)"
+        );
+    }
 }
 
 /// OS URL open / clipboard work completed off the input hot path (Issues #58, #59 / SPEC §27).
@@ -952,14 +982,18 @@ impl App {
                 .await
             {
                 Ok(done) => done,
-                Err(_) => FetchDone::Stock {
-                    generation,
-                    quotes: HashMap::new(),
-                    errors: vec![(
-                        String::new(),
-                        ProviderError::ApiMessage("quote batch task panicked".into()),
-                    )],
-                },
+                Err(payload) => {
+                    #[cfg(debug_assertions)]
+                    log_quote_batch_panic(&*payload);
+                    FetchDone::Stock {
+                        generation,
+                        quotes: HashMap::new(),
+                        errors: vec![(
+                            String::new(),
+                            ProviderError::ApiMessage("quote batch task panicked".into()),
+                        )],
+                    }
+                }
             };
             if let Err(e) = tx.send(done) {
                 warn_fetch_channel_closed("stock quote batch result", &e);

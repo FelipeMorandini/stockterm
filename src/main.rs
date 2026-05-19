@@ -1,21 +1,21 @@
 use crossterm::{
     execute,
     terminal::{
-        disable_raw_mode,
-        enable_raw_mode,
-        EnterAlternateScreen,
-        LeaveAlternateScreen
+        disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
     },
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    Terminal
-};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use stockterm::app::App;
 
 #[tokio::main]
 async fn main() -> Result<(), io::Error> {
+    stockterm::init();
+    if let Err(e) = stockterm::api::http::init_shared_client() {
+        eprintln!("stockterm: {e}");
+        std::process::exit(1);
+    }
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
