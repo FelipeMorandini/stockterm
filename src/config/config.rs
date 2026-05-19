@@ -27,7 +27,7 @@ pub enum MarketProviderKind {
 /// | `portfolio` | Holdings (symbol, shares, cost). Default: empty. |
 /// | `watchlist` | Stock View symbols (uppercase). Default: empty. |
 /// | `refresh_rate` | Quote poll interval (seconds; app may enforce a minimum). Default: `0` → app default. |
-/// | `api_key` | Polygon API key (optional if `STOCKTERM_API_KEY` is set). Default: empty. |
+/// | `api_key` | Polygon API key stored in JSON only (see [`effective_api_key`](Config::effective_api_key); env is not copied here on load). Default: empty. |
 /// | `alerts` | Price alerts. Default: empty. |
 /// | `default_symbol` | Startup symbol when `watchlist` is empty. Default: empty → app uses `AAPL`. |
 /// | `theme` | Optional theme preset + hex overrides (see §21). Default: `null`. |
@@ -44,6 +44,12 @@ pub struct Config {
     #[serde(default)]
     pub watchlist: Vec<String>,
     pub refresh_rate: u64,
+    /// Polygon API key as persisted in `~/.stockterm.json` (plaintext).
+    ///
+    /// Runtime resolution for Polygon HTTP uses [`effective_api_key`](Self::effective_api_key):
+    /// non-empty file value wins; else non-empty `STOCKTERM_API_KEY`. The env var is never
+    /// merged into this field on [`try_load`](Self::try_load) or written by [`try_save`](Self::try_save)
+    /// unless the user (or future in-app editor) sets it explicitly (Issue #28 / SPEC §42.2).
     pub api_key: String,
     pub alerts: Vec<Alert>,
     pub default_symbol: String,
@@ -112,10 +118,13 @@ fn load_config_from_path(path: &Path) -> Result<Config, ConfigError> {
 }
 
 impl Config {
-    /// API key resolution (used for **Polygon** only):
-    /// 1. Non-empty `api_key` from config file (`~/.stockterm.json`).
-    /// 2. Else non-empty `STOCKTERM_API_KEY` environment variable.
+    /// API key resolution (used for **Polygon** only; Issue #28 / SPEC §42.2):
+    ///
+    /// 1. Non-empty [`api_key`](Self::api_key) from config file (`~/.stockterm.json`).
+    /// 2. Else non-empty `STOCKTERM_API_KEY` environment variable (runtime overlay only).
     /// 3. Else empty string (Polygon calls fail until configured).
+    ///
+    /// Does not mutate `self.api_key`. [`try_load`](Self::try_load) does not copy env into the struct.
     pub fn effective_api_key(&self) -> Cow<'_, str> {
         if !self.api_key.is_empty() {
             return Cow::Borrowed(self.api_key.as_str());
@@ -140,6 +149,10 @@ impl Config {
         Self::try_load().unwrap_or_default()
     }
 
+    /// Load config from `~/.stockterm.json` (or defaults when missing).
+    ///
+    /// Does **not** copy `STOCKTERM_API_KEY` into [`api_key`](Self::api_key); use
+    /// [`effective_api_key`](Self::effective_api_key) at request time (SPEC §42.2).
     pub fn try_load() -> Result<Self, ConfigError> {
         let path = match Self::config_file_path() {
             Ok(p) => p,
@@ -176,6 +189,32 @@ mod tests {
     use super::*;
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::Mutex;
+
+    static ENV_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    struct EnvVarGuard {
+        key: &'static str,
+        prev: Option<String>,
+    }
+
+    impl EnvVarGuard {
+        fn set(key: &'static str, value: &str) -> Self {
+            let prev = std::env::var(key).ok();
+            // SAFETY: held under ENV_TEST_LOCK for the test duration.
+            unsafe { std::env::set_var(key, value) };
+            Self { key, prev }
+        }
+    }
+
+    impl Drop for EnvVarGuard {
+        fn drop(&mut self) {
+            match &self.prev {
+                Some(v) => unsafe { std::env::set_var(self.key, v) },
+                None => unsafe { std::env::remove_var(self.key) },
+            }
+        }
+    }
 
     #[test]
     fn effective_api_key_prefers_config_file_value() {
@@ -184,6 +223,15 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(c.effective_api_key().as_ref(), "from-config");
+    }
+
+    #[test]
+    fn effective_api_key_reads_env_without_mutating_config() {
+        let _lock = ENV_TEST_LOCK.lock().expect("env test lock");
+        let _guard = EnvVarGuard::set("STOCKTERM_API_KEY", "from-env");
+        let c = Config::default();
+        assert_eq!(c.effective_api_key().as_ref(), "from-env");
+        assert!(c.api_key.is_empty());
     }
 
     #[test]

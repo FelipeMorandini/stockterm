@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#51](https://github.com/FelipeMorandini/stockterm/issues/51) / [#28](https://github.com/FelipeMorandini/stockterm/issues/28)** — global **`q`/`Q`** quit via **`should_global_quit`**, Tab meta policy, **`STOCKTERM_API_KEY`** runtime overlay (no env merge on load — **§42**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** — sign-off **2026-05-19**; **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156)). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -1238,7 +1238,7 @@ After maintainer approval of §11.12, implementation may proceed per `.cursor/ru
 ### 12.5 Out of scope
 
 - **`j` / `k`** row navigation (optional parity with Stock View — track under §13 or a follow-up).
-- Global tab switching / quit modifier rules ([#51](https://github.com/FelipeMorandini/stockterm/issues/51)).
+- Global tab switching / quit modifier rules — **§42.1** ([#51](https://github.com/FelipeMorandini/stockterm/issues/51)).
 
 ### 12.6 Approval
 
@@ -6291,3 +6291,194 @@ After maintainer approval of §41, the **engineer** may implement per [`.cursor/
 - **Tracking:** [Issue #32](https://github.com/FelipeMorandini/stockterm/issues/32), [Issue #33](https://github.com/FelipeMorandini/stockterm/issues/33), [Issue #55](https://github.com/FelipeMorandini/stockterm/issues/55).
 - **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** (sign-off **2026-05-19**).
 - **Code:** [`src/models/ticker.rs`](../src/models/ticker.rs) — `ticker_response_matches_symbol` + `ticker_response_matches_symbol_for_session` (**#32**); [`src/app/alerts.rs`](../src/app/alerts.rs) — `get_current_price` + unit tests; [`src/app/ui.rs`](../src/app/ui.rs) — `resolve_quote`; [`src/api/error.rs`](../src/api/error.rs) — `ProviderError` **`thiserror`** migration (**#33**, **#55**).
+
+---
+
+## 42. Issues [#51](https://github.com/FelipeMorandini/stockterm/issues/51), [#28](https://github.com/FelipeMorandini/stockterm/issues/28) — Global keyboard modifier policy + API key resolution contract
+
+**Sources:**
+
+- [Issue #51](https://github.com/FelipeMorandini/stockterm/issues/51) — Audit follow-up from **§8** / [#44](https://github.com/FelipeMorandini/stockterm/issues/44): global **`q`** quit vs tab switching use inconsistent modifier rules compared with Stock View **`letter_key_plain`** semantics.
+- [Issue #28](https://github.com/FelipeMorandini/stockterm/issues/28) — Scratchpad idea: merge **`STOCKTERM_API_KEY`** into **`Config.api_key`** at **`load()`** so on-disk JSON mirrors the effective key.
+
+**Related:** **§8** / [#44](https://github.com/FelipeMorandini/stockterm/issues/44) (`letter_key_plain`), **§24** / [#13](https://github.com/FelipeMorandini/stockterm/issues/13) (configurable keymap + exact chord matching), **§22.7.1** / [#34](https://github.com/FelipeMorandini/stockterm/issues/34) (plaintext **`api_key`** security), **§9** / [#31](https://github.com/FelipeMorandini/stockterm/issues/31) (Polygon requires key via **`effective_api_key`**).
+
+**Verified baseline (tree, 2026-05-19):**
+
+| Area | Current behavior | Gap |
+|------|------------------|-----|
+| **Quit (`q`)** | [`handle_event`](../src/app/handlers.rs) sets **`should_quit`** when keymap resolves **`Action::Quit`** with **exact** chord match (default chord **`q`** + **`NONE`**) | **Shift+Q** / Caps Lock uppercase **`Q`** does **not** quit unless user remaps — inconsistent with §8 letter actions |
+| **Tab / BackTab** | Keymap resolves **`GlobalTab`** / **`GlobalBackTab`**; handler arms require **`tab_key_plain(modifiers)`** (Shift allowed; Ctrl/Alt/Meta rejected) | Behavior is mostly correct but **undocumented**; modal dialogs rely on **`!tab_key_plain`** guard ([#82](https://github.com/FelipeMorandini/stockterm/issues/82) / §37) |
+| **`Ctrl+E` / `Ctrl+R`** | Explicit chords in [`DEFAULT_BINDINGS`](../src/config/keymap.rs) | No change |
+| **`effective_api_key`** | File field wins; else non-empty **`STOCKTERM_API_KEY`** at call time ([`Config::effective_api_key`](../src/config/config.rs)) | Issue #28 asks whether to **copy env into `api_key` on load** — risks persisting secrets on next **`try_save`** |
+| **Settings** | No in-app **`api_key`** editor; operator edits JSON or env | Resolution policy must stay documented in README + rustdoc |
+
+**Product decisions (this slice):**
+
+1. **#51 — Align global quit with §8 letter policy; document tab policy.** **`q`** and **`Q`** (Shift) quit when **`letter_key_plain`**; **Ctrl/Alt/Meta+letter** must **not** quit. **Tab** switching keeps **`tab_key_plain`** (Shift+Tab aliases via [`chord_lookup_candidates`](../src/config/keymap.rs) remain). User remaps (e.g. **`colon` → Quit**) still work via exact chord match.
+2. **#28 — Keep runtime overlay; do not merge env into file on load.** **`effective_api_key()`** remains the single resolution path for Polygon HTTP. **`try_load` / `try_save`** never copy **`STOCKTERM_API_KEY`** into **`api_key`** automatically.
+
+**Suggested PR:** One PR **“§42 global quit modifiers + api key resolution docs”** closes both issues (small: **`handlers.rs`**, **`keyboard.rs`**, **`config.rs`**, README).
+
+---
+
+### 42.1 Issue #51 — Global quit and tab modifier policy
+
+**Problem:** Tab handlers already use **`tab_key_plain`**, but **Quit** only fires on an exact **`q` + NONE** chord. Terminals that emit **`Q` + SHIFT** for quit do not match. Global behavior is undocumented in README / SPEC compared with §8.
+
+**Acceptance:**
+
+1. **`q`** and **`Q`** (Shift) set **`should_quit`** on any tab when **`letter_key_plain(key.modifiers)`** and **`c.eq_ignore_ascii_case('q')`**, even if the default chord table did not match (wildcard path).
+2. **Custom Quit chord** (user **`keymap`** remap to non-`q` char or **`ctrl+q`**) still quits when **`resolved_keymap.action(Global, &key) == Some(Quit)`** with **exact** chord match (§24 remaps unchanged).
+3. **Ctrl+Q / Alt+Q / Super+Q** do **not** quit via the wildcard ( **`letter_key_plain`** false ).
+4. **`GlobalTab` / `GlobalBackTab`:** unchanged — require **`tab_key_plain`** after keymap match; **Ctrl+Tab** / **Alt+Tab** do **not** switch app tabs (OS/wm may still steal focus — out of scope).
+5. **Modal add dialogs** (Portfolio / Alerts): **`Tab` with meta modifiers** continues to be ignored for field cycle vs app tab (existing **`!tab_key_plain && modal_add_dialog_open`** arms).
+6. **Unit tests** in [`src/app/keyboard.rs`](../src/app/keyboard.rs) (or new **`handlers` test module**) for **`global_quit_matches`** / **`global_tab_modifiers_ok`** helpers.
+7. **README** Keymap subsection: one sentence on **`q`/`Q`** quit and Tab meta rejection.
+
+**Implementation plan (Rust):**
+
+1. **`src/app/keyboard.rs`** — add:
+
+   ```rust
+   /// True when this key should trigger global quit (Issue #51 / §42.1).
+   pub fn global_quit_key(key: &KeyEvent) -> bool {
+       if let KeyCode::Char(c) = key.code {
+           return c.eq_ignore_ascii_case('q') && letter_key_plain(key.modifiers);
+       }
+       false
+   }
+   ```
+
+2. **`src/app/handlers.rs`** — replace the early **Quit** block:
+
+   ```rust
+   let quit = matches!(
+       app.resolved_keymap.action(BindingLayer::Global, &key),
+       Some(Action::Quit)
+   ) || global_quit_key(&key);
+   if quit {
+       app.should_quit = true;
+       return;
+   }
+   ```
+
+   - **Do not** apply **`letter_key_plain`** to **`OpenErrorLog`** / **`ForceRefresh`** (Ctrl chords must stay exact).
+   - Leave **`GlobalTab` / `GlobalBackTab`** match arms unchanged (already gated by **`tab_key_plain`**).
+
+3. **Tests** (`keyboard.rs`):
+
+   | Input | Expected |
+   |-------|----------|
+   | `Char('q')`, **NONE** | **`global_quit_key` → true** |
+   | `Char('Q')`, **SHIFT** | **true** |
+   | `Char('q')`, **CONTROL** | **false** |
+   | `Char('Q')`, **ALT \| SHIFT** | **false** |
+
+4. **Optional:** Integration-style test building **`KeyEvent`** + default **`ResolvedKeymap`** — only if cheap; otherwise manual QA suffices.
+
+**Non-goals:** Remapping **Quit** to **`letter_key_plain`** for every possible char (remaps stay exact). Changing **Stock View** symbol buffer rules. Adding **Caps Lock** detection (terminal-dependent).
+
+---
+
+### 42.2 Issue #28 — `STOCKTERM_API_KEY` resolution (no merge on load)
+
+**Problem:** Operators may expect **`~/.stockterm.json`** to show the effective Polygon key after setting env-only auth. Copying env into **`api_key` on load`** would:
+
+- Write secrets to disk on the next **`try_save`** / session persist (violates §22.7.1 hygiene).
+- Freeze the key until restart if env changes at runtime.
+- Surprise users who use env only in CI and keep an empty file field locally.
+
+**Decision:** **Reject merge-on-load.** Keep **`effective_api_key()`** as the runtime overlay documented in README **Security — API keys**.
+
+**Acceptance:**
+
+1. **`Config::try_load`** / **`load_config_from_path`** do **not** mutate **`api_key`** from **`STOCKTERM_API_KEY`**.
+2. **`Config::try_save`** persists **`api_key`** exactly as held in memory (only user-edited or programmatic in-app updates — today none for key).
+3. **`effective_api_key()`** order unchanged: non-empty file → non-empty env → empty.
+4. **`provider_ready()`** for Polygon continues to use **`!effective_api_key().is_empty()`** ([`app.rs`](../src/app/app.rs)).
+5. **Rustdoc** on **`effective_api_key`**, **`try_load`**, and **`Config::api_key`** field documents §42.2 (env overlay, never auto-persisted).
+6. **Unit test** `effective_api_key_reads_env_without_mutating_config` — set env in test, call **`effective_api_key()`**, assert **`config.api_key` still empty**.
+7. **README** — add one line under Security: env is **not** copied into the file on load/save.
+
+**Implementation plan (Rust):**
+
+1. **`src/config/config.rs`** — expand **`///`** docs on **`api_key`**, **`effective_api_key`**, **`try_load`** (no code path changes unless audit finds accidental merge — expect none).
+2. **`#[cfg(test)]`** — env-guarded test:
+
+   ```rust
+   #[test]
+   fn effective_api_key_reads_env_without_mutating_config() {
+       let _guard = EnvVarGuard::set("STOCKTERM_API_KEY", "from-env");
+       let c = Config::default();
+       assert_eq!(c.effective_api_key().as_ref(), "from-env");
+       assert!(c.api_key.is_empty());
+   }
+   ```
+
+   Use a small test helper (or **`serial_test`** if needed) to avoid parallel env pollution.
+
+3. **Grep gate (QA):** `rg 'STOCKTERM_API_KEY' src/config/` — only **`effective_api_key`** (and tests) may read the var.
+
+**Non-goals:** Settings UI to edit **`api_key`**; encrypting **`api_key`** at rest; **`keyring`** integration.
+
+---
+
+### 42.3 Crate & module layout (summary)
+
+| Issue | Primary modules | New deps |
+|-------|-----------------|----------|
+| #51 | `src/app/keyboard.rs`, `src/app/handlers.rs`, `README.md` | — |
+| #28 | `src/config/config.rs`, `README.md` | — (optional test helper only) |
+
+---
+
+### 42.4 Implementation sequence
+
+1. **#51** — **`global_quit_key`** + **`handle_event`** quit arm + unit tests + README Keymap note.
+2. **#28** — rustdoc + env unit test + README Security line (verify no merge code exists).
+3. **`cargo clippy -- -D warnings`**, **`cargo test`**.
+4. **Manual QA** — [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28**.
+
+---
+
+### 42.5 Automated verification
+
+```bash
+cargo build --release
+cargo clippy -- -D warnings
+cargo test
+cargo test global_quit
+cargo test effective_api_key_reads_env
+rg 'STOCKTERM_API_KEY' src/config/
+```
+
+**Pass:** `rg` shows reads only in **`effective_api_key`** (+ tests), not in **`try_load`**.
+
+---
+
+### 42.6 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issues #51, #28** section. Regression: **§8** Stock View letters, **§24** custom **`keymap`**, **§22.7.1** Polygon with env-only key.
+
+---
+
+### 42.7 Out of scope
+
+- Persisting env-sourced API keys into **`~/.stockterm.json`** on load or session save.
+- Global **Shift+letter** remaps for **non-quit** actions (remain per-tab §8 / §26).
+- OS-level **Alt+Tab** window switching behavior.
+- Encrypting or hashing **`api_key`** in JSON.
+
+---
+
+### 42.8 Approval
+
+After maintainer approval of §42, the **engineer** may implement per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and run [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** before merge.
+
+### 42.10 Shipment record
+
+- **Status:** Shipped (2026-05-19). **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156).
+- **Tracking:** [Issue #51](https://github.com/FelipeMorandini/stockterm/issues/51), [Issue #28](https://github.com/FelipeMorandini/stockterm/issues/28).
+- **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** (sign-off **2026-05-19**).
+- **Code:** [`src/app/keyboard.rs`](../src/app/keyboard.rs) — `global_quit_key`, `should_global_quit` (**#51**); [`src/app/handlers.rs`](../src/app/handlers.rs) — global quit arm; [`src/config/config.rs`](../src/config/config.rs) — §42.2 rustdoc + `effective_api_key_reads_env_without_mutating_config` (**#28**); [`README.md`](../README.md) — Keymap + Security notes.
