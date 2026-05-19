@@ -77,6 +77,21 @@ The Polygon **`api_key`** is stored **in plaintext** inside **`~/.stockterm.json
 
 Provider selection and HTTP behavior are specified in [`docs/SPEC.md`](docs/SPEC.md) (§9 and §31).
 
+### Terminal lifecycle
+
+StockTerm’s CLI ([`src/main.rs`](src/main.rs)) owns terminal mode on the **main** thread:
+
+```
+main thread:  enable_raw_mode → EnterAlternateScreen → App::run → disable_raw_mode → LeaveAlternateScreen
+event thread: poll/read keys + ticks only (no terminal mode changes)
+```
+
+The crossterm bridge ([`src/app/event.rs`](src/app/event.rs)) stops when `App::run` drops its event sender and joins the thread (bounded wait; override with `STOCKTERM_EVENT_JOIN_MS`, default **2000** ms). Embedders that call `App::run` more than once per process should reset `App` state between sessions.
+
+### Async channels (back-pressure)
+
+`App::run` uses **`tokio::sync::mpsc::unbounded_channel`** for UI events, `FetchDone`, `InflightRecovery`, and `UrlOpDone`. A single consumer drains each queue every `select!` iteration; **bounded** channels are deferred until profiling or embedder needs justify `try_send` with drop/coalesce semantics. **Input events are never dropped** (unbounded `Event` channel). See [`docs/SPEC.md`](docs/SPEC.md) §39.3 (Issue #87).
+
 ## Developer / debug
 
 These environment variables are supported for local diagnosis. Any other `STOCKTERM_DEBUG_*` name is **not** supported unless it appears here or in `docs/SPEC.md`.
@@ -86,6 +101,8 @@ These environment variables are supported for local diagnosis. Any other `STOCKT
 | _(none)_ | Default HTTP stack | **5 s** connect + **10 s** request timeout on the shared `reqwest::Client` ([`docs/SPEC.md`](docs/SPEC.md) §19 / Issue #18; `src/api/http.rs`). Startup calls `init_shared_client()` before the TUI; failure prints to stderr and exits with code **1**. |
 | `STOCKTERM_LOG_DIR` | Any build | Directory for `stockterm.log` (default: `{cache_dir}/stockterm/logs`). Supports `~/…` paths. See `docs/SPEC.md` §38. |
 | `STOCKTERM_LOG_STDERR` | Any build | Set to exactly `1` to mirror **WARN+** logs to stderr in addition to the log file (default: off — keeps the TUI clean). |
+| `STOCKTERM_EVENT_JOIN_MS` | Any build | Milliseconds to wait for the crossterm event thread after `App::run` exits (default **2000**). See §39.1 / [`src/app/event.rs`](src/app/event.rs). |
+| `STOCKTERM_INFLIGHT_STALE_SECS` | Tests / diagnostics | Seconds before the main loop clears a stuck `*_refresh_inflight` flag when both fetch and recovery sends failed (default **120**). See §39.2. |
 | `RUST_LOG` | Any build | Standard `tracing` filter (e.g. `stockterm=debug`). Default: `warn,stockterm=warn`. |
 | _(tests)_ | Authors writing **`#[tokio::test(start_paused = true)]`** + **`reqwest`** | Paused **`tokio::time::advance`** can fire **`reqwest`**’s request **`timeout`** while a **`GET`** is still in flight → spurious **`Timeout`**. Prefer wall-clock waits for **`Retry-After`** assertions or an isolated **`Client`** with a short timeout for stall tests — [`docs/SPEC.md`](docs/SPEC.md) §19.8 / §19.13.3. |
 | `STOCKTERM_DEBUG_ALERT_NOTIFY` | Build with the default **`desktop-notify`** Cargo feature | Set to exactly `1` (no trimming; no other value enables it). After `notify-rust` `Notification::show()`, StockTerm may `eprintln!` the `Result` to stderr on the **coalesced** desktop notify path (including `Ok(())`) so you can confirm the call completed. |

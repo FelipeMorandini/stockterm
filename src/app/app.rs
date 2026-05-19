@@ -8,7 +8,8 @@ use crate::app::app_error::{
     ErrorPersistence, ErrorSourceDomain, LastFailedFetch, ERROR_TRANSIENT_TTL,
 };
 use crate::app::charts::{viewport_zoom_in, viewport_zoom_out, ChartDisplayMode, ChartViewport};
-use crate::app::event::{spawn_event_thread, Event};
+use crate::app::event::{join_event_thread, spawn_event_thread, Event};
+use crate::app::fetch_delivery::deliver_fetch_done;
 use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
 use crate::config::theme::{PaletteRgb, Theme, ThemePreset};
@@ -31,7 +32,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::io;
 use std::panic::AssertUnwindSafe;
 use std::time::{Duration, Instant};
-use tokio::sync::mpsc::{error::SendError, UnboundedSender};
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
@@ -170,22 +171,6 @@ pub enum FetchDone {
     },
 }
 
-fn warn_fetch_channel_closed(context: &str, _err: &SendError<FetchDone>) {
-    tracing::warn!(
-        target: "stockterm::fetch",
-        context,
-        "dropped fetch result (channel closed)"
-    );
-}
-
-fn warn_inflight_recovery_send_failed(kind: &str, _err: SendError<InflightRecovery>) {
-    tracing::warn!(
-        target: "stockterm::fetch",
-        kind,
-        "inflight recovery send failed"
-    );
-}
-
 #[cfg(debug_assertions)]
 fn log_quote_batch_panic(payload: &(dyn std::any::Any + Send)) {
     if let Some(s) = payload.downcast_ref::<&str>() {
@@ -245,8 +230,12 @@ impl Drop for NewsUrlOpInflightGuard {
             return;
         }
         if let Some(tx) = &self.recovery_tx {
-            if let Err(e) = tx.send(InflightRecovery::NewsUrlOp) {
-                eprintln!("stockterm: failed news url op inflight recovery send: {e}");
+            if let Err(_e) = tx.send(InflightRecovery::NewsUrlOp) {
+                tracing::warn!(
+                    target: "stockterm::fetch",
+                    kind = "news_url_op",
+                    "inflight recovery send failed"
+                );
             }
         }
     }
@@ -307,12 +296,16 @@ pub struct App {
     last_news_network_poll: Option<Instant>,
     /// True while a watchlist / quote batch is in flight.
     pub stock_refresh_inflight: bool,
+    stock_inflight_since: Option<Instant>,
     fetch_done_tx: Option<UnboundedSender<FetchDone>>,
     inflight_recovery_tx: Option<UnboundedSender<InflightRecovery>>,
     stock_fetch_generation: u64,
     stock_refresh_pending: bool,
     hist_refresh_inflight: bool,
+    hist_inflight_since: Option<Instant>,
     pub news_refresh_inflight: bool,
+    news_inflight_since: Option<Instant>,
+    search_inflight_since: Option<Instant>,
     url_op_tx: Option<UnboundedSender<UrlOpDone>>,
     news_url_op_inflight: bool,
     news_url_flash: Option<(crate::app::open_url::NewsUrlFlashHint, Instant)>,
@@ -355,6 +348,17 @@ pub const SETTINGS_ROW_COUNT: usize = 7;
 const SETTINGS_SAVED_FLASH: Duration = Duration::from_secs(2);
 
 const NEWS_URL_FLASH: Duration = Duration::from_secs(2);
+
+/// Issue #78 / SPEC §39.2 — clear stuck inflight when both channel sends fail.
+const INFLIGHT_STALE_AFTER: Duration = Duration::from_secs(120);
+
+fn inflight_stale_after() -> Duration {
+    std::env::var("STOCKTERM_INFLIGHT_STALE_SECS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .map(Duration::from_secs)
+        .unwrap_or(INFLIGHT_STALE_AFTER)
+}
 
 /// Trim and uppercase ticker input; returns `None` if empty after trim.
 pub fn normalize_symbol(s: &str) -> Option<String> {
@@ -556,12 +560,16 @@ impl App {
             last_charts_network_poll: None,
             last_news_network_poll: None,
             stock_refresh_inflight: false,
+            stock_inflight_since: None,
             fetch_done_tx: None,
             inflight_recovery_tx: None,
             stock_fetch_generation: 0,
             stock_refresh_pending: false,
             hist_refresh_inflight: false,
+            hist_inflight_since: None,
             news_refresh_inflight: false,
+            news_inflight_since: None,
+            search_inflight_since: None,
             url_op_tx: None,
             news_url_op_inflight: false,
             news_url_flash: None,
@@ -971,6 +979,7 @@ impl App {
         }
 
         self.stock_refresh_inflight = true;
+        self.stock_inflight_since = Some(Instant::now());
         self.stock_fetch_generation += 1;
         let generation = self.stock_fetch_generation;
         let cfg = self.config.clone();
@@ -985,6 +994,8 @@ impl App {
                 Err(payload) => {
                     #[cfg(debug_assertions)]
                     log_quote_batch_panic(&*payload);
+                    #[cfg(not(debug_assertions))]
+                    drop(payload);
                     FetchDone::Stock {
                         generation,
                         quotes: HashMap::new(),
@@ -995,14 +1006,12 @@ impl App {
                     }
                 }
             };
-            if let Err(e) = tx.send(done) {
-                warn_fetch_channel_closed("stock quote batch result", &e);
-                if let Some(rtx) = recovery_tx {
-                    if let Err(re) = rtx.send(InflightRecovery::Stock) {
-                        warn_inflight_recovery_send_failed("stock", re);
-                    }
-                }
-            }
+            deliver_fetch_done(
+                &tx,
+                recovery_tx.as_ref(),
+                done,
+                InflightRecovery::Stock,
+            );
         });
     }
 
@@ -1019,6 +1028,7 @@ impl App {
         }
 
         self.stock_refresh_inflight = false;
+        self.stock_inflight_since = None;
         self.last_stock_network_poll = Some(Instant::now());
 
         for (k, v) in quotes {
@@ -1136,6 +1146,7 @@ impl App {
         };
 
         self.hist_refresh_inflight = true;
+        self.hist_inflight_since = Some(Instant::now());
         let sym = self.symbol.clone();
         let cfg = self.config.clone();
         let tr = self.time_range;
@@ -1154,18 +1165,16 @@ impl App {
             };
             let provider = market_provider_for(cfg.provider);
             let result = provider.get_historical(&sym, &hq, &cfg).await;
-            if let Err(e) = tx.send(FetchDone::Historical {
-                symbol: sym,
-                time_range: tr,
-                result,
-            }) {
-                warn_fetch_channel_closed("historical fetch result", &e);
-                if let Some(rtx) = recovery_tx {
-                    if let Err(re) = rtx.send(InflightRecovery::Historical) {
-                        warn_inflight_recovery_send_failed("historical", re);
-                    }
-                }
-            }
+            deliver_fetch_done(
+                &tx,
+                recovery_tx.as_ref(),
+                FetchDone::Historical {
+                    symbol: sym,
+                    time_range: tr,
+                    result,
+                },
+                InflightRecovery::Historical,
+            );
         });
     }
 
@@ -1200,23 +1209,19 @@ impl App {
         };
 
         self.news_refresh_inflight = true;
+        self.news_inflight_since = Some(Instant::now());
         let sym = self.symbol.clone();
         let cfg = self.config.clone();
         let recovery_tx = self.inflight_recovery_tx.clone();
         tokio::spawn(async move {
             let provider = market_provider_for(cfg.provider);
             let result = provider.get_news(&sym, &cfg).await;
-            if let Err(e) = tx.send(FetchDone::News {
-                symbol: sym,
-                result,
-            }) {
-                warn_fetch_channel_closed("news fetch result", &e);
-                if let Some(rtx) = recovery_tx {
-                    if let Err(re) = rtx.send(InflightRecovery::News) {
-                        warn_inflight_recovery_send_failed("news", re);
-                    }
-                }
-            }
+            deliver_fetch_done(
+                &tx,
+                recovery_tx.as_ref(),
+                FetchDone::News { symbol: sym, result },
+                InflightRecovery::News,
+            );
         });
     }
 
@@ -1230,6 +1235,63 @@ impl App {
         }
         self.tick_runtime_error_ttl();
         self.flush_session_persist_if_due();
+        self.recover_stale_inflight_flags();
+    }
+
+    /// Clears inflight flags left stuck when both `FetchDone` and `InflightRecovery` delivery fail.
+    fn recover_stale_inflight_flags(&mut self) {
+        let stale_after = inflight_stale_after();
+
+        if self.stock_refresh_inflight && Self::inflight_is_stale(self.stock_inflight_since, stale_after)
+        {
+            tracing::warn!(
+                target: "stockterm::fetch",
+                domain = "stock",
+                "cleared stale inflight after channel delivery failure"
+            );
+            self.apply_inflight_recovery(InflightRecovery::Stock);
+        }
+
+        if self.hist_refresh_inflight && Self::inflight_is_stale(self.hist_inflight_since, stale_after)
+        {
+            tracing::warn!(
+                target: "stockterm::fetch",
+                domain = "historical",
+                "cleared stale inflight after channel delivery failure"
+            );
+            self.hist_refresh_inflight = false;
+            self.hist_inflight_since = None;
+        }
+
+        if self.news_refresh_inflight && Self::inflight_is_stale(self.news_inflight_since, stale_after)
+        {
+            tracing::warn!(
+                target: "stockterm::fetch",
+                domain = "news",
+                "cleared stale inflight after channel delivery failure"
+            );
+            self.news_refresh_inflight = false;
+            self.news_inflight_since = None;
+        }
+
+        if self.search_refresh_inflight
+            && Self::inflight_is_stale(self.search_inflight_since, stale_after)
+        {
+            tracing::warn!(
+                target: "stockterm::fetch",
+                domain = "search",
+                "cleared stale inflight after channel delivery failure"
+            );
+            self.search_refresh_inflight = false;
+            self.search_inflight_since = None;
+        }
+    }
+
+    fn inflight_is_stale(since: Option<Instant>, stale_after: Duration) -> bool {
+        match since {
+            Some(t) => t.elapsed() > stale_after,
+            None => true,
+        }
     }
 
     /// Call after `search_query` mutates (typing); schedules debounced API call on Search tab.
@@ -1300,22 +1362,21 @@ impl App {
         let generation = self.search_request_generation;
         let cfg = self.config.clone();
         self.search_refresh_inflight = true;
+        self.search_inflight_since = Some(Instant::now());
         let recovery_tx = self.inflight_recovery_tx.clone();
         tokio::spawn(async move {
             let provider = market_provider_for(cfg.provider);
             let result = provider.search_symbols(&query, &cfg).await;
-            if let Err(e) = tx.send(FetchDone::Search {
-                generation,
-                query,
-                result,
-            }) {
-                warn_fetch_channel_closed("search fetch result", &e);
-                if let Some(rtx) = recovery_tx {
-                    if let Err(re) = rtx.send(InflightRecovery::Search) {
-                        warn_inflight_recovery_send_failed("search", re);
-                    }
-                }
-            }
+            deliver_fetch_done(
+                &tx,
+                recovery_tx.as_ref(),
+                FetchDone::Search {
+                    generation,
+                    query,
+                    result,
+                },
+                InflightRecovery::Search,
+            );
         });
     }
 
@@ -1756,11 +1817,21 @@ impl App {
 
     fn apply_inflight_recovery(&mut self, kind: InflightRecovery) {
         match kind {
-            InflightRecovery::Historical => self.hist_refresh_inflight = false,
-            InflightRecovery::News => self.news_refresh_inflight = false,
-            InflightRecovery::Search => self.search_refresh_inflight = false,
+            InflightRecovery::Historical => {
+                self.hist_refresh_inflight = false;
+                self.hist_inflight_since = None;
+            }
+            InflightRecovery::News => {
+                self.news_refresh_inflight = false;
+                self.news_inflight_since = None;
+            }
+            InflightRecovery::Search => {
+                self.search_refresh_inflight = false;
+                self.search_inflight_since = None;
+            }
             InflightRecovery::Stock => {
                 self.stock_refresh_inflight = false;
+                self.stock_inflight_since = None;
                 // Issue #77 / SPEC §16.3: coalesced refresh must not stick pending when FetchDone send failed.
                 if std::mem::take(&mut self.stock_refresh_pending) {
                     self.spawn_stock_fetch_task();
@@ -1783,6 +1854,7 @@ impl App {
                 result,
             } => {
                 self.hist_refresh_inflight = false;
+                self.hist_inflight_since = None;
                 if symbol != self.symbol || time_range != self.time_range {
                     self.last_charts_network_poll = None;
                     return;
@@ -1823,6 +1895,7 @@ impl App {
             }
             FetchDone::News { symbol, result } => {
                 self.news_refresh_inflight = false;
+                self.news_inflight_since = None;
                 self.last_news_network_poll = Some(Instant::now());
                 if symbol != self.symbol {
                     return;
@@ -1871,6 +1944,7 @@ impl App {
                 result,
             } => {
                 self.search_refresh_inflight = false;
+                self.search_inflight_since = None;
                 if !search_result_matches_current(
                     generation,
                     self.search_request_generation,
@@ -1940,17 +2014,17 @@ impl App {
         self.url_op_tx = Some(url_op_tx);
 
         let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
-        spawn_event_thread(event_tx);
+        let event_handle = spawn_event_thread(event_tx);
 
         self.request_immediate_stock_poll();
 
-        loop {
+        let run_result = loop {
             draw(terminal, self)?;
 
             if self.should_quit {
                 self.session_persist_deadline = None;
                 let _ = self.try_save_config_with_session();
-                return Ok(());
+                break Ok(());
             }
 
             tokio::select! {
@@ -1970,7 +2044,7 @@ impl App {
                             // Event sender dropped (abnormal); best-effort persist like quit path.
                             self.session_persist_deadline = None;
                             let _ = self.try_save_config_with_session();
-                            return Ok(());
+                            break Ok(());
                         }
                     }
                 }
@@ -1990,7 +2064,15 @@ impl App {
                     }
                 }
             }
-        }
+        };
+
+        self.fetch_done_tx = None;
+        self.inflight_recovery_tx = None;
+        self.url_op_tx = None;
+        // Drop the receiver so the event thread's `send` fails and the loop exits (Issue #108).
+        drop(event_rx);
+        join_event_thread(event_handle);
+        run_result
     }
 }
 
@@ -2388,6 +2470,7 @@ mod tests {
     use crate::app::app_error::{push_error_log, ErrorLogEntry, UiErrorCategory, ERROR_LOG_CAP};
     use crate::app::Tab;
     use std::collections::VecDeque;
+    use std::time::{Duration, Instant};
 
     fn fill_error_log(app: &mut App, n: usize) {
         for i in 0..n {
@@ -2824,6 +2907,33 @@ mod tests {
     fn data_poll_interval_honors_configured_value() {
         assert_eq!(data_poll_interval_secs(5), 5);
         assert_eq!(data_poll_interval_secs(60), 60);
+    }
+
+    /// Issue #78 / SPEC §39.2 — stale watchdog clears stock inflight after channel failures.
+    #[test]
+    fn recover_stale_inflight_flags_clears_stock_inflight() {
+        let _guard = InflightStaleEnvGuard::set_secs(0);
+        let mut app = App::new();
+        app.stock_refresh_inflight = true;
+        app.stock_inflight_since = Some(Instant::now() - Duration::from_millis(10));
+        app.recover_stale_inflight_flags();
+        assert!(!app.stock_refresh_inflight);
+        assert!(app.stock_inflight_since.is_none());
+    }
+
+    struct InflightStaleEnvGuard;
+
+    impl InflightStaleEnvGuard {
+        fn set_secs(secs: u64) -> Self {
+            std::env::set_var("STOCKTERM_INFLIGHT_STALE_SECS", secs.to_string());
+            Self
+        }
+    }
+
+    impl Drop for InflightStaleEnvGuard {
+        fn drop(&mut self) {
+            std::env::remove_var("STOCKTERM_INFLIGHT_STALE_SECS");
+        }
     }
 }
 
