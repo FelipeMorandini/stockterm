@@ -11,6 +11,13 @@ pub fn letter_key_plain(m: KeyModifiers) -> bool {
         && !m.contains(KeyModifiers::SUPER)
 }
 
+/// True for unmodified **Tab** / **BackTab** routing (Issue #82 / SPEC §36.2) — same meta rules as
+/// [`letter_key_plain`].
+#[inline]
+pub fn tab_key_plain(m: KeyModifiers) -> bool {
+    letter_key_plain(m)
+}
+
 #[cfg(test)]
 mod tests {
     use super::letter_key_plain;
@@ -31,5 +38,14 @@ mod tests {
         assert!(!letter_key_plain(KeyModifiers::META));
         assert!(!letter_key_plain(KeyModifiers::CONTROL | KeyModifiers::SHIFT));
         assert!(!letter_key_plain(KeyModifiers::ALT | KeyModifiers::SHIFT));
+    }
+
+    #[test]
+    fn tab_key_plain_matches_letter_key_plain() {
+        use super::tab_key_plain;
+        assert!(tab_key_plain(KeyModifiers::NONE));
+        assert!(tab_key_plain(KeyModifiers::SHIFT));
+        assert!(!tab_key_plain(KeyModifiers::CONTROL));
+        assert!(!tab_key_plain(KeyModifiers::CONTROL | KeyModifiers::SHIFT));
     }
 }

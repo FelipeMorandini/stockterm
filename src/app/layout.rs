@@ -8,12 +8,17 @@ use ratatui::layout::{Constraint, Direction, Layout, Rect};
 pub fn shell_vertical_constraints(
     resolved: &ResolvedLayout,
     startup_h: u16,
+    status_rows: u16,
 ) -> [Constraint; 4] {
     [
         Constraint::Length(if resolved.show_tab_bar { 3 } else { 0 }),
         Constraint::Length(startup_h),
         Constraint::Min(0),
-        Constraint::Length(if resolved.show_status_bar { 1 } else { 0 }),
+        Constraint::Length(if resolved.show_status_bar {
+            status_rows
+        } else {
+            0
+        }),
     ]
 }
 
@@ -47,6 +52,17 @@ pub(crate) fn centered_rect(area: Rect, percent_x: u16, percent_y: u16) -> Rect 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shell_vertical_constraints_status_rows() {
+        use crate::config::layout::Layout;
+
+        let resolved = Layout::default().resolve();
+        let c = shell_vertical_constraints(&resolved, 0, 2);
+        assert_eq!(c[3], Constraint::Length(2));
+        let c0 = shell_vertical_constraints(&resolved, 0, 0);
+        assert_eq!(c0[3], Constraint::Length(0));
+    }
 
     #[test]
     fn centered_rect_fits_inside_area() {

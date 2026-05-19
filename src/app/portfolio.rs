@@ -23,6 +23,10 @@ pub(crate) const MAX_HOLDING_SHARES: f64 = 1_000_000_000.0;
 /// Upper sanity bound for price per share; SPEC §15.5.
 pub(crate) const MAX_HOLDING_PRICE_PER_SHARE: f64 = 1e12;
 
+/// Shown when commit fails because `App.symbol` does not normalize (Issues #69 / #83).
+pub(crate) const PORTFOLIO_ADD_INVALID_SYMBOL_INLINE: &str =
+    "Cannot add holding: no valid ticker is set. Pick a symbol on Stock View.";
+
 /// Parse a positive decimal for shares or purchase price (Issue #6 / SPEC §13).
 pub(crate) fn parse_holding_decimal(input: &str) -> Result<f64, &'static str> {
     let t = input.trim();
@@ -357,6 +361,15 @@ fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect, theme: Resol
     f.render_widget(p, popup);
 }
 
+/// Commits the portfolio add dialog when both fields parse.
+///
+/// # `add_to_portfolio` contract (Issue #83 / SPEC §36.3.3)
+///
+/// | `add_to_portfolio` | `error_message` | This function |
+/// |--------------------|-----------------|---------------|
+/// | `true` | — | Close dialog; request quote poll |
+/// | `false`, invalid symbol | not set | Set [`PORTFOLIO_ADD_INVALID_SYMBOL_INLINE`] |
+/// | `false`, save failed | set (runtime error) | Keep dialog; do not set `inline_error` |
 pub(crate) fn try_commit_portfolio_dialog(app: &mut App) {
     let Some(ref dlg) = app.portfolio_dialog else {
         return;
@@ -377,10 +390,7 @@ pub(crate) fn try_commit_portfolio_dialog(app: &mut App) {
                 app.request_immediate_stock_poll();
             } else if app.error_message().is_none() {
                 if let Some(d) = app.portfolio_dialog.as_mut() {
-                    d.inline_error = Some(
-                        "Cannot add holding: no valid ticker is set. Pick a symbol on Stock View."
-                            .into(),
-                    );
+                    d.inline_error = Some(PORTFOLIO_ADD_INVALID_SYMBOL_INLINE.into());
                 }
             }
         }
