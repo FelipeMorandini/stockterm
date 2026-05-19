@@ -1,3 +1,4 @@
+use crate::api::concurrency::acquire_quote_permit;
 use crate::api::error::ProviderError;
 use crate::api::http::maybe_debug_http_delay;
 use crate::api::market_provider_for;
@@ -420,7 +421,10 @@ async fn run_stock_quote_batch(
         let cfg = config.clone();
         let provider = provider.clone();
         set.spawn(async move {
-            let _permit = sem.acquire().await.ok();
+            let _permit = match acquire_quote_permit(&sem, &sym, "polygon").await {
+                Ok(p) => p,
+                Err(e) => return (sym, Err(e)),
+            };
             let res = provider.get_quote(&sym, &cfg).await;
             (sym, res)
         });

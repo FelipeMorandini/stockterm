@@ -53,6 +53,46 @@ fn truncate_utf8_notify_body_to_max_bytes(s: &str, max_bytes: usize) -> String {
     format!("{}{}", &s[..end], ELLIPSIS)
 }
 
+/// Build a multi-line notify `body` under `max_bytes` without allocating the full `join` first (§40.3.2).
+#[cfg(any(test, feature = "desktop-notify"))]
+fn assemble_notify_body_capped(lines: &[String], max_bytes: usize) -> String {
+    const ELLIPSIS: &str = "…";
+    let el = ELLIPSIS.len();
+    if lines.is_empty() || max_bytes == 0 {
+        return String::new();
+    }
+    let mut out = String::new();
+    for (i, line) in lines.iter().enumerate() {
+        if i > 0 {
+            if out.len() + 1 > max_bytes {
+                return truncate_utf8_notify_body_to_max_bytes(&out, max_bytes);
+            }
+            out.push('\n');
+        }
+        if out.len() + line.len() <= max_bytes {
+            out.push_str(line);
+            continue;
+        }
+        let room = max_bytes.saturating_sub(out.len());
+        if room <= el {
+            return truncate_utf8_notify_body_to_max_bytes(&out, max_bytes);
+        }
+        let prefix_max = room - el;
+        let mut end = 0usize;
+        for c in line.chars() {
+            let cl = c.len_utf8();
+            if end + cl > prefix_max {
+                break;
+            }
+            end += cl;
+        }
+        out.push_str(&line[..end]);
+        out.push_str(ELLIPSIS);
+        return out;
+    }
+    out
+}
+
 /// Strip control characters, collapse whitespace, cap length for OS notification bodies (§18.14.4).
 #[cfg(any(test, feature = "desktop-notify"))]
 pub(crate) fn sanitize_alert_notify_display_text(s: &str) -> String {
@@ -89,8 +129,7 @@ pub(crate) fn alerts_tab_banner_active(app: &App) -> bool {
 #[cfg(feature = "desktop-notify")]
 fn spawn_desktop_alert_notifications_batch(summary: String, body_lines: Vec<String>) {
     std::thread::spawn(move || {
-        let joined = body_lines.join("\n");
-        let body = truncate_utf8_notify_body_to_max_bytes(&joined, NOTIFY_BATCH_BODY_MAX_BYTES);
+        let body = assemble_notify_body_capped(&body_lines, NOTIFY_BATCH_BODY_MAX_BYTES);
         let show_result = notify_rust::Notification::new()
             .summary(&summary)
             .body(&body)
@@ -792,7 +831,10 @@ mod sanitize_tests {
 
 #[cfg(test)]
 mod notify_body_cap_tests {
-    use super::{truncate_utf8_notify_body_to_max_bytes, NOTIFY_BATCH_BODY_MAX_BYTES};
+    use super::{
+        assemble_notify_body_capped, truncate_utf8_notify_body_to_max_bytes,
+        NOTIFY_BATCH_BODY_MAX_BYTES,
+    };
 
     #[test]
     fn truncate_noop_when_under_cap() {
@@ -822,5 +864,15 @@ mod notify_body_cap_tests {
     #[test]
     fn default_cap_constant_matches_spec() {
         assert_eq!(NOTIFY_BATCH_BODY_MAX_BYTES, 1024);
+    }
+
+    #[test]
+    fn assemble_many_lines_stays_under_byte_cap() {
+        let lines: Vec<String> = (0..40)
+            .map(|i| format!("SYMBOL{i:02} Above $12345.67 · last $12345.89 padding"))
+            .collect();
+        let out = assemble_notify_body_capped(&lines, NOTIFY_BATCH_BODY_MAX_BYTES);
+        assert!(out.len() <= NOTIFY_BATCH_BODY_MAX_BYTES);
+        assert!(!out.contains("SYMBOL39"));
     }
 }

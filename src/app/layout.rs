@@ -24,27 +24,29 @@ pub fn shell_vertical_constraints(
 
 /// Centered inner rectangle as a percentage of `area` (width `percent_x`, height `percent_y`).
 ///
-/// `percent_x` and `percent_y` must be in `0..=100` (inclusive). Values greater than 100 are a
-/// contract violation and may wrap in internal arithmetic.
+/// `percent_x` and `percent_y` should be in `0..=100` (inclusive). Values greater than 100 are a
+/// contract violation (`debug_assert!` in debug builds); release builds clamp to 100 before layout math.
 pub(crate) fn centered_rect(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
     debug_assert!(
         percent_x <= 100 && percent_y <= 100,
         "centered_rect: percent_x and percent_y must be ≤ 100"
     );
+    let px = percent_x.min(100);
+    let py = percent_y.min(100);
     let v = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y).div_ceil(2)),
+            Constraint::Percentage(100u16.saturating_sub(py) / 2),
+            Constraint::Percentage(py),
+            Constraint::Percentage(100u16.saturating_sub(py).div_ceil(2)),
         ])
         .split(area);
     Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x).div_ceil(2)),
+            Constraint::Percentage(100u16.saturating_sub(px) / 2),
+            Constraint::Percentage(px),
+            Constraint::Percentage(100u16.saturating_sub(px).div_ceil(2)),
         ])
         .split(v[1])[1]
 }
@@ -68,6 +70,20 @@ mod tests {
     fn centered_rect_fits_inside_area() {
         let area = Rect::new(0, 0, 100, 40);
         let inner = centered_rect(area, 55, 42);
+        assert!(inner.x >= area.x);
+        assert!(inner.y >= area.y);
+        assert!(inner.x + inner.width <= area.x + area.width);
+        assert!(inner.y + inner.height <= area.y + area.height);
+        assert!(inner.width > 0);
+        assert!(inner.height > 0);
+    }
+
+    /// Issue #106 / §40.3.1 — overflow percents clamp instead of wrapping in release.
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn centered_rect_clamps_overflow_percents() {
+        let area = Rect::new(0, 0, 100, 40);
+        let inner = centered_rect(area, 150, 150);
         assert!(inner.x >= area.x);
         assert!(inner.y >= area.y);
         assert!(inner.x + inner.width <= area.x + area.width);

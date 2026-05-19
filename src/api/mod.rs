@@ -1,3 +1,4 @@
+pub(crate) mod concurrency;
 pub mod error;
 pub mod historical_query;
 pub mod http;
