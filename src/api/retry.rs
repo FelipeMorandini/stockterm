@@ -38,7 +38,7 @@ fn is_transient(err: &ProviderError) -> bool {
     match err {
         ProviderError::Timeout => true,
         ProviderError::Transport(_) => true,
-        ProviderError::Http { status, .. } => (500..600).contains(status),
+        ProviderError::Http { status, .. } => *status == 408 || (500..600).contains(status),
         ProviderError::Json(_) | ProviderError::ApiMessage(_) | ProviderError::RateLimited { .. } => {
             false
         }
@@ -144,6 +144,33 @@ mod wiremock_tests {
             "expected ~1s Retry-After wait, got {:?}",
             t0.elapsed()
         );
+    }
+
+    #[tokio::test]
+    async fn four_zero_eight_retries_then_success() {
+        let srv = MockServer::start().await;
+        let n = Arc::new(AtomicUsize::new(0));
+        Mock::given(method("GET"))
+            .respond_with({
+                let n = Arc::clone(&n);
+                move |_req: &Request| {
+                    let i = n.fetch_add(1, Ordering::SeqCst);
+                    match i {
+                        0 => ResponseTemplate::new(408),
+                        _ => ResponseTemplate::new(200).set_body_string("ok"),
+                    }
+                }
+            })
+            .expect(2)
+            .mount(&srv)
+            .await;
+
+        let url = format!("{}/timeout", srv.uri());
+        let client = test_client();
+        let out = execute_get_text_with_retry_inner(&client, &url)
+            .await
+            .expect("ok after 408");
+        assert_eq!(out, "ok");
     }
 
     #[tokio::test]
