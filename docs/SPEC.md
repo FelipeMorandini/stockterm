@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -498,7 +498,7 @@ Set **`TickerResponse.ticker`** from Yahoo **`symbol`** string (fallback: reques
 2. **RSS:** `GET https://feeds.finance.yahoo.com/rss/2.0/headline?s={SYMBOL}&region=US&lang=en-US` — parse `<item>` / `<title>` / `<link>` / `<pubDate>`.
 3. **Legacy:** `GET https://query2.finance.yahoo.com/v2/finance/news?symbols={SYMBOL}` — existing stream JSON mapper.
 
-If endpoints shift: fix parsers + fixtures; on HTTP success with empty content, **`Ok`** with zero results is acceptable per empty-news UX — still surface **`ProviderError`** on hard HTTP/parse failure after all attempts.
+If endpoints shift: fix parsers + fixtures; on HTTP success with a **valid, empty** feed (parsed structure with zero items), **`Ok`** with zero results is acceptable per empty-news UX. **Do not** treat **JSON shape drift** (HTTP 200 + `{…}` body that does not map to known news wire) as **`Ok(empty)`** — see **§36** ([Issue #54](https://github.com/FelipeMorandini/stockterm/issues/54)). Surface **`ProviderError`** when **all** orchestration attempts fail or the last-resort path cannot parse.
 
 **Mapping highlights:**
 
@@ -5042,3 +5042,227 @@ After maintainer approval of §35, the **engineer** may proceed per [`.cursor/ru
 - **Status:** Shipped (2026-05-18) — §35.6.1 unit tests, §35.6.2 polish (poll-clock reset on Settings commit, Settings hint, README). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** (sign-off **2026-05-18**).
 - **Tracking:** [Issue #4](https://github.com/FelipeMorandini/stockterm/issues/4). **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149).
 - **Code (primary):** [`src/app/event.rs`](../src/app/event.rs), [`src/app/app.rs`](../src/app/app.rs) (`data_poll_interval`, `on_background_tick`, inflight flags), [`src/app/ui.rs`](../src/app/ui.rs) (status line), [`src/config/config.rs`](../src/config/config.rs), Settings commit in **`app.rs`**.
+
+---
+
+## 36. Issue [#54](https://github.com/FelipeMorandini/stockterm/issues/54) — Yahoo Finance news: resilient `query2` parsing & attempt observability
+
+**Sources:**
+
+- [GitHub Issue #54](https://github.com/FelipeMorandini/stockterm/issues/54) — ship audit / [Issue #31](https://github.com/FelipeMorandini/stockterm/issues/31): **`yahoo_news_query2`** returns **`Ok(empty)`** when JSON parses as **`{`** but does not match **`NewsEnvelope`**, hiding parse/shape drift.
+- [`docs/SPEC.md`](SPEC.md) **§9.12** — news orchestration order (search → RSS → `query2`).
+- [`docs/SPEC.md`](SPEC.md) **§10.3** / [Issue #11](https://github.com/FelipeMorandini/stockterm/issues/11) — News tab UX: **“No news available”** vs provider error on status line (**§20**).
+
+**Related:** **§31** / [Issue #31](https://github.com/FelipeMorandini/stockterm/issues/31) (Yahoo provider shipped — search + RSS + `query2` already exist); **§27** / [#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59) (News tab open/copy — unchanged); **§34** / [#90](https://github.com/FelipeMorandini/stockterm/issues/90) (**`STOCKTERM_DEBUG_YAHOO_QUOTE`** pattern for stderr diagnostics); **§18.15** / [#101](https://github.com/FelipeMorandini/stockterm/issues/101) (**`STOCKTERM_DEBUG_*`** README table).
+
+**Note:** Issue #54’s “optionally add RSS” is **already implemented** as the **second** attempt in **`yahoo_news`**. This slice **tightens** the **`query2`** last-resort path and adds operator-visible attempt logging — not a fourth HTTP endpoint unless a future issue captures a new Yahoo route.
+
+---
+
+### 36.1 Problem inventory (verified in tree, 2026-05-18)
+
+| Symptom | Location | Gap |
+|---------|----------|-----|
+| **Silent empty on drift** | [`yahoo_news_query2`](../src/api/yahoo.rs) ~907–914 | When body starts with **`{`** but **`NewsEnvelope`** deserialize fails (or envelope parses with **no** `data.main.stream`), code returns **`Ok(NewsResponse { count: 0 })`** instead of **`Err`**. User sees **“No news available”** with no status-line error. |
+| **Legitimate empty vs failure** | [`apply_fetch_done`](../src/app/app.rs) **`FetchDone::News`** | **`Ok(empty)`** and **`Err`** are handled differently — conflating drift with empty feed breaks §20 retry semantics (**`LastFailedFetch::News`** only on **`Err`**). |
+| **Swallowed upstream errors** | [`yahoo_news`](../src/api/yahoo.rs) ~740–747 | **`if let Ok(r) = attempt`** — failed search/RSS are **skipped** (correct), but when both fail and `query2` returns fake empty, operator cannot tell **which** path failed. |
+| **Search short-circuit** | **`yahoo_news_via_search`** | **`Ok(empty)`** after successful JSON parse returns immediately — RSS/`query2` never run. Acceptable for “symbol has no headlines in search API”; optional polish to fall through on zero rows (§36.6.2 — **out of scope** unless product asks). |
+| **Debug env** | [`README.md`](../README.md) | No **`STOCKTERM_DEBUG_YAHOO_NEWS`** row yet. |
+| **Fixtures** | [`tests/fixtures/`](../tests/fixtures/) | Chart + search fixtures exist; **no** `yahoo_news_*` JSON for `query2` / drift. |
+
+---
+
+### 36.2 Product acceptance
+
+1. **Distinguish outcomes** (operator / logs):
+   - **`ok_items(n)`** — parsed feed with **n > 0** items.
+   - **`ok_empty`** — HTTP success + known wire shape + **zero** items (true empty feed).
+   - **`parse_mismatch`** — HTTP success + JSON object/array body that does **not** yield items after strict + lenient mappers.
+   - **`http_error`** / **`transport_error`** — existing **`ProviderError`** paths unchanged.
+2. **`query2` last resort:** When search **and** RSS have already failed, **`yahoo_news_query2` must not** return **`Ok(empty)`** solely because the body starts with **`{`**. Return **`ProviderError::ApiMessage`** with a concise reason (e.g. **`Yahoo news (query2): response shape did not match known news JSON`**) unless lenient extraction finds items.
+3. **`query2` strict path preserved:** When **`NewsEnvelope` → `data.main.stream`** maps rows, behavior unchanged (**`map_news_stream`**).
+4. **Lenient drift recovery (in scope):** After strict deserialize fails or stream is absent, attempt **`serde_json::from_str::<serde_json::Value>`** and walk **documented** alternate paths (§36.4.3). Success → **`Ok`** with mapped items; failure → **`Err`** as in (2).
+5. **Optional stderr trail (#54 observability):** When **`STOCKTERM_DEBUG_YAHOO_NEWS=1`** (exact string, same contract as **`STOCKTERM_DEBUG_YAHOO_QUOTE`**), emit **one line per orchestration attempt** (search / RSS / query2) with: **symbol**, **source**, **outcome** token, and **item count** when applicable. **No** full response bodies or secrets on stderr.
+6. **Default builds:** No stderr from news unless debug env enabled; happy-path news for common symbols (**AAPL**, **MSFT**) unchanged when Yahoo endpoints cooperate.
+7. **UI contract:** No new tabs/keys. **`FetchDone::News` `Err`** continues to surface **`ErrorSourceDomain::News`**; **`Ok(empty)`** still shows **“No news available”** only for true empty feeds.
+8. **README:** Document **`STOCKTERM_DEBUG_YAHOO_NEWS`** in **Developer / debug** (§18.15 table).
+
+---
+
+### 36.3 Architecture — news orchestration
+
+```mermaid
+flowchart TD
+  A[yahoo_news symbol] --> B[search query1]
+  B -->|Ok any| R[Return Ok]
+  B -->|Err| C[RSS feed]
+  C -->|Ok any| R
+  C -->|Err| D[query2 legacy]
+  D --> E{strict NewsEnvelope + stream?}
+  E -->|items| R
+  E -->|empty stream| F[ok_empty]
+  E -->|no stream / deserialize fail| G[lenient Value walk]
+  G -->|items| R
+  G -->|none| H[Err parse_mismatch]
+  F --> R
+```
+
+- **Primary data path** remains **`MarketDataProvider::get_news` → `yahoo_news`** ([`src/api/yahoo.rs`](../src/api/yahoo.rs)); **no** `App` or **`NewsResponse`** schema changes.
+- **Attempt logging** is **`api/yahoo.rs`**-local; **`App`** does not parse stderr.
+
+---
+
+### 36.4 Implementation plan (Rust)
+
+**Files:** [`src/api/yahoo.rs`](../src/api/yahoo.rs) (primary), [`tests/fixtures/yahoo_news_query2_stream.json`](../tests/fixtures/yahoo_news_query2_stream.json) (new), [`tests/fixtures/yahoo_news_query2_drift.json`](../tests/fixtures/yahoo_news_query2_drift.json) (new), [`README.md`](../README.md) (debug row). **No** new crates.
+
+#### 36.4.1 Internal attempt model (crate-private)
+
+Add small enums (names illustrative):
+
+```rust
+enum YahooNewsSource { Search, Rss, Query2 }
+
+enum YahooNewsOutcome {
+    OkItems { count: u32 },
+    OkEmpty,
+    ErrMessage(String), // already formatted for ProviderError::ApiMessage
+}
+
+struct YahooNewsAttempt {
+    source: YahooNewsSource,
+    outcome: YahooNewsOutcome,
+}
+```
+
+Refactor **`yahoo_news`** to:
+
+1. Run **`yahoo_news_via_search`**, record attempt, **`return Ok`** on **`Ok`** (preserve today’s short-circuit).
+2. On **`Err`**, run **`yahoo_news_via_rss`**, record attempt, **`return Ok`** on **`Ok`**.
+3. On **`Err`**, run **`yahoo_news_query2`**, record attempt, return its **`Result`**.
+4. Call **`maybe_log_yahoo_news_attempts(symbol, &[attempts])`** when debug enabled.
+
+Keep **`yahoo_news_via_*`** signatures; optionally add **`yahoo_news_via_*_labeled`** wrappers that return **`YahooNewsAttempt`** for tests — prefer minimal diff.
+
+#### 36.4.2 Fix `yahoo_news_query2` (remove silent empty)
+
+Replace the block:
+
+```rust
+if text.trim_start().starts_with('{') {
+    return Ok(NewsResponse { count: 0, ... });
+}
+```
+
+with:
+
+1. **Strict:** existing **`NewsEnvelope`** + **`map_news_stream`** when `stream` is **`Some`** (including **empty vec** → **`OkEmpty`**).
+2. **Strict envelope without stream:** fall through to lenient (do **not** return empty yet).
+3. **Lenient:** **`query2_extract_stream_lenient(&text)`** → **`Option<Vec<NewsStreamItem>>`** (§36.4.3).
+4. If lenient finds items → **`Ok`**; if lenient finds explicit empty array at known path → **`OkEmpty`**; else **`Err(ProviderError::ApiMessage(...))`**.
+5. Non-JSON body → keep existing **“not valid JSON”** error.
+
+#### 36.4.3 Lenient `query2` extractor
+
+**Function:** **`fn query2_extract_stream_lenient(text: &str) -> Result<Option<Vec<NewsStreamItem>>, serde_json::Error>`** (or split parse error vs “no path matched”).
+
+Parse to **`serde_json::Value`**, then probe **in order**:
+
+| Path | Action |
+|------|--------|
+| `data.main.stream` | Deserialize array elements as **`NewsStreamItem`** (reuse struct) |
+| `data.stream` | Same |
+| `main.stream` | Same |
+| Top-level `stream` array | Same |
+| Top-level `items` / `news` arrays | Map via a thin wire struct or manual field walk (`title`, `link` / `canonicalUrl`, `provider`) into **`NewsItem`** directly if stream items differ |
+
+**Cap** traversal work: do not scan unbounded maps; stop after first matching path. **No** network I/O.
+
+Document any newly discovered path in a code comment + fixture.
+
+#### 36.4.4 Debug env — `STOCKTERM_DEBUG_YAHOO_NEWS`
+
+```rust
+fn yahoo_news_debug_enabled() -> bool {
+    std::env::var("STOCKTERM_DEBUG_YAHOO_NEWS")
+        .map(|s| s == "1")
+        .unwrap_or(false)
+}
+```
+
+**`maybe_log_yahoo_news_attempts(symbol, attempts)`** — when enabled:
+
+```text
+stockterm: yahoo news AAPL: search ok_items(12)
+stockterm: yahoo news AAPL: rss err(Yahoo RSS headline feed returned no items)
+stockterm: yahoo news AAPL: query2 parse_mismatch
+```
+
+Use stable snake-case tokens: **`ok_items`**, **`ok_empty`**, **`parse_mismatch`**, **`err(...)`** (truncate long messages to ~120 chars). **Do not** log article URLs in bulk.
+
+#### 36.4.5 Search / RSS behavior
+
+- **Search:** keep **`Err`** on JSON parse failure (**`ProviderError::ApiMessage`** today). **`Ok(empty)`** after successful parse remains valid.
+- **RSS:** keep **`Err`** when zero items (forces fall-through to `query2` today) — unchanged.
+- **Do not** change Polygon **`get_news`** (if any) — Yahoo-only slice.
+
+#### 36.4.6 Unit tests (`src/api/yahoo.rs` `#[cfg(test)]`)
+
+| Test | Assert |
+|------|--------|
+| **`yahoo_news_query2_maps_fixture_stream`** | `include_str!("../../tests/fixtures/yahoo_news_query2_stream.json")` → **`Ok`**, **`count > 0`** |
+| **`yahoo_news_query2_drift_uses_lenient_path`** | drift fixture → **`Ok`**, **`count > 0`** |
+| **`yahoo_news_query2_parse_mismatch_errors`** | minimal `{"foo":1}` → **`Err`**, message mentions shape/parse |
+| **`yahoo_news_query2_empty_stream_is_ok_empty`** | strict envelope, `"stream":[]` → **`Ok`**, **`count == 0`** |
+| **`yahoo_news_debug_enabled_respects_exact_one`** | env `1` vs unset/`0`/`true` |
+| **Existing** `yahoo_search_news_maps_wire_row`, `yahoo_rss_parses_minimal_item` | remain green (regression) |
+
+Optional **`wiremock`** integration test is **out of scope** for #54 (prefer fixtures); file a follow-up if live Yahoo flakiness demands it.
+
+#### 36.4.7 Fixtures
+
+Capture **redacted** real responses during implementation (or hand-author minimal shapes):
+
+- **`yahoo_news_query2_stream.json`** — canonical `data.main.stream` with ≥1 item.
+- **`yahoo_news_query2_drift.json`** — JSON object that **fails** `NewsEnvelope` strict deserialize but matches one lenient path from §36.4.3.
+
+---
+
+### 36.5 Automated verification
+
+```bash
+cargo build --release
+cargo clippy -- -D warnings
+cargo test yahoo_news yahoo_search_news yahoo_rss
+cargo test
+```
+
+---
+
+### 36.6 Out of scope / optional polish
+
+| Item | Rationale |
+|------|-----------|
+| **Search `Ok(empty)` → try RSS** | Product change; file separately if needed |
+| **`tracing` / file logger** | Use **`STOCKTERM_DEBUG_*`** only (§34 precedent) |
+| **News tab copy for “parse mismatch”** | Status line already shows **`ProviderError`** string |
+| **`wiremock` live Yahoo** | Fixtures-first per §36.4.6 |
+| **Polygon news** | N/A — Yahoo path only |
+
+---
+
+### 36.7 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #54** section.
+
+---
+
+### 36.8 Approval
+
+After maintainer approval of §36, the **engineer** may implement per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc), run §36.5 + QA Plan Issue **#54**, then open PR and close [Issue #54](https://github.com/FelipeMorandini/stockterm/issues/54).
+
+### 36.9 Shipment record
+
+- **Status:** Shipped (2026-05-18). **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** (sign-off **2026-05-18**).
+- **Tracking:** [Issue #54](https://github.com/FelipeMorandini/stockterm/issues/54).
+- **Code:** [`src/api/yahoo.rs`](../src/api/yahoo.rs) — `yahoo_news` attempt logging, `yahoo_news_query2_from_text`, `query2_extract_stream_lenient`, **`STOCKTERM_DEBUG_YAHOO_NEWS`**; [`tests/fixtures/yahoo_news_query2_stream.json`](../tests/fixtures/yahoo_news_query2_stream.json), [`tests/fixtures/yahoo_news_query2_drift.json`](../tests/fixtures/yahoo_news_query2_drift.json); [`README.md`](../README.md) debug row.
