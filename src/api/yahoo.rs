@@ -738,13 +738,143 @@ fn map_search_quote(q: SearchQuote) -> Option<SymbolResult> {
 /// Yahoo `query2` **`/v2/finance/news`** often returns HTTP 500. Prefer **`query1` search**
 /// (`newsCount`) and RSS, then keep query2 as a last resort.
 async fn yahoo_news(symbol: &str) -> ProviderResult<NewsResponse> {
-    if let Ok(r) = yahoo_news_via_search(symbol).await {
+    let mut attempts = Vec::new();
+
+    let search_result = yahoo_news_via_search(symbol).await;
+    attempts.push(YahooNewsAttempt {
+        source: YahooNewsSource::Search,
+        outcome: yahoo_news_outcome_from_result(&search_result),
+    });
+    if let Ok(r) = search_result {
+        maybe_log_yahoo_news_attempts(symbol, &attempts);
         return Ok(r);
     }
-    if let Ok(r) = yahoo_news_via_rss(symbol).await {
+
+    let rss_result = yahoo_news_via_rss(symbol).await;
+    attempts.push(YahooNewsAttempt {
+        source: YahooNewsSource::Rss,
+        outcome: yahoo_news_outcome_from_result(&rss_result),
+    });
+    if let Ok(r) = rss_result {
+        maybe_log_yahoo_news_attempts(symbol, &attempts);
         return Ok(r);
     }
-    yahoo_news_query2(symbol).await
+
+    let query2_result = yahoo_news_query2(symbol).await;
+    attempts.push(YahooNewsAttempt {
+        source: YahooNewsSource::Query2,
+        outcome: yahoo_news_outcome_from_result(&query2_result),
+    });
+    maybe_log_yahoo_news_attempts(symbol, &attempts);
+    query2_result
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum YahooNewsSource {
+    Search,
+    Rss,
+    Query2,
+}
+
+impl YahooNewsSource {
+    fn log_label(self) -> &'static str {
+        match self {
+            Self::Search => "search",
+            Self::Rss => "rss",
+            Self::Query2 => "query2",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum YahooNewsOutcome {
+    OkItems { count: u32 },
+    OkEmpty,
+    ParseMismatch,
+    ErrMessage(String),
+}
+
+struct YahooNewsAttempt {
+    source: YahooNewsSource,
+    outcome: YahooNewsOutcome,
+}
+
+/// Enabled when `STOCKTERM_DEBUG_YAHOO_NEWS` is exactly `1` (Issue #54 / SPEC §36.4.4).
+fn yahoo_news_debug_enabled() -> bool {
+    std::env::var("STOCKTERM_DEBUG_YAHOO_NEWS")
+        .map(|s| s == "1")
+        .unwrap_or(false)
+}
+
+fn yahoo_news_outcome_from_result(result: &ProviderResult<NewsResponse>) -> YahooNewsOutcome {
+    match result {
+        Ok(r) => {
+            let count = r.results.len() as u32;
+            if count > 0 {
+                YahooNewsOutcome::OkItems { count }
+            } else {
+                YahooNewsOutcome::OkEmpty
+            }
+        }
+        Err(ProviderError::ApiMessage(s)) if is_query2_news_shape_error(s) => {
+            YahooNewsOutcome::ParseMismatch
+        }
+        Err(e) => YahooNewsOutcome::ErrMessage(truncate_utf8_debug_msg(&e.to_string())),
+    }
+}
+
+const QUERY2_NEWS_SHAPE_ERR: &str =
+    "Yahoo news (query2): response shape did not match known news JSON";
+
+const YAHOO_NEWS_DEBUG_MSG_MAX_BYTES: usize = 120;
+
+/// Returns true when `message` is the canonical query2 shape-mismatch error (Issue #54).
+fn is_query2_news_shape_error(message: &str) -> bool {
+    message == QUERY2_NEWS_SHAPE_ERR
+}
+
+/// Truncate debug stderr text at a UTF-8 scalar boundary (mirrors `alerts` notify body cap).
+fn truncate_utf8_debug_msg(s: &str) -> String {
+    truncate_utf8_to_max_bytes(s, YAHOO_NEWS_DEBUG_MSG_MAX_BYTES)
+}
+
+fn truncate_utf8_to_max_bytes(s: &str, max_bytes: usize) -> String {
+    const ELLIPSIS: &str = "…";
+    let el = ELLIPSIS.len();
+    if s.len() <= max_bytes {
+        return s.to_string();
+    }
+    if max_bytes < el {
+        return String::new();
+    }
+    let prefix_max = max_bytes - el;
+    let mut end = 0usize;
+    for c in s.chars() {
+        let cl = c.len_utf8();
+        if end + cl > prefix_max {
+            break;
+        }
+        end += cl;
+    }
+    format!("{}{}", &s[..end], ELLIPSIS)
+}
+
+fn maybe_log_yahoo_news_attempts(symbol: &str, attempts: &[YahooNewsAttempt]) {
+    if !yahoo_news_debug_enabled() {
+        return;
+    }
+    for attempt in attempts {
+        let outcome = match &attempt.outcome {
+            YahooNewsOutcome::OkItems { count } => format!("ok_items({count})"),
+            YahooNewsOutcome::OkEmpty => "ok_empty".to_string(),
+            YahooNewsOutcome::ParseMismatch => "parse_mismatch".to_string(),
+            YahooNewsOutcome::ErrMessage(s) => format!("err({})", truncate_utf8_debug_msg(s)),
+        };
+        eprintln!(
+            "stockterm: yahoo news {symbol}: {} {outcome}",
+            attempt.source.log_label()
+        );
+    }
 }
 
 async fn yahoo_news_via_search(symbol: &str) -> ProviderResult<NewsResponse> {
@@ -896,74 +1026,222 @@ async fn yahoo_news_query2(symbol: &str) -> ProviderResult<NewsResponse> {
     let enc_sym = encode(symbol);
     let url = format!("{}/v2/finance/news?symbols={}", QUERY2, enc_sym);
     let text = fetch_text(&url).await?;
+    yahoo_news_query2_from_text(&text, symbol)
+}
 
-    // Try structured stream format (common for query2).
-    if let Ok(env) = serde_json::from_str::<NewsEnvelope>(&text) {
+/// Parses a `query2` news HTTP body (strict envelope, then lenient paths — Issue #54 / SPEC §36).
+fn yahoo_news_query2_from_text(text: &str, symbol: &str) -> ProviderResult<NewsResponse> {
+    let trimmed = text.trim_start();
+    let value = match serde_json::from_str::<serde_json::Value>(text) {
+        Ok(v) => v,
+        Err(e) => {
+            if trimmed.starts_with('{') || trimmed.starts_with('[') {
+                return Err(ProviderError::ApiMessage(format!(
+                    "Yahoo news (query2): JSON parse: {e}"
+                )));
+            }
+            return Err(ProviderError::ApiMessage(
+                "Yahoo news response was not valid JSON".to_string(),
+            ));
+        }
+    };
+
+    if let Ok(env) = serde_json::from_value::<NewsEnvelope>(value.clone()) {
         if let Some(stream) = env.data.and_then(|d| d.main).and_then(|m| m.stream) {
             return Ok(map_news_stream(stream, symbol));
         }
     }
 
-    // Fallback: empty list on parse failure only if body looks like JSON object without fatal shape.
-    if text.trim_start().starts_with('{') {
-        return Ok(NewsResponse {
-            status: "OK".to_string(),
-            count: 0,
-            results: vec![],
-        });
+    match query2_extract_stream_lenient_from_value(&value, symbol) {
+        Query2LenientExtract::Stream(stream) => Ok(map_news_stream(stream, symbol)),
+        Query2LenientExtract::Flat(items) => Ok(news_response_from_items(items)),
+        Query2LenientExtract::Empty => Ok(empty_news_response()),
+        Query2LenientExtract::NoMatch => Err(ProviderError::ApiMessage(
+            QUERY2_NEWS_SHAPE_ERR.to_string(),
+        )),
     }
-
-    Err(ProviderError::ApiMessage(
-        "Yahoo news response was not valid JSON".to_string(),
-    ))
 }
 
-fn map_news_stream(stream: Vec<NewsStreamItem>, symbol: &str) -> NewsResponse {
-    let mut results = Vec::new();
-    for item in stream {
-        let Some(content) = item.content else { continue };
-        let title = content.title.unwrap_or_default();
-        let url = content.canonical_url.map(|c| c.url).unwrap_or_default();
-        let published = content
-            .pub_date
-            .or(content.provider_publish_time)
-            .unwrap_or_default();
-        let publisher_name = item
-            .provider
-            .as_ref()
-            .and_then(|p| p.display_name.clone().or(p.name.clone()))
-            .unwrap_or_default();
+enum Query2LenientExtract {
+    Stream(Vec<NewsStreamItem>),
+    Flat(Vec<NewsItem>),
+    Empty,
+    NoMatch,
+}
 
-        let id = item
-            .id
-            .unwrap_or_else(|| format!("{:x}", md5_hash(&format!("{title}{url}"))));
-
-        results.push(NewsItem {
-            id,
-            publisher: Publisher {
-                name: publisher_name,
-                homepage_url: String::new(),
-                logo_url: String::new(),
-                favicon_url: String::new(),
-            },
-            title,
-            author: None,
-            published_utc: published,
-            article_url: url,
-            tickers: vec![symbol.to_uppercase()],
-            amp_url: None,
-            image_url: None,
-            description: content.summary,
-            keywords: vec![],
-        });
+fn empty_news_response() -> NewsResponse {
+    NewsResponse {
+        status: "OK".to_string(),
+        count: 0,
+        results: vec![],
     }
+}
 
-    let count = results.len() as u32;
+fn news_response_from_items(items: Vec<NewsItem>) -> NewsResponse {
+    let count = items.len() as u32;
     NewsResponse {
         status: "OK".to_string(),
         count,
-        results,
+        results: items,
     }
+}
+
+/// Walk documented alternate `query2` JSON paths (SPEC §36.4.3).
+fn query2_extract_stream_lenient_from_value(
+    value: &serde_json::Value,
+    symbol: &str,
+) -> Query2LenientExtract {
+    const STREAM_PATHS: &[&[&str]] = &[
+        &["data", "main", "stream"],
+        &["data", "stream"],
+        &["main", "stream"],
+        &["stream"],
+    ];
+    for path in STREAM_PATHS {
+        if let Some(arr) = json_path(value, path).filter(|v| v.is_array()) {
+            return stream_extract_from_array(arr, symbol);
+        }
+    }
+    for key in ["items", "news"] {
+        if let Some(arr) = value.get(key).filter(|v| v.is_array()) {
+            if let Some(items) = map_query2_flat_news_array(arr, symbol) {
+                if items.is_empty() {
+                    return Query2LenientExtract::Empty;
+                }
+                return Query2LenientExtract::Flat(items);
+            }
+        }
+    }
+    Query2LenientExtract::NoMatch
+}
+
+fn json_path<'a>(value: &'a serde_json::Value, path: &[&str]) -> Option<&'a serde_json::Value> {
+    let mut cur = value;
+    for key in path {
+        cur = cur.get(*key)?;
+    }
+    Some(cur)
+}
+
+fn stream_extract_from_array(arr: &serde_json::Value, symbol: &str) -> Query2LenientExtract {
+    if arr.as_array().is_some_and(|a| a.is_empty()) {
+        return Query2LenientExtract::Empty;
+    }
+    if let Ok(stream) = serde_json::from_value::<Vec<NewsStreamItem>>(arr.clone()) {
+        if stream.is_empty() {
+            return Query2LenientExtract::Empty;
+        }
+        return Query2LenientExtract::Stream(stream);
+    }
+    if let Some(items) = map_query2_flat_news_array(arr, symbol) {
+        if items.is_empty() {
+            return Query2LenientExtract::Empty;
+        }
+        return Query2LenientExtract::Flat(items);
+    }
+    Query2LenientExtract::NoMatch
+}
+
+fn map_query2_flat_news_array(arr: &serde_json::Value, symbol: &str) -> Option<Vec<NewsItem>> {
+    let rows = arr.as_array()?;
+    let mut out = Vec::new();
+    for row in rows {
+        if let Ok(item) = serde_json::from_value::<NewsStreamItem>(row.clone()) {
+            if let Some(mapped) = map_news_stream_item(item, symbol) {
+                out.push(mapped);
+            }
+            continue;
+        }
+        if let Ok(flat) = serde_json::from_value::<Query2FlatNewsWire>(row.clone()) {
+            if let Some(mapped) = map_query2_flat_wire(flat, symbol) {
+                out.push(mapped);
+            }
+        }
+    }
+    if out.is_empty() && rows.is_empty() {
+        return Some(vec![]);
+    }
+    if out.is_empty() {
+        return None;
+    }
+    Some(out)
+}
+
+fn map_news_stream_item(item: NewsStreamItem, symbol: &str) -> Option<NewsItem> {
+    let content = item.content?;
+    let title = content.title.filter(|t| !t.is_empty())?;
+    let url = content
+        .canonical_url
+        .map(|c| c.url)
+        .unwrap_or_default();
+    let published = content
+        .pub_date
+        .or(content.provider_publish_time)
+        .unwrap_or_default();
+    let publisher_name = item
+        .provider
+        .as_ref()
+        .and_then(|p| p.display_name.clone().or(p.name.clone()))
+        .unwrap_or_default();
+    let id = item
+        .id
+        .unwrap_or_else(|| format!("{:x}", md5_hash(&format!("{title}{url}"))));
+    Some(NewsItem {
+        id,
+        publisher: Publisher {
+            name: publisher_name,
+            homepage_url: String::new(),
+            logo_url: String::new(),
+            favicon_url: String::new(),
+        },
+        title,
+        author: None,
+        published_utc: published,
+        article_url: url,
+        tickers: vec![symbol.to_uppercase()],
+        amp_url: None,
+        image_url: None,
+        description: content.summary,
+        keywords: vec![],
+    })
+}
+
+fn map_query2_flat_wire(wire: Query2FlatNewsWire, symbol: &str) -> Option<NewsItem> {
+    let title = wire.title.filter(|t| !t.is_empty())?;
+    let url = wire
+        .link
+        .or(wire.canonical_url.map(|c| c.url))
+        .unwrap_or_default();
+    let id = wire
+        .id
+        .filter(|u| !u.is_empty())
+        .unwrap_or_else(|| format!("{:x}", md5_hash(&format!("{title}{url}"))));
+    Some(NewsItem {
+        id,
+        publisher: Publisher {
+            name: wire.publisher.unwrap_or_default(),
+            homepage_url: String::new(),
+            logo_url: String::new(),
+            favicon_url: String::new(),
+        },
+        title,
+        author: None,
+        published_utc: wire.pub_date.unwrap_or_default(),
+        article_url: url,
+        tickers: vec![symbol.to_uppercase()],
+        amp_url: None,
+        image_url: None,
+        description: wire.summary,
+        keywords: vec![],
+    })
+}
+
+fn map_news_stream(stream: Vec<NewsStreamItem>, symbol: &str) -> NewsResponse {
+    let results: Vec<NewsItem> = stream
+        .into_iter()
+        .filter_map(|item| map_news_stream_item(item, symbol))
+        .collect();
+    news_response_from_items(results)
 }
 
 fn md5_hash(s: &str) -> u64 {
@@ -1131,6 +1409,21 @@ struct CanonicalUrl {
 struct StreamProvider {
     name: Option<String>,
     display_name: Option<String>,
+}
+
+/// Flat `items` / `news` rows when `query2` drifts away from the stream envelope.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Query2FlatNewsWire {
+    id: Option<String>,
+    title: Option<String>,
+    link: Option<String>,
+    #[serde(rename = "canonicalUrl", alias = "canonical_url")]
+    canonical_url: Option<CanonicalUrl>,
+    #[serde(rename = "pubDate")]
+    pub_date: Option<String>,
+    publisher: Option<String>,
+    summary: Option<String>,
 }
 
 #[cfg(test)]
@@ -1420,6 +1713,84 @@ mod tests {
         assert_eq!(v.len(), 1);
         assert_eq!(v[0].title, "T1");
         assert_eq!(v[0].article_url, "https://a");
+    }
+
+    #[test]
+    fn yahoo_news_query2_maps_fixture_stream() {
+        let json = include_str!("../../tests/fixtures/yahoo_news_query2_stream.json");
+        let r = yahoo_news_query2_from_text(json, "AAPL").expect("parse stream fixture");
+        assert!(r.count > 0);
+        assert!(!r.results.is_empty());
+        assert_eq!(r.results[0].title, "Test Headline");
+    }
+
+    #[test]
+    fn yahoo_news_query2_drift_uses_lenient_path() {
+        let json = include_str!("../../tests/fixtures/yahoo_news_query2_drift.json");
+        let r = yahoo_news_query2_from_text(json, "MSFT").expect("parse drift fixture");
+        assert!(r.count > 0);
+        assert_eq!(r.results[0].title, "Drift Headline");
+    }
+
+    #[test]
+    fn yahoo_news_query2_parse_mismatch_errors() {
+        let err = yahoo_news_query2_from_text(r#"{"foo":1}"#, "AAPL").unwrap_err();
+        match err {
+            ProviderError::ApiMessage(s) => {
+                assert!(s.contains("shape did not match"));
+            }
+            other => panic!("expected ApiMessage, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn yahoo_news_query2_empty_stream_is_ok_empty() {
+        let json = r#"{"data":{"main":{"stream":[]}}}"#;
+        let r = yahoo_news_query2_from_text(json, "AAPL").expect("empty stream");
+        assert_eq!(r.count, 0);
+        assert!(r.results.is_empty());
+    }
+
+    #[test]
+    fn truncate_utf8_debug_msg_respects_scalar_boundary() {
+        let s = "α".repeat(80);
+        let out = truncate_utf8_debug_msg(&s);
+        assert!(out.ends_with('…'));
+        assert!(out.len() <= YAHOO_NEWS_DEBUG_MSG_MAX_BYTES);
+    }
+
+    #[test]
+    fn is_query2_news_shape_error_matches_constant_only() {
+        assert!(is_query2_news_shape_error(QUERY2_NEWS_SHAPE_ERR));
+        assert!(!is_query2_news_shape_error(
+            "Yahoo news (query2): response shape did not match known news JSON!"
+        ));
+    }
+
+    #[test]
+    fn yahoo_news_debug_enabled_respects_exact_one() {
+        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let prev = std::env::var("STOCKTERM_DEBUG_YAHOO_NEWS").ok();
+        std::env::set_var("STOCKTERM_DEBUG_YAHOO_NEWS", "1");
+        assert!(yahoo_news_debug_enabled());
+        std::env::set_var("STOCKTERM_DEBUG_YAHOO_NEWS", "0");
+        assert!(!yahoo_news_debug_enabled());
+        std::env::set_var("STOCKTERM_DEBUG_YAHOO_NEWS", "true");
+        assert!(!yahoo_news_debug_enabled());
+        match prev {
+            Some(v) => std::env::set_var("STOCKTERM_DEBUG_YAHOO_NEWS", v),
+            None => std::env::remove_var("STOCKTERM_DEBUG_YAHOO_NEWS"),
+        }
+    }
+
+    #[test]
+    fn maybe_log_yahoo_news_attempts_no_panic_when_disabled() {
+        let attempts = vec![YahooNewsAttempt {
+            source: YahooNewsSource::Query2,
+            outcome: YahooNewsOutcome::ParseMismatch,
+        }];
+        maybe_log_yahoo_news_attempts("AAPL", &attempts);
     }
 
     #[test]

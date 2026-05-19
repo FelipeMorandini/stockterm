@@ -1,0 +1,17 @@
+{
+  "main": {
+    "stream": [
+      {
+        "id": "drift-1",
+        "content": {
+          "title": "Drift Headline",
+          "canonicalUrl": { "url": "https://example.com/drift" },
+          "pubDate": "2024-01-01T00:00:00Z"
+        },
+        "provider": {
+          "displayName": "Reuters"
+        }
+      }
+    ]
+  }
+}
