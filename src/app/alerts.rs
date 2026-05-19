@@ -766,11 +766,16 @@ impl App {
         }
     }
 
+    /// Latest close for `symbol` from active quote, watchlist cache, or portfolio (SPEC §41.1).
+    ///
+    /// Polygon may omit `TickerResponse.ticker`; empty ticker applies only to [`Self::symbol`].
     pub fn get_current_price(&self, symbol: &str) -> Option<f64> {
         if let Some(ticker_data) = &self.ticker_data {
-            let matches_symbol = ticker_data.ticker.is_empty()
-                || ticker_data.ticker.eq_ignore_ascii_case(symbol);
-            if matches_symbol {
+            if crate::models::ticker::ticker_response_matches_symbol_for_session(
+                ticker_data,
+                symbol,
+                &self.symbol,
+            ) {
                 if let Some(bar) = ticker_data.latest_result() {
                     return Some(bar.c);
                 }
@@ -785,11 +790,90 @@ impl App {
             }
         }
 
-        if let Some(portfolio_item) = self.portfolio.iter().find(|item| item.symbol == symbol) {
+        if let Some(portfolio_item) = self
+            .portfolio
+            .iter()
+            .find(|item| item.symbol.eq_ignore_ascii_case(symbol))
+        {
             return portfolio_item.current_price;
         }
 
         None
+    }
+}
+
+#[cfg(test)]
+mod get_current_price_tests {
+    use crate::models::portfolio::PortfolioItem;
+    use crate::models::ticker::{TickerResponse, TickerResult};
+
+    use super::App;
+
+    fn quote_response(ticker: &str, close: f64) -> TickerResponse {
+        TickerResponse {
+            ticker: ticker.to_string(),
+            results: vec![TickerResult {
+                o: close,
+                h: close,
+                l: close,
+                c: close,
+                v: 1.0,
+                t: 1,
+            }],
+            status: "OK".into(),
+            error: None,
+        }
+    }
+
+    #[test]
+    fn get_current_price_watchlist_cache_case_insensitive() {
+        let mut app = App::new();
+        app.watchlist_quotes
+            .insert("AAPL".into(), quote_response("AAPL", 150.0));
+        assert_eq!(app.get_current_price("aapl"), Some(150.0));
+    }
+
+    #[test]
+    fn get_current_price_ticker_data_empty_ticker() {
+        let mut app = App::new();
+        app.symbol = "MSFT".into();
+        app.ticker_data = Some(quote_response("", 300.0));
+        assert_eq!(app.get_current_price("MSFT"), Some(300.0));
+    }
+
+    #[test]
+    fn get_current_price_empty_ticker_data_does_not_apply_to_other_symbols() {
+        let mut app = App::new();
+        app.symbol = "MSFT".into();
+        app.watchlist_quotes.clear();
+        app.portfolio.clear();
+        app.ticker_data = Some(quote_response("", 300.0));
+        assert_eq!(app.get_current_price("AAPL"), None);
+        assert_eq!(app.get_current_price("MSFT"), Some(300.0));
+    }
+
+    #[test]
+    fn get_current_price_ticker_data_wrong_symbol_uses_cache() {
+        let mut app = App::new();
+        app.symbol = "MSFT".into();
+        app.ticker_data = Some(quote_response("AAPL", 150.0));
+        app.watchlist_quotes
+            .insert("MSFT".into(), quote_response("MSFT", 400.0));
+        assert_eq!(app.get_current_price("MSFT"), Some(400.0));
+    }
+
+    #[test]
+    fn get_current_price_portfolio_case_insensitive() {
+        let mut app = App::new();
+        app.portfolio = vec![PortfolioItem {
+            symbol: "aapl".into(),
+            shares: 1.0,
+            purchase_price: 1.0,
+            current_price: Some(9.0),
+            purchase_date: None,
+            notes: None,
+        }];
+        assert_eq!(app.get_current_price("AAPL"), Some(9.0));
     }
 }
 
