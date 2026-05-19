@@ -20,6 +20,9 @@ use ratatui::{
 use std::io;
 use std::time::Instant;
 
+/// Stock View status fits on one line at or above this width (Issue #81 / SPEC §36.1).
+pub(crate) const STOCK_VIEW_STATUS_SINGLE_LINE_COLS: u16 = 100;
+
 pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<()> {
     terminal.draw(|f| {
         let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
@@ -33,9 +36,10 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
         );
 
         let startup_h = u16::from(app.startup_error.is_some()) * 2;
+        let status_rows = status_bar_row_count(app, size.width);
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(shell_vertical_constraints(&layout, startup_h).as_ref())
+            .constraints(shell_vertical_constraints(&layout, startup_h, status_rows).as_ref())
             .split(size);
 
         if layout.show_tab_bar {
@@ -814,45 +818,102 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
     f.render_widget(p, inner);
 }
 
+/// True when Stock View shows the default hint lines (not error / inflight overrides).
+fn stock_view_status_is_hint_mode(app: &App) -> bool {
+    app.error_message().is_none()
+        && !app.stock_refresh_inflight
+        && app.news_url_flash_line().is_none()
+}
+
+/// Status shell rows: `0` when hidden; `2` on narrow Stock View hint mode (Issue #81).
+pub(crate) fn status_bar_row_count(app: &App, term_width: u16) -> u16 {
+    let layout = app.layout_for_render();
+    if !layout.show_status_bar {
+        return 0;
+    }
+    if app.active_tab == Tab::StockView
+        && term_width < STOCK_VIEW_STATUS_SINGLE_LINE_COLS
+        && stock_view_status_is_hint_mode(app)
+    {
+        2
+    } else {
+        1
+    }
+}
+
+fn status_bar_global_suffix(rt: ResolvedTheme) -> Vec<Span<'static>> {
+    vec![
+        Span::styled(" · ", rt.canvas()),
+        Span::styled("^E", rt.fg_border()),
+        Span::styled(" error log · ", rt.canvas()),
+        Span::styled("^R", rt.fg_border()),
+        Span::styled(" retry", rt.canvas()),
+    ]
+}
+
+fn stock_view_status_primary_spans(rt: ResolvedTheme) -> Vec<Span<'static>> {
+    vec![
+        Span::styled("q quit · Tab tabs · ", rt.canvas()),
+        Span::styled("A–Z", rt.fg_border()),
+        Span::styled(" type · ", rt.canvas()),
+        Span::styled("w", rt.fg_border()),
+        Span::styled(" add · ", rt.canvas()),
+        Span::styled("x", rt.fg_border()),
+        Span::styled("/", rt.canvas()),
+        Span::styled("D", rt.fg_border()),
+        Span::styled(" rm · ", rt.canvas()),
+        Span::styled("j/k", rt.fg_border()),
+        Span::styled(" · Enter", rt.canvas()),
+    ]
+}
+
+/// Stock View status hint lines for `width` (one or two lines per SPEC §36.1.3).
+pub(crate) fn stock_view_status_lines(width: u16, rt: ResolvedTheme) -> Vec<Line<'static>> {
+    let mut primary = stock_view_status_primary_spans(rt);
+    primary.extend(status_bar_global_suffix(rt));
+
+    if width >= STOCK_VIEW_STATUS_SINGLE_LINE_COLS {
+        let mut line = Line::from(primary);
+        line.spans.push(Span::styled(" · ", rt.canvas()));
+        line.spans.push(Span::styled(
+            "tickers w/x/j/k: Shift+1st letter if lower",
+            rt.fg_muted(),
+        ));
+        vec![line]
+    } else {
+        let line1 = Line::from(primary);
+        let line2 = Line::from(vec![Span::styled(
+            "Symbols starting w/x/j/k: type 1st letter with Shift (e.g. Wmt → WMT)",
+            rt.fg_muted(),
+        )]);
+        vec![line1, line2]
+    }
+}
+
 fn draw_status_bar(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
-    let status = if let Some(error) = app.error_message() {
-        Line::from(vec![Span::styled(error, rt.error_text())])
+    let lines: Vec<Line> = if let Some(error) = app.error_message() {
+        vec![Line::from(vec![Span::styled(error, rt.error_text())])]
     } else if app.active_tab == Tab::Search && app.search_refresh_inflight {
-        Line::from(vec![Span::styled(
+        vec![Line::from(vec![Span::styled(
             "Searching…",
             rt.fg_accent(),
-        )])
+        )])]
     } else if let Some(flash) = app.news_url_flash_line() {
-        Line::from(vec![Span::styled(flash, rt.success_text())])
+        vec![Line::from(vec![Span::styled(flash, rt.success_text())])]
     } else if app.active_tab == Tab::News && app.news_refresh_inflight {
-        Line::from(vec![Span::styled(
+        vec![Line::from(vec![Span::styled(
             "Loading news…",
             rt.fg_accent(),
-        )])
+        )])]
     } else if app.stock_refresh_inflight {
-        Line::from(vec![Span::styled(
+        vec![Line::from(vec![Span::styled(
             "Refreshing quotes…",
             rt.fg_accent(),
-        )])
+        )])]
+    } else if app.active_tab == Tab::StockView && stock_view_status_is_hint_mode(app) {
+        stock_view_status_lines(area.width.max(1), rt)
     } else {
         let mut line = match app.active_tab {
-            Tab::StockView => Line::from(vec![
-                Span::styled("q quit · Tab tabs · ", rt.canvas()),
-                Span::styled("A–Z", rt.fg_border()),
-                Span::styled(" type · ", rt.canvas()),
-                Span::styled("w", rt.fg_border()),
-                Span::styled(" add · ", rt.canvas()),
-                Span::styled("x", rt.fg_border()),
-                Span::styled("/", rt.canvas()),
-                Span::styled("D", rt.fg_border()),
-                Span::styled(" rm · ", rt.canvas()),
-                Span::styled("j/k", rt.fg_border()),
-                Span::styled(" · Enter · ", rt.canvas()),
-                Span::styled(
-                    "tickers w/x/j/k: Shift+1st letter if lower",
-                    rt.fg_muted(),
-                ),
-            ]),
             Tab::Search => Line::from(vec![
                 Span::styled("q quit · Tab tabs · type query · ", rt.canvas()),
                 Span::styled("Esc", rt.fg_border()),
@@ -881,16 +942,61 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
                 rt.canvas(),
             )]),
         };
-        line.spans.extend([
-            Span::styled(" · ", rt.canvas()),
-            Span::styled("^E", rt.fg_border()),
-            Span::styled(" error log · ", rt.canvas()),
-            Span::styled("^R", rt.fg_border()),
-            Span::styled(" retry", rt.canvas()),
-        ]);
-        line
+        line.spans.extend(status_bar_global_suffix(rt));
+        vec![line]
     };
 
-    let paragraph = Paragraph::new(status).style(rt.canvas());
+    let paragraph = Paragraph::new(lines).style(rt.canvas());
     f.render_widget(paragraph, area);
+}
+
+#[cfg(test)]
+mod status_bar_tests {
+    use super::*;
+    use crate::app::App;
+    use crate::config::theme::{Theme, ThemePreset};
+
+    fn test_rt() -> ResolvedTheme {
+        ResolvedTheme::from_palette(Theme::from_preset(ThemePreset::BuiltinDefault).resolve_rgb())
+    }
+
+    #[test]
+    fn stock_view_status_lines_wide_is_one_line() {
+        let lines = stock_view_status_lines(120, test_rt());
+        assert_eq!(lines.len(), 1);
+        let text: String = lines[0]
+            .spans
+            .iter()
+            .map(|s| s.content.as_ref())
+            .collect();
+        assert!(text.contains("Shift+1st letter"));
+    }
+
+    #[test]
+    fn stock_view_status_lines_narrow_is_two_lines() {
+        let lines = stock_view_status_lines(80, test_rt());
+        assert_eq!(lines.len(), 2);
+        let text: String = lines[1]
+            .spans
+            .iter()
+            .map(|s| s.content.as_ref())
+            .collect();
+        assert!(text.contains("Shift"));
+    }
+
+    #[test]
+    fn status_bar_row_count_stock_view_narrow_is_two() {
+        let mut app = App::new();
+        app.active_tab = Tab::StockView;
+        app.active_runtime_error = None;
+        app.stock_refresh_inflight = false;
+        assert_eq!(status_bar_row_count(&app, 80), 2);
+    }
+
+    #[test]
+    fn status_bar_row_count_inflight_is_one() {
+        let mut app = App::new();
+        app.stock_refresh_inflight = true;
+        assert_eq!(status_bar_row_count(&app, 80), 1);
+    }
 }

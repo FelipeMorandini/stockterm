@@ -2233,7 +2233,19 @@ impl App {
         self.persist_session_to_disk();
     }
 
-    /// Returns `false` if validation or `try_save` failed (`error_message` may be set).
+    /// Adds or merges a holding for the active [`Self::symbol`] and persists config.
+    ///
+    /// # Returns
+    ///
+    /// - `true` if the holding was applied and [`Self::try_save_config_with_session`] succeeded.
+    /// - `false` if:
+    ///   1. [`crate::app::normalize_symbol`] on [`Self::symbol`] is `None` — does **not** set
+    ///      `error_message`; caller ([`crate::app::portfolio::try_commit_portfolio_dialog`]) must set
+    ///      `portfolio_dialog.inline_error`.
+    ///   2. config save fails — sets runtime error via [`Self::surface_runtime_error`]; caller must
+    ///      **not** overwrite with `inline_error`.
+    ///
+    /// Any new `false` branch must either set `error_message` or extend the contract in SPEC §36.3.
     pub fn add_to_portfolio(&mut self, shares: f64, purchase_price: f64) -> bool {
         let Some(sym) = normalize_symbol(&self.symbol) else {
             return false;
@@ -2732,9 +2744,12 @@ mod tests {
         assert!(syms.contains(&"IBM".to_string()));
     }
 
+    /// Issue #83 / SPEC §36.3 — `add_to_portfolio` false without runtime error ⇒ `inline_error`.
     #[test]
     fn portfolio_try_commit_sets_inline_error_when_add_fails_without_try_save() {
-        use crate::app::portfolio::try_commit_portfolio_dialog;
+        use crate::app::portfolio::{
+            try_commit_portfolio_dialog, PORTFOLIO_ADD_INVALID_SYMBOL_INLINE,
+        };
         use crate::app::{PortfolioAddDialog, PortfolioAddField};
 
         let mut app = App::new();
@@ -2748,12 +2763,12 @@ mod tests {
         });
         try_commit_portfolio_dialog(&mut app);
         assert!(app.portfolio_dialog.is_some());
-        let msg = app
-            .portfolio_dialog
-            .as_ref()
-            .and_then(|d| d.inline_error.as_deref())
-            .unwrap_or("");
-        assert!(!msg.is_empty(), "expected inline_error");
+        assert_eq!(
+            app.portfolio_dialog
+                .as_ref()
+                .and_then(|d| d.inline_error.as_deref()),
+            Some(PORTFOLIO_ADD_INVALID_SYMBOL_INLINE)
+        );
         assert!(app.active_runtime_error.is_none());
     }
 

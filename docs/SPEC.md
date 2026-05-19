@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -5042,3 +5042,220 @@ After maintainer approval of §35, the **engineer** may proceed per [`.cursor/ru
 - **Status:** Shipped (2026-05-18) — §35.6.1 unit tests, §35.6.2 polish (poll-clock reset on Settings commit, Settings hint, README). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** (sign-off **2026-05-18**).
 - **Tracking:** [Issue #4](https://github.com/FelipeMorandini/stockterm/issues/4). **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149).
 - **Code (primary):** [`src/app/event.rs`](../src/app/event.rs), [`src/app/app.rs`](../src/app/app.rs) (`data_poll_interval`, `on_background_tick`, inflight flags), [`src/app/ui.rs`](../src/app/ui.rs) (status line), [`src/config/config.rs`](../src/config/config.rs), Settings commit in **`app.rs`**.
+
+---
+
+## 36. Issues [#81](https://github.com/FelipeMorandini/stockterm/issues/81), [#82](https://github.com/FelipeMorandini/stockterm/issues/82), [#83](https://github.com/FelipeMorandini/stockterm/issues/83) — Portfolio / Stock View polish (§15 follow-ups)
+
+**Sources:**
+
+- [Issue #81](https://github.com/FelipeMorandini/stockterm/issues/81) — Stock View status bar readable on **~80-column** terminals (deferred from §15 / [Issue #49](https://github.com/FelipeMorandini/stockterm/issues/49)).
+- [Issue #82](https://github.com/FelipeMorandini/stockterm/issues/82) — Portfolio add dialog: **plain Tab / BackTab only** for Shares ↔ Price focus (post-ship audit of [Issue #67](https://github.com/FelipeMorandini/stockterm/issues/67)).
+- [Issue #83](https://github.com/FelipeMorandini/stockterm/issues/83) — Document **`add_to_portfolio` → `false`** paths vs **`try_commit_portfolio_dialog`** **`inline_error`** contract ([Issue #69](https://github.com/FelipeMorandini/stockterm/issues/69)).
+
+**Related:** **§15** (shipped [#43](https://github.com/FelipeMorandini/stockterm/issues/43)–[#69](https://github.com/FelipeMorandini/stockterm/issues/69)); **§8** / [Issue #44](https://github.com/FelipeMorandini/stockterm/issues/44) (`letter_key_plain` modifier policy); **§24** / [Issue #13](https://github.com/FelipeMorandini/stockterm/issues/13) (`GlobalTab` / `GlobalBackTab` keymap chords); **§31** / [Issue #15](https://github.com/FelipeMorandini/stockterm/issues/15) (`show_status_bar` — status row may grow to **2** lines only when §36.3 applies; layout preset still gates visibility).
+
+**Non-goals:** No API/provider changes; no new persisted config fields; no `?` help overlay (Issue #81 non-goal); no app-wide `thiserror` for dialog strings (Issue #83 non-goal).
+
+### 36.1 Issue #81 — Stock View status bar on narrow terminals
+
+#### 36.1.1 Problem
+
+[`draw_status_bar`](../src/app/ui.rs) builds one long `Line` for **`Tab::StockView`**: global chrome (`q` · `Tab` · `^E` / `^R`), watchlist keys (`w` / `x` / `D` / `j` / `k` / `Enter`), **A–Z** typing, and the §8.4 **Shift** tip (`tickers w/x/j/k: Shift+1st letter if lower`). On terminals **under ~100 columns** the paragraph wraps inside a **single** shell row (`Constraint::Length(1)` in [`shell_vertical_constraints`](../src/app/layout.rs)), producing clipped or stacked glyphs.
+
+#### 36.1.2 Acceptance
+
+1. On **Stock View**, with a typical **80×24** terminal, all shipped hints from §15.3 / Issue #49 remain **readable** without overlapping the main pane.
+2. The §8.4 **Shift** edge-case hint is **not dropped** unless replaced by equivalent text on a second line (non-goal: dedicated `?` help key).
+3. Other tabs’ status lines stay **one row** (errors, inflight messages, Search/News/Settings hints unchanged).
+4. When **`layout.show_status_bar == false`** (§31), behavior unchanged — no status rows.
+
+#### 36.1.3 Design — dynamic two-line Stock View status
+
+**Preferred UX (this slice):** When the terminal is narrow, allocate **two** status rows for **Stock View** only; keep a **single** line on wide terminals.
+
+| Width | Stock View status rows | Content |
+|-------|------------------------|---------|
+| `area.width >= STOCK_VIEW_STATUS_SINGLE_LINE_COLS` | **1** | Current single-line layout (§15.3) |
+| `area.width < STOCK_VIEW_STATUS_SINGLE_LINE_COLS` | **2** | **Line 1:** primary keys + global `^E` / `^R` suffix. **Line 2:** muted §8.4 Shift tip (full clause or shortened copy — see below). |
+
+**Constant:** `STOCK_VIEW_STATUS_SINGLE_LINE_COLS: u16 = 100` in [`src/app/ui.rs`](../src/app/ui.rs) (tune in QA if 80-col still wraps; must pass **80** manual check).
+
+**When narrow + non-hint status:** If `error_message()`, `stock_refresh_inflight`, or `news_url_flash_line()` would replace the hint line (see existing `draw_status_bar` branches), use **one** row only — those messages are short.
+
+**Line copy (narrow, line 2 — recommended):**
+
+```text
+Symbols starting w/x/j/k: type 1st letter with Shift (e.g. Wmt → WMT)
+```
+
+Wide single-line keeps today’s longer `tickers w/x/j/k: Shift+1st letter if lower` span.
+
+#### 36.1.4 Implementation — modules & layout
+
+1. **`stock_view_status_lines(width: u16, rt: &ResolvedTheme) -> Vec<Line>`** (pure, `ui.rs` or `ui/status.rs` if file grows):
+   - Returns `vec![line]` or `vec![line1, line2]` per §36.1.3.
+   - Reuse existing `Span` styling (`rt.canvas()`, `rt.fg_border()`, `rt.fg_muted()`).
+   - Append global **` · ^E error log · ^R retry`** suffix to **line 1** only (same as today).
+
+2. **`status_bar_row_count(app: &App, term_width: u16) -> u16`** (`ui.rs`):
+   - `0` if `!layout.show_status_bar`.
+   - `2` if `active_tab == StockView` && `term_width < STOCK_VIEW_STATUS_SINGLE_LINE_COLS` && `stock_view_status_is_hint_mode(app)` (no error / inflight override).
+   - Else `1`.
+
+3. **`shell_vertical_constraints`** — extend signature:
+
+   ```rust
+   pub fn shell_vertical_constraints(
+       resolved: &ResolvedLayout,
+       startup_h: u16,
+       status_rows: u16,
+   ) -> [Constraint; 4]
+   ```
+
+   Replace hard-coded `Constraint::Length(1)` for the status slot with `Constraint::Length(status_rows)`.
+
+4. **`draw`** ([`src/app/ui.rs`](../src/app/ui.rs)):
+   - Before vertical split: `let status_rows = status_bar_row_count(app, size.width);`
+   - Pass `status_rows` into `shell_vertical_constraints`.
+   - **`draw_status_bar`:** for Stock View hint mode, `Paragraph::new(lines)` may be **multi-line**; `area` height must equal `status_rows` (ratatui clips excess — do not rely on clipping for the 2-line case).
+
+5. **Unit tests** (`ui.rs` `#[cfg(test)]`):
+   - `stock_view_status_lines_wide_is_one_line` — `width = 120` → `len() == 1`.
+   - `stock_view_status_lines_narrow_is_two_lines` — `width = 80` → `len() == 2`, second line contains `Shift` (or shortened copy).
+   - Optional: `status_bar_row_count_stock_view_narrow_is_two`.
+
+**Async / crates:** None. No new dependencies.
+
+### 36.2 Issue #82 — Plain Tab / BackTab only in Portfolio add dialog
+
+#### 36.2.1 Problem
+
+[`handle_event`](../src/app/handlers.rs) routes **`Action::GlobalTab`** / **`GlobalBackTab`** to **`cycle_portfolio_dialog_focus`** whenever `portfolio_dialog.is_some()` **without** checking modifiers. Terminals that deliver **Tab** with **Control** / **Alt** / **Meta** chords (or user keymap overlays) can still cycle dialog fields instead of being ignored; unmodified **Tab** should be the only field-cycle trigger, aligned with **`PortfolioDialogFocusNext`** (`;` path), which already requires **`key.modifiers == KeyModifiers::NONE`** in [`handle_portfolio_dialog_keys`](../src/app/portfolio.rs).
+
+**Note:** [`ResolvedKeymap::action`](../src/config/keymap.rs) matches default **`tab`** as **`KeyModifiers::NONE`** only; the gap is the **handler** arms, not the default chord table.
+
+#### 36.2.2 Acceptance
+
+1. Portfolio add dialog open: **Tab** (no meta modifiers) cycles **Shares ↔ Price**; **Shift+Tab** / **BackTab** cycles backward (existing keymap alias behavior).
+2. **Ctrl+Tab**, **Alt+Tab**, **Meta+Tab**, and other meta chords: **do not** cycle dialog fields and **do not** call **`next_tab` / `prev_tab`** while the dialog is open (swallow / no-op for that key event).
+3. Dialog **closed:** **Tab** / **Shift+Tab** still switch app tabs (regression §15 / QA #67).
+4. **`;`** alternate cycle unchanged (**`PortfolioDialogFocusNext`**, plain only).
+
+#### 36.2.3 Implementation
+
+1. **`tab_key_plain(m: KeyModifiers) -> bool`** in [`src/app/keyboard.rs`](../src/app/keyboard.rs):
+   - **Same rules as [`letter_key_plain`](../src/app/keyboard.rs)** (reject Control / Alt / Meta / Super / Hyper; **allow** Shift for terminals that report Shift+Tab before alias normalization).
+   - Re-export for handlers; add unit tests mirroring `letter_key_plain_*`.
+
+2. **`handle_event`** — guard dialog branches:
+
+   ```rust
+   Some(Action::GlobalTab) if tab_key_plain(key.modifiers) => { /* alert/portfolio cycle or next_tab */ }
+   Some(Action::GlobalBackTab) if tab_key_plain(key.modifiers) => { /* … */ }
+   ```
+
+   When `portfolio_dialog.is_some()` && `!tab_key_plain(key.modifiers)`: **return** early (no tab switch, no cycle).
+
+3. **Optional same-PR alignment:** Apply the same guard to **Alerts** add-dialog **`cycle_alert_dialog_focus`** arms (same pattern as Portfolio; not required to close #82 but recommended to avoid audit drift).
+
+**Keymap:** No default chord changes. User remaps of **`tab`** remain **`NONE`**-only per `parse_chord`.
+
+### 36.3 Issue #83 — `add_to_portfolio` false-path documentation
+
+#### 36.3.1 Problem
+
+[`try_commit_portfolio_dialog`](../src/app/portfolio.rs) sets **`inline_error`** when **`add_to_portfolio`** returns **`false`** and **`error_message()`** is **`None`**, with copy implying an invalid ticker. Today **`add_to_portfolio`** has only one such path (**`normalize_symbol(&self.symbol)`** fails). A future **`false`** branch without **`error_message`** would show misleading dialog text.
+
+#### 36.3.2 Acceptance
+
+1. **`add_to_portfolio`** `///` doc comment lists every **`false`** outcome and whether **`error_message` / `active_runtime_error`** is set.
+2. **`try_commit_portfolio_dialog`** documents the **caller contract** (table below) and references the shared user-facing string constant.
+3. Existing regression test **`portfolio_try_commit_sets_inline_error_when_add_fails_without_try_save`** ([`src/app/app.rs`](../src/app/app.rs)) remains green; doc comment links it to Issue #83.
+
+#### 36.3.3 Contract (canonical)
+
+| `add_to_portfolio` outcome | `error_message` / runtime error | `try_commit_portfolio_dialog` duty |
+|----------------------------|----------------------------------|-----------------------------------|
+| **`true`** — holding updated, **`try_save_config_with_session`** OK | unchanged | Close dialog; **`request_immediate_stock_poll`**. |
+| **`false`** — **`normalize_symbol(&self.symbol)`** is **`None`** | **not** set | Set **`portfolio_dialog.inline_error`** to **`PORTFOLIO_ADD_INVALID_SYMBOL_INLINE`**; keep dialog open. |
+| **`false`** — **`try_save_config_with_session`** **`Err`** | set via **`surface_runtime_error`** (Portfolio domain) | Keep dialog open; **do not** set **`inline_error`**; do not clear runtime error. |
+
+**Constant** (e.g. in [`portfolio.rs`](../src/app/portfolio.rs)):
+
+```rust
+/// Shown when commit fails because `App.symbol` does not normalize (Issue #69 / #83).
+pub(crate) const PORTFOLIO_ADD_INVALID_SYMBOL_INLINE: &str =
+    "Cannot add holding: no valid ticker is set. Pick a symbol on Stock View.";
+```
+
+**`add_to_portfolio` rustdoc sketch:**
+
+```rust
+/// Adds or merges a holding for the active [`App::symbol`] and persists config.
+///
+/// # Returns
+/// - `true` if the holding was applied and config save succeeded.
+/// - `false` if:
+///   1. `normalize_symbol(&self.symbol)` is `None` — **does not** set `error_message`; caller
+///      (`try_commit_portfolio_dialog`) must set `portfolio_dialog.inline_error`.
+///   2. `try_save_config_with_session` fails — sets runtime error via `surface_runtime_error`;
+///      caller must **not** overwrite with `inline_error`.
+///
+/// Any new `false` branch must either set `error_message` or extend this contract and QA.
+```
+
+**Future `false` paths:** If a new validation is added inside **`add_to_portfolio`**, either surface **`error_message`** or add a distinct **`inline_error`** string in **`try_commit_portfolio_dialog`** — never reuse **`PORTFOLIO_ADD_INVALID_SYMBOL_INLINE`** for unrelated failures.
+
+### 36.4 Tree audit (2026-05-18)
+
+| Piece | Location | Gap |
+|-------|----------|-----|
+| Stock View status | [`ui.rs`](../src/app/ui.rs) `draw_status_bar` | Single long line; shell status height fixed at **1** |
+| Tab dialog routing | [`handlers.rs`](../src/app/handlers.rs) `GlobalTab` / `GlobalBackTab` | No `tab_key_plain` guard |
+| `;` dialog cycle | [`portfolio.rs`](../src/app/portfolio.rs) | Already **`modifiers == NONE`** |
+| `add_to_portfolio` | [`app.rs`](../src/app/app.rs) | Minimal `///` comment |
+| Inline error test | [`app.rs`](../src/app/app.rs) `portfolio_try_commit_*` | Exists; needs doc cross-ref |
+
+### 36.5 Implementation plan (build slice)
+
+| Step | Issue | Files |
+|------|-------|-------|
+| 1 | #83 | [`app.rs`](../src/app/app.rs), [`portfolio.rs`](../src/app/portfolio.rs) — rustdoc + `PORTFOLIO_ADD_INVALID_SYMBOL_INLINE` |
+| 2 | #82 | [`keyboard.rs`](../src/app/keyboard.rs), [`handlers.rs`](../src/app/handlers.rs) — `tab_key_plain` + guards |
+| 3 | #81 | [`layout.rs`](../src/app/layout.rs), [`ui.rs`](../src/app/ui.rs) — `status_rows`, `stock_view_status_lines`, tests |
+| 4 | All | `cargo clippy`, `cargo test` |
+
+**Suggested PR grouping:** One PR for **#81–#83** (small, same §15 polish theme) or two PRs (**#83** docs-only first, then **#81+#82** UX).
+
+### 36.6 Automated verification
+
+```bash
+cargo build --release
+cargo clippy -- -D warnings
+cargo test stock_view_status
+cargo test tab_key_plain
+cargo test portfolio_try_commit
+```
+
+Full suite: `cargo test`.
+
+### 36.7 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issues #81, #82, #83** section. Re-run **Issues #43, #49, #50, #67, #69** Stock View / Portfolio rows as regression when touching status or dialog input.
+
+### 36.8 Out of scope
+
+- Truncating hints with ellipsis **instead of** a second row (acceptable alternative but not chosen for #81).
+- Remappable **Tab** in portfolio dialog layer (stays **Global** + §36.2 guard).
+- Structured `thiserror` for dialog errors (#83 non-goal).
+
+### 36.9 Approval
+
+After maintainer approval of §36, the **engineer** may implement per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and run [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** before merge.
+
+### 36.10 Shipment record
+
+- **Status:** Shipped (2026-05-18). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** (sign-off **2026-05-18**).
+- **Tracking:** [Issue #81](https://github.com/FelipeMorandini/stockterm/issues/81), [Issue #82](https://github.com/FelipeMorandini/stockterm/issues/82), [Issue #83](https://github.com/FelipeMorandini/stockterm/issues/83).
+- **Code:** [`src/app/ui.rs`](../src/app/ui.rs) (`stock_view_status_lines`, `status_bar_row_count`), [`src/app/layout.rs`](../src/app/layout.rs) (`shell_vertical_constraints` + `status_rows`), [`src/app/handlers.rs`](../src/app/handlers.rs) + [`src/app/keyboard.rs`](../src/app/keyboard.rs) (`tab_key_plain`), [`src/app/portfolio.rs`](../src/app/portfolio.rs) + [`src/app/app.rs`](../src/app/app.rs) (contract docs + constant).

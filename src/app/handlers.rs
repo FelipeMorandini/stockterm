@@ -1,12 +1,18 @@
 #![allow(clippy::collapsible_match)]
 
 use crate::app::alerts::{cycle_alert_dialog_focus, handle_alerts_events};
-use crate::app::keyboard::letter_key_plain;
+use crate::app::keyboard::{letter_key_plain, tab_key_plain};
 use crate::app::portfolio::{cycle_portfolio_dialog_focus, handle_portfolio_events};
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::keymap::{Action, BindingLayer};
 use crate::models::time_range::TimeRange;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+/// Add dialog open on Alerts or Portfolio — global Tab cycles fields instead of switching tabs (§36.2).
+fn modal_add_dialog_open(app: &App) -> bool {
+    (app.active_tab == Tab::Alerts && app.alert_add_dialog.is_some())
+        || (app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some())
+}
 
 pub fn handle_event(app: &mut App, key: KeyEvent) {
     // Issue #123 / SPEC §20.15.4 — `Quit` is global, including when the error log overlay is open.
@@ -42,7 +48,7 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
     }
 
     match app.resolved_keymap.action(BindingLayer::Global, &key) {
-        Some(Action::GlobalTab) => {
+        Some(Action::GlobalTab) if tab_key_plain(key.modifiers) => {
             if app.active_tab == Tab::Alerts && app.alert_add_dialog.is_some() {
                 cycle_alert_dialog_focus(app, true);
             } else if app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some() {
@@ -51,7 +57,9 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
                 app.next_tab();
             }
         }
-        Some(Action::GlobalBackTab) => {
+        Some(Action::GlobalTab)
+            if !tab_key_plain(key.modifiers) && modal_add_dialog_open(app) => {}
+        Some(Action::GlobalBackTab) if tab_key_plain(key.modifiers) => {
             if app.active_tab == Tab::Alerts && app.alert_add_dialog.is_some() {
                 cycle_alert_dialog_focus(app, false);
             } else if app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some() {
@@ -60,6 +68,8 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
                 app.prev_tab();
             }
         }
+        Some(Action::GlobalBackTab)
+            if !tab_key_plain(key.modifiers) && modal_add_dialog_open(app) => {}
         _ => match app.active_tab {
             Tab::Portfolio => {
                 handle_portfolio_events(app, key);
