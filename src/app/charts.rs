@@ -230,8 +230,18 @@ fn price_bounds(slice: &[HistoricalData]) -> Option<(f64, f64)> {
     }
 }
 
+/// Format a chart axis label from **milliseconds** since Unix epoch; out-of-range → `"?"`.
+///
+/// Line-chart x values are in **seconds** — multiply by `1000.0` before calling.
 fn format_time_axis(ts_ms: f64, intraday: bool) -> String {
-    let Some(dt) = DateTime::<Utc>::from_timestamp((ts_ms / 1000.0) as i64, 0) else {
+    if !ts_ms.is_finite() {
+        return "?".into();
+    }
+    let secs = ts_ms / 1000.0;
+    if !(i64::MIN as f64..=i64::MAX as f64).contains(&secs) {
+        return "?".into();
+    }
+    let Some(dt) = DateTime::<Utc>::from_timestamp(secs as i64, 0) else {
         return "?".into();
     };
     if intraday {
@@ -694,5 +704,27 @@ mod tests {
         let out = clamp_viewport_to_len(vp, 15);
         assert_eq!(out.end, 15);
         assert!(out.start < out.end);
+    }
+
+    /// Issue #36 / §40.1 — invalid timestamps must not panic; axis shows `?`.
+    #[test]
+    fn format_time_axis_valid_recent_ms() {
+        let label = format_time_axis(1_700_000_000_000.0, false);
+        assert_ne!(label, "?");
+        assert!(label.contains('/'));
+    }
+
+    #[test]
+    fn format_time_axis_invalid_returns_question_mark() {
+        for ts in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 9e18] {
+            assert_eq!(format_time_axis(ts, false), "?");
+            assert_eq!(format_time_axis(ts, true), "?");
+        }
+    }
+
+    #[test]
+    fn format_time_axis_epoch_is_stable() {
+        let label = format_time_axis(0.0, false);
+        assert!(!label.is_empty());
     }
 }

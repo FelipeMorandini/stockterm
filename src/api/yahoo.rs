@@ -6,6 +6,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
 use serde::Deserialize;
+use crate::api::concurrency::acquire_quote_permit;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use urlencoding::encode;
@@ -357,7 +358,10 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
     for sym in pending_fallback {
         let sem = sem.clone();
         set.spawn(async move {
-            let _permit = sem.acquire().await.ok();
+            let _permit = match acquire_quote_permit(&sem, &sym, "yahoo").await {
+                Ok(p) => p,
+                Err(e) => return (sym, Err(e)),
+            };
             let res = yahoo_latest_quote_at(&sym, QUERY1).await;
             (sym, res)
         });
