@@ -1,7 +1,7 @@
 #![allow(clippy::collapsible_match)]
 
 use crate::app::alerts::{cycle_alert_dialog_focus, handle_alerts_events};
-use crate::app::keyboard::{letter_key_plain, tab_key_plain};
+use crate::app::keyboard::{letter_key_plain, should_global_quit, tab_key_plain};
 use crate::app::portfolio::{cycle_portfolio_dialog_focus, handle_portfolio_events};
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::keymap::{Action, BindingLayer};
@@ -16,9 +16,10 @@ fn modal_add_dialog_open(app: &App) -> bool {
 
 pub fn handle_event(app: &mut App, key: KeyEvent) {
     // Issue #123 / SPEC §20.15.4 — `Quit` is global, including when the error log overlay is open.
-    if matches!(
+    // Issue #51 / §42.1 — `q`/`Q` wildcard respects §24 when `q` is remapped on Global.
+    if should_global_quit(
+        &key,
         app.resolved_keymap.action(BindingLayer::Global, &key),
-        Some(Action::Quit)
     ) {
         app.should_quit = true;
         return;

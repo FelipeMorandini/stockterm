@@ -62,6 +62,7 @@ Optional JSON object: each key is a **chord** string, each value is an **`Action
 - **One ASCII character**: either a single visible character (`q`, `1`, `/`, …) or `char:x` for a single character `x` (useful when `x` is `:` / `;` / etc.).
 - **Invalid** `keymap` (unknown action name, unknown chord, or conflicting chord assignment): startup shows a line starting with **`keymap:`** and the built-in defaults are used for the whole map.
 - **Shift+Tab:** terminals may send `BackTab` with `SHIFT`, plain `BackTab`, or `Tab` with `SHIFT` only. StockTerm tries those variants when resolving `Action::GlobalBackTab` and dialog `BackTab` bindings (see `chord_lookup_candidates` in [`src/config/keymap.rs`](src/config/keymap.rs)).
+- **Global quit / Tab (Issue #51 / §42):** **`q`** and **`Q`** (Shift) quit from any tab; **Ctrl/Alt/Meta+Q** does not. **Tab** / **Shift+Tab** switch tabs only when modifiers pass the same “plain” rules as letter keys (no Ctrl/Alt/Meta on Tab). Custom `keymap` quit chords (for example `"colon": "Quit"`) still use exact chord match.
 
 **Example** — bind quit to `:` (colon key):
 
@@ -73,7 +74,7 @@ Optional JSON object: each key is a **chord** string, each value is an **`Action
 
 To discover exact **`Action`** names, see the `Action` enum in [`src/config/keymap.rs`](src/config/keymap.rs) (serde renames match PascalCase JSON).
 
-The Polygon **`api_key`** is stored **in plaintext** inside **`~/.stockterm.json`**. If **`api_key`** is empty, StockTerm uses a non-empty **`STOCKTERM_API_KEY`** environment variable instead (resolution: [`Config::effective_api_key`](https://github.com/FelipeMorandini/stockterm/blob/main/src/config/config.rs)). Treat the config file like a secret: use restrictive file permissions where your OS supports them (for example **`chmod 600 ~/.stockterm.json`** on Unix), do not commit real keys to git, and avoid pasting keys into logs or screenshots. Yahoo mode does not require a key.
+The Polygon **`api_key`** is stored **in plaintext** inside **`~/.stockterm.json`**. If **`api_key`** is empty, StockTerm uses a non-empty **`STOCKTERM_API_KEY`** environment variable at request time instead (resolution: [`Config::effective_api_key`](https://github.com/FelipeMorandini/stockterm/blob/main/src/config/config.rs)); the env value is **not** copied into the JSON file on load or save (Issue #28 / SPEC §42.2). Treat the config file like a secret: use restrictive file permissions where your OS supports them (for example **`chmod 600 ~/.stockterm.json`** on Unix), do not commit real keys to git, and avoid pasting keys into logs or screenshots. Yahoo mode does not require a key.
 
 Provider selection and HTTP behavior are specified in [`docs/SPEC.md`](docs/SPEC.md) (§9 and §31).
 

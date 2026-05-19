@@ -3340,3 +3340,100 @@ No live-Yahoo manual step is required — behavior is parser-level. Optional: if
 | #32 Alerts / portfolio casing manual | maintainer | 2026-05-19 | Pass |
 | #33 / #55 error prefix + redaction manual | maintainer | 2026-05-19 | Pass |
 | §18 / #3 / §20 regression | maintainer | 2026-05-19 | Pass |
+
+---
+
+## Issues #51, #28 — Global quit modifiers + API key resolution contract
+
+**Scope:**
+
+- [GitHub Issue #51](https://github.com/FelipeMorandini/stockterm/issues/51) — **`q`** / **`Q`** quit with **`letter_key_plain`**; Tab / BackTab keep **`tab_key_plain`**; Ctrl/Alt/Meta chords do not quit or switch tabs accidentally.
+- [GitHub Issue #28](https://github.com/FelipeMorandini/stockterm/issues/28) — Document and test that **`STOCKTERM_API_KEY`** is a **runtime overlay** only; **`try_load`** does **not** copy env into **`api_key`**; **`try_save`** does not persist env unless the user set **`api_key`** in memory.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §42.
+
+**Prerequisite:** Implementation matches §42.1–§42.4 (`global_quit_key`, handler quit arm, config rustdoc + env test, README notes).
+
+### Automated (local) — required
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+2. Issue #51 — keyboard helper tests:
+
+   ```bash
+   cargo test global_quit
+   cargo test tab_key_plain
+   ```
+
+   **Pass:** Exit 0; **`global_quit_key`** accepts **`q`/`Q`**, rejects Ctrl/Alt chords.
+
+3. Issue #28 — env overlay without mutation:
+
+   ```bash
+   cargo test effective_api_key_reads_env
+   ```
+
+   **Pass:** Exit 0; in-memory **`api_key`** stays empty while **`effective_api_key()`** reads env.
+
+4. **Grep gate (#28)** — env var read sites:
+
+   ```bash
+   rg 'STOCKTERM_API_KEY' src/config/
+   ```
+
+   **Pass:** Matches only **`effective_api_key`** (and test helpers), **not** **`try_load`** / **`load_config_from_path`**.
+
+### Manual — Issue #51 (global quit + Tab)
+
+**Prep:** Default keymap (no custom **`keymap`** overrides in **`~/.stockterm.json`**).
+
+1. **Stock View** → press **`q`** (lowercase, no modifiers).
+   **Pass:** App exits cleanly; terminal restored (no corrupted TUI).
+2. Restart → **Stock View** → **Shift+Q** (uppercase **`Q`**).
+   **Pass:** App exits (§42.1 wildcard).
+3. Restart → any tab → **Ctrl+Q** (if terminal delivers it).
+   **Pass:** Does **not** quit (may be terminal no-op or unrelated binding).
+4. **Portfolio** → **`a`** open add dialog → **Tab** (no Ctrl/Alt).
+   **Pass:** Cycles Shares ↔ Price; does **not** switch to Alerts tab.
+5. Close dialog → **Tab** on **Portfolio**.
+   **Pass:** Switches to next app tab.
+6. **Alerts** → **`a`** add dialog → **Shift+Tab** / **BackTab**.
+   **Pass:** Cycles dialog fields backward; does not change app tab while dialog open.
+
+### Manual — Issue #28 (API key resolution)
+
+**Prep:** Backup **`~/.stockterm.json`**. Use a throwaway Polygon test key or skip live fetch if unavailable.
+
+1. Set **`provider": "polygon"`** and **`"api_key": ""`** in config. Export **`STOCKTERM_API_KEY=<test-key>`** in the shell. Start **`cargo run`**.
+   **Pass:** App does not show “missing API key” on startup; quote fetch attempts run (or fail with API error, not “missing key”).
+2. While app is running, **`cat ~/.stockterm.json`** — **`api_key`** field still **`""`** (env not copied into file).
+3. Quit app. Unset **`STOCKTERM_API_KEY`**. Restart without editing JSON.
+   **Pass:** Polygon mode reports missing key / does not fetch until key is configured (file still empty).
+4. Optional: set **`api_key`** in JSON to a value, keep env set to a **different** value. Restart.
+   **Pass:** File value wins (**`effective_api_key`** prefers config per §42.2).
+
+### Regression — §8 / §24 / §22.7.1
+
+| Check | Pass criteria |
+|-------|----------------|
+| §8 Stock View | **`w`/`x`/`j`/`k`** and symbol typing unchanged |
+| §24 keymap | Custom **`"colon": "Quit"`** (or other remap) still quits |
+| §13 Portfolio dialog | **Tab** field cycle in add dialog still works |
+| #34 Security | README still warns plaintext **`api_key`**; no new auto-write of env secrets |
+
+### Sign-off — Issues #51, #28
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo clippy` + `cargo test` | maintainer | 2026-05-19 | Pass |
+| #51 quit + Tab manual | maintainer | 2026-05-19 | Pass |
+| #28 env overlay + file unchanged manual | maintainer | 2026-05-19 | Pass |
+| §8 / §24 / §13 regression | maintainer | 2026-05-19 | Pass |
