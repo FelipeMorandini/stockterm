@@ -3,14 +3,24 @@
 use std::fmt;
 use std::time::Duration;
 
+use thiserror::Error;
+
+#[derive(Error)]
 pub enum ProviderError {
+    #[error("Request timed out")]
     Timeout,
+    #[error(
+        "HTTP {status} ({display_url}){body_suffix}",
+        display_url = url_without_query(.url),
+        body_suffix = http_body_suffix(.body_snippet)
+    )]
     Http {
         status: u16,
         url: String,
         body_snippet: Option<String>,
     },
     /// HTTP 429 before retries are exhausted; after exhaustion callers map to [`Http`] with status 429.
+    #[error("{}", rate_limited_display(.retry_after))]
     RateLimited {
         retry_after: Option<Duration>,
     },
@@ -34,8 +44,11 @@ pub enum ProviderError {
     /// cloning, switch the variant to `Json(std::sync::Arc<serde_json::Error>)`
     /// (or equivalent). That is an opt-in, breaking-API change tracked
     /// separately from Issue #122.
-    Json(serde_json::Error),
+    #[error("Invalid JSON response: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("{0}")]
     ApiMessage(String),
+    #[error("Network error: {0}")]
     Transport(String),
 }
 
@@ -74,6 +87,34 @@ fn url_without_query(url: &str) -> &str {
     url.split('?').next().unwrap_or(url)
 }
 
+fn http_body_suffix(body_snippet: &Option<String>) -> String {
+    body_snippet
+        .as_ref()
+        .filter(|s| !s.is_empty())
+        .map(|s| format!(" — {s}"))
+        .unwrap_or_default()
+}
+
+fn rate_limited_display(retry_after: &Option<Duration>) -> String {
+    match retry_after {
+        Some(d) if !d.is_zero() => {
+            let ms = d.as_millis().max(1);
+            if ms < 1000 {
+                format!("Rate limited (retry after {ms}ms)")
+            } else {
+                let secs = d.as_secs();
+                let ceil_secs = if d.subsec_nanos() > 0 {
+                    secs.saturating_add(1)
+                } else {
+                    secs
+                };
+                format!("Rate limited (retry after {ceil_secs}s)")
+            }
+        }
+        _ => "Rate limited".to_string(),
+    }
+}
+
 /// Redact query strings from [`ProviderError::Http::url`] in `Debug` output (Issue #116 / SPEC §19.13.5).
 impl fmt::Debug for ProviderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -97,62 +138,6 @@ impl fmt::Debug for ProviderError {
             ProviderError::ApiMessage(msg) => f.debug_tuple("ApiMessage").field(msg).finish(),
             ProviderError::Transport(msg) => f.debug_tuple("Transport").field(msg).finish(),
         }
-    }
-}
-
-impl fmt::Display for ProviderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ProviderError::Timeout => write!(f, "Request timed out"),
-            ProviderError::Http {
-                status,
-                url,
-                body_snippet,
-            } => {
-                write!(f, "HTTP {} ({})", status, url_without_query(url))?;
-                if let Some(s) = body_snippet {
-                    if !s.is_empty() {
-                        write!(f, " — {s}")?;
-                    }
-                }
-                Ok(())
-            }
-            ProviderError::RateLimited { retry_after } => match retry_after {
-                Some(d) if !d.is_zero() => {
-                    let ms = d.as_millis().max(1);
-                    if ms < 1000 {
-                        write!(f, "Rate limited (retry after {ms}ms)")
-                    } else {
-                        let secs = d.as_secs();
-                        let ceil_secs = if d.subsec_nanos() > 0 {
-                            secs.saturating_add(1)
-                        } else {
-                            secs
-                        };
-                        write!(f, "Rate limited (retry after {ceil_secs}s)")
-                    }
-                }
-                _ => f.write_str("Rate limited"),
-            },
-            ProviderError::Json(err) => write!(f, "Invalid JSON response: {err}"),
-            ProviderError::ApiMessage(msg) => f.write_str(msg),
-            ProviderError::Transport(msg) => write!(f, "Network error: {msg}"),
-        }
-    }
-}
-
-impl std::error::Error for ProviderError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            ProviderError::Json(e) => Some(e),
-            _ => None,
-        }
-    }
-}
-
-impl From<serde_json::Error> for ProviderError {
-    fn from(value: serde_json::Error) -> Self {
-        ProviderError::Json(value)
     }
 }
 
@@ -231,9 +216,6 @@ mod tests {
 
     /// Issue #122 / SPEC §20.15.3 — `<ProviderError as Clone>::clone` lossily
     /// maps the [`ProviderError::Json`] arm to [`ProviderError::ApiMessage`].
-    /// Locks the contract documented on the `Json` variant so future code
-    /// does not regress (e.g. a refactor to `Arc<serde_json::Error>` would
-    /// flip this assertion and is an intentional, breaking-API change).
     #[test]
     fn clone_of_json_becomes_api_message() {
         let json_err = serde_json::from_str::<u32>("not a number").unwrap_err();

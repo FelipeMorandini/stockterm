@@ -7,7 +7,7 @@ use crate::app::styles::ResolvedTheme;
 use crate::app::table_filter::filter_title_suffix;
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::MarketProviderKind;
-use crate::models::ticker::TickerResponse;
+use crate::models::ticker::{ticker_response_matches_symbol_for_session, TickerResponse};
 use ratatui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
@@ -198,7 +198,9 @@ fn draw_error_log_overlay(f: &mut Frame, app: &mut App, full: Rect, rt: Resolved
 fn resolve_quote(app: &App) -> Option<&TickerResponse> {
     app.ticker_data
         .as_ref()
-        .filter(|t| t.ticker.is_empty() || t.ticker.eq_ignore_ascii_case(&app.symbol))
+        .filter(|t| {
+            ticker_response_matches_symbol_for_session(t, &app.symbol, &app.symbol)
+        })
         .or_else(|| app.watchlist_quotes.get(&app.symbol))
 }
 
