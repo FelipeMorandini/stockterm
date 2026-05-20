@@ -1,5 +1,6 @@
 use crate::app::alerts::draw_alerts;
 use crate::app::charts::draw_charts;
+use crate::app::format::{format_signed_usd_delta, format_usd_price, symbol_kind_label};
 use crate::app::layout::{centered_rect, shell_vertical_constraints};
 use crate::config::ResolvedLayout;
 use crate::app::portfolio::draw_portfolio;
@@ -7,6 +8,7 @@ use crate::app::styles::ResolvedTheme;
 use crate::app::table_filter::filter_title_suffix;
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::MarketProviderKind;
+use crate::models::symbol::{classify_symbol, normalize_symbol};
 use crate::models::ticker::{ticker_response_matches_symbol_for_session, TickerResponse};
 use ratatui::{
     backend::Backend,
@@ -22,6 +24,22 @@ use std::time::Instant;
 
 /// Stock View status fits on one line at or above this width (Issue #81 / SPEC §36.1).
 pub(crate) const STOCK_VIEW_STATUS_SINGLE_LINE_COLS: u16 = 100;
+
+/// Hide watchlist **Kind** column below this terminal width (Issue #23 / SPEC §43.4).
+const WATCHLIST_KIND_COLUMN_MIN_WIDTH: u16 = 72;
+
+/// Resolve a watchlist quote by row symbol, matching compact normalized keys (§43.13).
+fn watchlist_quote_for_symbol<'a>(
+    quotes: &'a std::collections::HashMap<String, TickerResponse>,
+    row_symbol: &str,
+) -> Option<&'a TickerResponse> {
+    if let Some(n) = normalize_symbol(row_symbol) {
+        if let Some(r) = quotes.get(&n) {
+            return Some(r);
+        }
+    }
+    quotes.get(row_symbol)
+}
 
 pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<()> {
     terminal.draw(|f| {
@@ -226,7 +244,7 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
     if app.watchlist.is_empty() {
         let text = vec![
             Line::from(vec![Span::styled(
-                "Watchlist is empty. Type a ticker (A–Z), Enter to fetch, then press ",
+                "Watchlist is empty. Type a symbol (A–Z, -, .), Enter to fetch, then press ",
                 rt.fg_border(),
             )]),
             Line::from(vec![
@@ -269,7 +287,13 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
         return;
     }
 
-    let header_cells = ["Symbol", "Last", "Change", "%Chg", "Volume"]
+    let show_kind = area.width >= WATCHLIST_KIND_COLUMN_MIN_WIDTH;
+    let header_labels: &[&str] = if show_kind {
+        &["Symbol", "Kind", "Last", "Change", "%Chg", "Volume"]
+    } else {
+        &["Symbol", "Last", "Change", "%Chg", "Volume"]
+    };
+    let header_cells = header_labels
         .iter()
         .map(|h| Cell::from(*h).style(rt.fg_foreground()));
 
@@ -279,9 +303,11 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
 
     let rows = filtered_idx.iter().map(|&idx| {
         let sym = &app.watchlist[idx];
+        let kind = symbol_kind_label(classify_symbol(sym));
         let row_style = rt.canvas();
         let (last_s, chg_s, pct_s, vol_s, chg_color) =
-            match app.watchlist_quotes.get(sym).and_then(|r| r.latest_result()) {
+            match watchlist_quote_for_symbol(&app.watchlist_quotes, sym).and_then(|r| r.latest_result())
+            {
                 Some(bar) => {
                     let price_change = bar.c - bar.o;
                     let pct = if bar.o.abs() > f64::EPSILON {
@@ -295,12 +321,8 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
                         rt.negative
                     };
                     (
-                        format!("${:.2}", bar.c),
-                        format!(
-                            "{}{:.2}",
-                            if price_change >= 0.0 { "+" } else { "" },
-                            price_change
-                        ),
+                        format_usd_price(bar.c),
+                        format_signed_usd_delta(price_change),
                         format!(
                             "{}{:.2}%",
                             if price_change >= 0.0 { "+" } else { "" },
@@ -319,26 +341,47 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
                 ),
             };
 
-        let cells = [
+        let mut cells = vec![
             Cell::from(sym.as_str()),
+        ];
+        if show_kind {
+            cells.push(
+                Cell::from(kind).style(if kind.is_empty() {
+                    row_style
+                } else {
+                    rt.fg_color(rt.muted)
+                }),
+            );
+        }
+        cells.extend([
             Cell::from(last_s),
             Cell::from(chg_s).style(rt.fg_color(chg_color)),
             Cell::from(pct_s).style(rt.fg_color(chg_color)),
             Cell::from(vol_s),
-        ];
+        ]);
         Row::new(cells).height(1).style(row_style)
     });
 
-    let table = Table::new(
-        rows,
-        [
+    let constraints: Vec<Constraint> = if show_kind {
+        vec![
             Constraint::Min(6),
-            Constraint::Length(10),
+            Constraint::Length(6),
+            Constraint::Length(12),
             Constraint::Length(10),
             Constraint::Length(9),
             Constraint::Min(8),
-        ],
-    )
+        ]
+    } else {
+        vec![
+            Constraint::Min(6),
+            Constraint::Length(12),
+            Constraint::Length(10),
+            Constraint::Length(9),
+            Constraint::Min(8),
+        ]
+    };
+
+    let table = Table::new(rows, constraints)
     .header(header)
     .block(
         Block::default()
@@ -397,18 +440,14 @@ fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
             ]),
             Line::from(vec![
                 Span::styled("Price: ", rt.canvas()),
-                Span::styled(
-                    format!("${:.2}", result.c),
-                    rt.fg_foreground(),
-                ),
+                Span::styled(format_usd_price(result.c), rt.fg_foreground()),
             ]),
             Line::from(vec![
                 Span::styled("Change: ", rt.canvas()),
                 Span::styled(
                     format!(
-                        "{}{:.2} ({:.2}%)",
-                        if price_change >= 0.0 { "+" } else { "" },
-                        price_change,
+                        "{} ({:.2}%)",
+                        format_signed_usd_delta(price_change),
                         percent_change
                     ),
                     rt.fg_color(change_color),
@@ -416,24 +455,15 @@ fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
             ]),
             Line::from(vec![
                 Span::styled("Open: ", rt.canvas()),
-                Span::styled(
-                    format!("${:.2}", result.o),
-                    rt.fg_foreground(),
-                ),
+                Span::styled(format_usd_price(result.o), rt.fg_foreground()),
             ]),
             Line::from(vec![
                 Span::styled("High: ", rt.canvas()),
-                Span::styled(
-                    format!("${:.2}", result.h),
-                    rt.fg_foreground(),
-                ),
+                Span::styled(format_usd_price(result.h), rt.fg_foreground()),
             ]),
             Line::from(vec![
                 Span::styled("Low: ", rt.canvas()),
-                Span::styled(
-                    format!("${:.2}", result.l),
-                    rt.fg_foreground(),
-                ),
+                Span::styled(format_usd_price(result.l), rt.fg_foreground()),
             ]),
             Line::from(vec![
                 Span::styled("Volume: ", rt.canvas()),
@@ -856,7 +886,7 @@ fn status_bar_global_suffix(rt: ResolvedTheme) -> Vec<Span<'static>> {
 fn stock_view_status_primary_spans(rt: ResolvedTheme) -> Vec<Span<'static>> {
     vec![
         Span::styled("q quit · Tab tabs · ", rt.canvas()),
-        Span::styled("A–Z", rt.fg_border()),
+        Span::styled("A–Z,-.", rt.fg_border()),
         Span::styled(" type · ", rt.canvas()),
         Span::styled("w", rt.fg_border()),
         Span::styled(" add · ", rt.canvas()),

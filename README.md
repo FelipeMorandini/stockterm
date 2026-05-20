@@ -51,6 +51,24 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 
 On **Settings** row **6. Layout**, use **←/→** or **h**/**l** to preview presets and **Enter** to save.
 
+### Symbols — equities, crypto, FX (Issue #23 / [`docs/SPEC.md`](docs/SPEC.md) §43)
+
+Symbols are stored **uppercase** in `watchlist` and `portfolio` after normalization. On **Stock View**, type letters plus **`-`** and **`.`** (for example `BTC-USD`, `BRK.B`), then **Enter** to fetch.
+
+| Provider | Equities | Crypto (examples) | FX (examples) |
+|----------|----------|-------------------|---------------|
+| **yahoo** (default) | `AAPL`, `BRK.B` | Spot crypto: **`BTC-USD`**, **`ETH-USD`** (Search → bitcoin / ethereum) | `EURUSD=X` |
+| **polygon** | `AAPL` | Not supported in v1 | Not supported in v1 |
+
+**Yahoo crypto symbols (important):**
+
+- **Spot Bitcoin** on Yahoo is **`BTC-USD`** (cryptocurrency). Search → `bitcoin` → pick the **BTC-USD** row.
+- Plain **`BTC`** on Yahoo is a **different instrument** (an ETF, not spot BTC). Quotes/charts for `BTC` are not spot-crypto prices.
+- Type **`BTC-USD`** without spaces (`BTC - USD` can return HTTP **404** from Yahoo). The app compacts whitespace on input.
+- **`BTCUSD`** (no hyphen) is **not** a valid Yahoo chart symbol (404).
+
+Crypto and FX use the same quote and chart paths as equities when `provider` is **yahoo**. Polygon mode does not translate crypto ticker namespaces.
+
 ### Keymap (`keymap` field)
 
 Optional JSON object: each key is a **chord** string, each value is an **`Action`** name in **PascalCase** (for example `"Quit"`, `"StockRowDown"`). Overrides replace the default binding for that action in every [`BindingLayer`](src/config/keymap.rs) where built-in defaults register it (for example portfolio row **↑/↓** while remove-confirm is armed — Issue #134 / [`docs/SPEC.md`](docs/SPEC.md) §25); see [`src/config/keymap.rs`](src/config/keymap.rs) for the full default table. **Issues #58 / #59 / §27:** On the **News** tab, default **`NewsEnter`** is **Enter** (open selected article URL in the browser) and **`NewsCopyUrl`** is **`c`** (copy URL to the clipboard). **Issue #136 / §26:** These stay **wildcard** (no per-letter `Action` rows): Stock View symbol letters and Search query characters. Explicit defaults cover portfolio / alert dialog **digits** and **`.`**, plus Settings edit buffer input: **`PortfolioDialogDigitOrDot`**, **`AlertDialogDigitOrDot`**, **`SettingsEditDigit`**, and **`SettingsEditSymbolChar`** (default-symbol row only for letters). **Issue #139 / §29 — alert add dialog:** **`AlertDialogSymbolChar`** (`c`–`z`, `-`), **`AlertDialogConditionAbove`** (`a`), **`AlertDialogConditionBelow`** (`b`); on **Symbol** focus, `a`/`b` still append **`A`/`B`** via the condition actions (Shift/Caps per §8). Remapping a condition key frees that chord for symbol typing when unbound (optional wildcard fallback). **Issue #137 / §28 — table filter:** **`StockFilterToggle`** / **`PortfolioFilterToggle`** enter filter mode on **Stock View** / **Portfolio**; while filter input is active, keys resolve on **`FilterInput`** only — **`FilterClear`**, **`FilterCommit`**, **`FilterBackspace`**, **`FilterSlash`**, and per-character **`FilterQueryChar`** (`char:0`–`9`, `char:a`–`z` defaults). Unmapped keys in filter mode are ignored (they do not reach watchlist/portfolio actions). Remapping a **`Filter*`** action onto a chord already used by another action on **`FilterInput`** (for example **`FilterClear`** → **`char:a`**) is rejected and the app falls back to the full built-in keymap (same as §24 duplicate-chord rules).

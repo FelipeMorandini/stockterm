@@ -1,0 +1,16 @@
+{
+  "quoteResponse": {
+    "result": [
+      {
+        "symbol": "BTC-USD",
+        "regularMarketPrice": 67234.50,
+        "regularMarketOpen": 66800.0,
+        "regularMarketDayHigh": 68000.0,
+        "regularMarketDayLow": 66500.0,
+        "regularMarketVolume": 28500000000,
+        "regularMarketTime": 1778270402
+      }
+    ],
+    "error": null
+  }
+}

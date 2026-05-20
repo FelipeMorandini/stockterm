@@ -405,7 +405,8 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
         .data(&data)];
 
     let format_time = |time: &f64| format_time_axis(*time * 1000.0, intraday);
-    let format_price = |price: &f64| format!("${:.2}", price);
+    let format_price =
+        |price: &f64| crate::app::format::format_usd_price(*price);
 
     let chart = Chart::new(datasets)
         .x_axis(

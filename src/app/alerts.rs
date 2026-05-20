@@ -1,5 +1,6 @@
 #![allow(clippy::collapsible_match, clippy::needless_return)]
 
+use crate::app::format::format_usd_price;
 use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
@@ -224,7 +225,7 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedThem
         let rows = app.alerts.iter().map(|alert| {
             let current_opt = app.get_current_price(&alert.symbol);
             let current_cell = current_opt
-                .map(|p| format!("${p:.2}"))
+                .map(format_usd_price)
                 .unwrap_or_else(|| "—".to_string());
 
             let condition_text = match alert.condition {
@@ -243,7 +244,7 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedThem
             let cells = [
                 Cell::from(alert.symbol.clone()),
                 Cell::from(condition_text),
-                Cell::from(format!("${:.2}", alert.price)),
+                Cell::from(format_usd_price(alert.price)),
                 Cell::from(current_cell),
                 Cell::from(status_text).style(theme.fg_color(status_color)),
             ];
@@ -717,9 +718,12 @@ impl App {
                         AlertCondition::Above => "Above",
                         AlertCondition::Below => "Below",
                     };
-                    let mut line = format!("{sym} {cond_s} ${:.2}", alert.price);
+                    let mut line = format!(
+                        "{sym} {cond_s} {}",
+                        format_usd_price(alert.price)
+                    );
                     if let Some(p) = last {
-                        line.push_str(&format!(" · last ${p:.2}"));
+                        line.push_str(&format!(" · last {}", format_usd_price(p)));
                     }
                     body_lines.push(line);
                 }

@@ -19,10 +19,24 @@ use crate::config::Config;
 use crate::models::historical::{HistoricalData, HistoricalResponse};
 use crate::models::news::{NewsItem, NewsResponse, Publisher};
 use crate::models::search::{SymbolResult, SymbolSearchResponse};
+use crate::models::symbol::normalize_symbol;
 use crate::models::ticker::{TickerResponse, TickerResult};
 
 const QUERY1: &str = "https://query1.finance.yahoo.com";
 const QUERY2: &str = "https://query2.finance.yahoo.com";
+
+/// Compact symbol for Yahoo HTTP (Issue #23 — chart paths 404 on whitespace).
+fn yahoo_api_symbol(symbol: &str) -> String {
+    normalize_symbol(symbol).unwrap_or_else(|| symbol.trim().to_uppercase())
+}
+
+/// On **404**, retry the same path on `query2` (mirrors §34 quote fallback resilience).
+async fn fetch_text_query1_or_query2_on_404(q1_url: &str, q2_url: &str) -> ProviderResult<String> {
+    match fetch_text(q1_url).await {
+        Err(ProviderError::Http { status: 404, .. }) => fetch_text(q2_url).await,
+        other => other,
+    }
+}
 
 /// Issue #73 / SPEC §11.12.3 — if the first W1 intraday response has no bars, retry with daily interval.
 pub(crate) fn yahoo_w1_daily_fallback_interval(
@@ -316,7 +330,11 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
         return (quotes, errors);
     }
 
-    let chunks = chunk_symbols_for_v7_quote_url(symbols);
+    let symbols: Vec<String> = symbols
+        .iter()
+        .map(|s| yahoo_api_symbol(s))
+        .collect();
+    let chunks = chunk_symbols_for_v7_quote_url(&symbols);
     let mut pending_fallback: Vec<String> = Vec::new();
 
     for chunk in &chunks {
@@ -403,18 +421,26 @@ fn v8_chart_latest_url(query_base: &str, symbol: &str) -> String {
 }
 
 async fn yahoo_quote_v7_at(symbol: &str, query_base: &str) -> ProviderResult<TickerResponse> {
-    let url = v7_quote_url(query_base, symbol);
+    let sym = yahoo_api_symbol(symbol);
+    let url = v7_quote_url(query_base, &sym);
     let text = fetch_text(&url).await?;
     let env: V7QuoteEnvelope = serde_json::from_str(&text)?;
-    v7_envelope_to_ticker(&env, symbol)
+    v7_envelope_to_ticker(&env, &sym)
 }
 
 /// Latest quote via **v8 chart** `range=1d` (fallback when v7 is empty or errors).
 async fn yahoo_quote_at(symbol: &str, query_base: &str) -> ProviderResult<TickerResponse> {
-    let url = v8_chart_latest_url(query_base, symbol);
-    let text = fetch_text(&url).await?;
+    let sym = yahoo_api_symbol(symbol);
+    let url = v8_chart_latest_url(query_base, &sym);
+    let q2_base = if query_base.contains("query2") {
+        query_base
+    } else {
+        QUERY2
+    };
+    let url_q2 = v8_chart_latest_url(q2_base, &sym);
+    let text = fetch_text_query1_or_query2_on_404(&url, &url_q2).await?;
     let env: ChartEnvelope = serde_json::from_str(&text)?;
-    chart_to_ticker(&env, symbol)
+    chart_to_ticker(&env, &sym)
 }
 
 /// Enabled when `STOCKTERM_DEBUG_YAHOO_QUOTE` is exactly `1` (Issue #90 / SPEC §34.4).
@@ -566,14 +592,19 @@ async fn yahoo_historical_range(
     range: &str,
     interval: &str,
 ) -> ProviderResult<HistoricalResponse> {
-    let enc_sym = encode(symbol);
+    let sym = yahoo_api_symbol(symbol);
+    let enc_sym = encode(&sym);
     let url = format!(
         "{}/v8/finance/chart/{}?range={}&interval={}",
         QUERY1, enc_sym, range, interval
     );
-    let text = fetch_text(&url).await?;
+    let url_q2 = format!(
+        "{}/v8/finance/chart/{}?range={}&interval={}",
+        QUERY2, enc_sym, range, interval
+    );
+    let text = fetch_text_query1_or_query2_on_404(&url, &url_q2).await?;
     let env: ChartEnvelope = serde_json::from_str(&text)?;
-    chart_to_historical(&env, symbol)
+    chart_to_historical(&env, &sym)
 }
 
 /// Calendar-bounded chart using `period1` / `period2` (Unix seconds) + `interval=`.
@@ -600,14 +631,19 @@ async fn yahoo_historical(
     )
     .timestamp();
 
-    let enc_sym = encode(symbol);
+    let sym = yahoo_api_symbol(symbol);
+    let enc_sym = encode(&sym);
     let url = format!(
         "{}/v8/finance/chart/{}?period1={}&period2={}&interval={}",
         QUERY1, enc_sym, period1, period2, interval
     );
-    let text = fetch_text(&url).await?;
+    let url_q2 = format!(
+        "{}/v8/finance/chart/{}?period1={}&period2={}&interval={}",
+        QUERY2, enc_sym, period1, period2, interval
+    );
+    let text = fetch_text_query1_or_query2_on_404(&url, &url_q2).await?;
     let env: ChartEnvelope = serde_json::from_str(&text)?;
-    chart_to_historical(&env, symbol)
+    chart_to_historical(&env, &sym)
 }
 
 fn chart_to_historical(env: &ChartEnvelope, requested: &str) -> ProviderResult<HistoricalResponse> {
@@ -1604,6 +1640,16 @@ mod tests {
     fn maybe_log_yahoo_v7_fallback_no_panic_when_disabled() {
         maybe_log_yahoo_v7_fallback("AAPL", YahooV7FallbackReason::EmptyV7);
         maybe_log_yahoo_v7_fallback("MSFT", YahooV7FallbackReason::V7Failed);
+    }
+
+    #[test]
+    fn v7_envelope_maps_btc_usd_fixture() {
+        let json = include_str!("../../tests/fixtures/yahoo_quote_btc_usd.json");
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7 btc fixture");
+        let tr = v7_envelope_to_ticker(&env, "BTC-USD").expect("map btc-usd");
+        assert_eq!(tr.ticker, "BTC-USD");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 67_234.50).abs() < 1e-6);
     }
 
     #[test]
