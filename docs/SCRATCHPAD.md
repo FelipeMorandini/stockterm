@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-_Last cleared: 2026-05-19 — Issue **#23** shipped (§43). Strategic debt filed as [#157](https://github.com/FelipeMorandini/stockterm/issues/157), [#158](https://github.com/FelipeMorandini/stockterm/issues/158)._
+_Last cleared: 2026-05-19 — Issue **#23** shipped (§43; **PR:** [#159](https://github.com/FelipeMorandini/stockterm/pull/159)). Strategic debt → [#157](https://github.com/FelipeMorandini/stockterm/issues/157), [#158](https://github.com/FelipeMorandini/stockterm/issues/158)._
