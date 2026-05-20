@@ -4,7 +4,6 @@ use crate::app::format::{format_usd_price, symbol_kind_label};
 use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
-use crate::models::symbol::classify_symbol;
 use crate::app::layout::centered_rect;
 use crate::app::table_filter::filter_title_suffix;
 use crate::app::{normalize_symbol, App, PortfolioAddField, Tab};
@@ -272,7 +271,7 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
                     theme.negative
                 };
 
-                let kind = symbol_kind_label(classify_symbol(&item.symbol));
+                let kind = symbol_kind_label(app.symbol_kind_for_display(&item.symbol));
                 let mut cells = vec![Cell::from(item.symbol.clone())];
                 if show_kind {
                     cells.push(

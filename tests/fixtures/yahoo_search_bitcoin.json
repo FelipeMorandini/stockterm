@@ -1,0 +1,31 @@
+{
+  "explains": [],
+  "count": 2,
+  "quotes": [
+    {
+      "exchange": "CCC",
+      "shortname": "Bitcoin USD",
+      "quoteType": "CRYPTOCURRENCY",
+      "symbol": "BTC-USD",
+      "index": "quotes",
+      "score": 25000,
+      "typeDisp": "Cryptocurrency",
+      "longname": "Bitcoin USD",
+      "currency": "USD"
+    },
+    {
+      "exchange": "PCX",
+      "shortname": "Grayscale Bitcoin Trust",
+      "quoteType": "ETF",
+      "symbol": "BTC",
+      "index": "quotes",
+      "score": 20000,
+      "typeDisp": "ETF",
+      "currency": "USD"
+    }
+  ],
+  "news": [],
+  "nav": [],
+  "indices": [],
+  "cryptosCount": 1
+}

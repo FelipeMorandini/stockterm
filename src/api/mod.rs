@@ -6,8 +6,10 @@ pub(crate) mod http_fetch;
 pub mod polygon;
 pub(crate) mod retry;
 pub mod provider;
+pub mod symbol;
 pub mod yahoo;
 
 pub use error::ProviderError;
 pub use historical_query::HistoricalQuery;
 pub use provider::market_provider_for;
+pub use symbol::resolve_provider_symbol;

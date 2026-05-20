@@ -3563,3 +3563,109 @@ No live-Yahoo manual step is required — behavior is parser-level. Optional: if
 | #23 charts W1/D1 manual | maintainer | 2026-05-19 | Pass |
 | #23 formatting manual | maintainer | 2026-05-19 | Pass |
 | §3 / §8 / §11 regression | maintainer | 2026-05-19 | Pass |
+
+---
+
+## Issues #157, #158 — Provider symbol resolver + metadata-driven Kind
+
+**Scope:**
+
+- [GitHub Issue #157](https://github.com/FelipeMorandini/stockterm/issues/157) — Single **`resolve_provider_symbol`** entry point for Yahoo and Polygon HTTP paths; documented mapping table in SPEC/README.
+- [GitHub Issue #158](https://github.com/FelipeMorandini/stockterm/issues/158) — **`SymbolKind`** from Yahoo **`quoteType`** (Search + v7 quote) with heuristic fallback; plain **`BTC`** must not show **CRYPTO** when metadata says **ETF**.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §44.
+
+**Prerequisite:** Implementation matches §44.1–§44.4 (`api/symbol.rs`, `models/symbol.rs` metadata classifiers, `App.symbol_kind_cache`, Yahoo v7 `quote_type`, UI uses `symbol_kind_for_display`).
+
+**Provider:** Manual steps assume **`"provider": "yahoo"`** unless a step explicitly tests Polygon.
+
+### Automated (local) — required
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+2. Provider symbol resolver:
+
+   ```bash
+   cargo test resolve_provider_symbol
+   ```
+
+   **Pass:** Yahoo `btc - usd` → `BTC-USD`; Polygon `aapl` → `AAPL`.
+
+3. Metadata classification:
+
+   ```bash
+   cargo test classify_from_instrument_type
+   cargo test classify_symbol_with_hint
+   cargo test classify_symbol
+   ```
+
+   **Pass:** `CRYPTOCURRENCY` → Crypto; `ETF` → Equity; `BTC` + hint `ETF` → Equity; `BTC-USD` + hint `CRYPTOCURRENCY` → Crypto; `AAPL` → Equity; `EURUSD=X` → Fx.
+
+4. Static gate — no duplicate Yahoo helper:
+
+   ```bash
+   rg 'yahoo_api_symbol' src/
+   ```
+
+   **Pass:** No matches (replaced by `resolve_provider_symbol`).
+
+5. Yahoo v7 BTC fixture (if extended):
+
+   ```bash
+   cargo test v7_envelope_maps_btc_usd
+   ```
+
+   **Pass:** Parses `quoteType` when present in fixture.
+
+### Manual — Issue #158 (Kind from Search / quoteType)
+
+**Prep:** `provider: "yahoo"`. Network required. Optional: backup `~/.stockterm.json`.
+
+1. **Search** — query `bitcoin` → select **`BTC-USD`** row (verify Search **Type** column shows cryptocurrency if visible) → **Enter**.
+   **Pass:** Active symbol **`BTC-USD`**; watchlist **Kind** **CRYPTO** after **`w`** or on detail row.
+2. **Search** — query `bitcoin` or `btc` → if a plain **`BTC`** row exists, select it → **Enter**.
+   **Pass:** **Kind** shows **EQ** (or equity label), **not** **CRYPTO**; spot price is ETF-scale (~$30–$60), not ~$70k.
+3. **Stock View** — type **`BTC-USD`**, **Enter**, add to watchlist.
+   **Pass:** **Kind** **CRYPTO** persists after quote refresh (cache updated from v7 if implemented).
+4. **Regression — equity / FX** — **`AAPL`** → **EQ**; **`EURUSD=X`** → **FX**.
+   **Pass:** Unchanged from §43.
+
+### Manual — Issue #157 (resolver / Yahoo 404 guard)
+
+1. **Stock View** — type `btc - usd` (spaces), **Enter**.
+   **Pass:** Symbol **`BTC-USD`**; quote succeeds (not HTTP **404** from spaced chart path).
+2. **Charts** — with **`BTC-USD`** active, **W1** / **D1** load bars.
+   **Pass:** Same symbol string used as watchlist (no key mismatch after refresh).
+3. **Polygon smoke (optional)** — set `"provider": "polygon"` with valid API key; symbol **`AAPL`**.
+   **Pass:** Quote/historical still work (resolver identity for equities); README still states Polygon crypto unsupported.
+
+### README check
+
+1. Open [`README.md`](../README.md) **Symbols** subsection.
+   **Pass:** Documents user vs wire symbols; Yahoo vs Polygon table includes #157 mapping note; **`BTC`** ETF vs **`BTC-USD`** spot + Kind metadata behavior (#158).
+
+### Regression — §43 / §3 / §10 / §34
+
+| Check | Pass criteria |
+|-------|----------------|
+| §43 #23 crypto | `ETH-USD` via Search still works; adaptive formatting unchanged |
+| §3 watchlist | Multi-symbol refresh; normalized keys in `watchlist_quotes` |
+| §10 Search | Pick → Stock View + immediate poll |
+| §34 Yahoo quote | v7→v8 fallback for equities |
+
+### Sign-off — Issues #157, #158
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo clippy` + `cargo test` | maintainer | 2026-05-20 | Pass |
+| #158 Search BTC-USD / BTC Kind manual | maintainer | 2026-05-20 | Pass |
+| #157 spaced symbol / chart manual | maintainer | 2026-05-20 | Pass |
+| §43 / §3 regression | maintainer | 2026-05-20 | Pass |
