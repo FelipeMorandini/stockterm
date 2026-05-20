@@ -3,6 +3,7 @@
     "result": [
       {
         "symbol": "BTC-USD",
+        "quoteType": "CRYPTOCURRENCY",
         "regularMarketPrice": 67234.50,
         "regularMarketOpen": 66800.0,
         "regularMarketDayHigh": 68000.0,

@@ -8,7 +8,7 @@ use crate::app::styles::ResolvedTheme;
 use crate::app::table_filter::filter_title_suffix;
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::MarketProviderKind;
-use crate::models::symbol::{classify_symbol, normalize_symbol};
+use crate::models::symbol::normalize_symbol;
 use crate::models::ticker::{ticker_response_matches_symbol_for_session, TickerResponse};
 use ratatui::{
     backend::Backend,
@@ -301,66 +301,94 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
         .style(rt.canvas().add_modifier(Modifier::BOLD))
         .height(1);
 
-    let rows = filtered_idx.iter().map(|&idx| {
-        let sym = &app.watchlist[idx];
-        let kind = symbol_kind_label(classify_symbol(sym));
-        let row_style = rt.canvas();
-        let (last_s, chg_s, pct_s, vol_s, chg_color) =
-            match watchlist_quote_for_symbol(&app.watchlist_quotes, sym).and_then(|r| r.latest_result())
-            {
-                Some(bar) => {
-                    let price_change = bar.c - bar.o;
-                    let pct = if bar.o.abs() > f64::EPSILON {
-                        (price_change / bar.o) * 100.0
-                    } else {
-                        0.0
-                    };
-                    let chg_color = if price_change >= 0.0 {
-                        rt.positive
-                    } else {
-                        rt.negative
-                    };
-                    (
-                        format_usd_price(bar.c),
-                        format_signed_usd_delta(price_change),
-                        format!(
-                            "{}{:.2}%",
-                            if price_change >= 0.0 { "+" } else { "" },
-                            pct
-                        ),
-                        format!("{:.0}", bar.v),
-                        chg_color,
-                    )
-                }
-                _ => (
-                    "—".to_string(),
-                    "—".to_string(),
-                    "—".to_string(),
-                    "—".to_string(),
-                    rt.muted,
-                ),
-            };
+    struct WatchlistRowCells {
+        sym: String,
+        kind: String,
+        last_s: String,
+        chg_s: String,
+        pct_s: String,
+        vol_s: String,
+        chg_color: ratatui::style::Color,
+    }
 
-        let mut cells = vec![
-            Cell::from(sym.as_str()),
-        ];
-        if show_kind {
-            cells.push(
-                Cell::from(kind).style(if kind.is_empty() {
-                    row_style
-                } else {
-                    rt.fg_color(rt.muted)
-                }),
-            );
-        }
-        cells.extend([
-            Cell::from(last_s),
-            Cell::from(chg_s).style(rt.fg_color(chg_color)),
-            Cell::from(pct_s).style(rt.fg_color(chg_color)),
-            Cell::from(vol_s),
-        ]);
-        Row::new(cells).height(1).style(row_style)
-    });
+    let row_cells: Vec<WatchlistRowCells> = filtered_idx
+        .iter()
+        .map(|&idx| {
+            let sym = app.watchlist[idx].clone();
+            let kind = symbol_kind_label(app.symbol_kind_for_display(&sym)).to_string();
+            let (last_s, chg_s, pct_s, vol_s, chg_color) =
+                match watchlist_quote_for_symbol(&app.watchlist_quotes, &sym)
+                    .and_then(|r| r.latest_result())
+                {
+                    Some(bar) => {
+                        let price_change = bar.c - bar.o;
+                        let pct = if bar.o.abs() > f64::EPSILON {
+                            (price_change / bar.o) * 100.0
+                        } else {
+                            0.0
+                        };
+                        let chg_color = if price_change >= 0.0 {
+                            rt.positive
+                        } else {
+                            rt.negative
+                        };
+                        (
+                            format_usd_price(bar.c),
+                            format_signed_usd_delta(price_change),
+                            format!(
+                                "{}{:.2}%",
+                                if price_change >= 0.0 { "+" } else { "" },
+                                pct
+                            ),
+                            format!("{:.0}", bar.v),
+                            chg_color,
+                        )
+                    }
+                    _ => (
+                        "—".to_string(),
+                        "—".to_string(),
+                        "—".to_string(),
+                        "—".to_string(),
+                        rt.muted,
+                    ),
+                };
+            WatchlistRowCells {
+                sym,
+                kind,
+                last_s,
+                chg_s,
+                pct_s,
+                vol_s,
+                chg_color,
+            }
+        })
+        .collect();
+
+    let row_style = rt.canvas();
+    let rows: Vec<Row> = row_cells
+        .iter()
+        .map(|r| {
+            let mut cells = vec![Cell::from(r.sym.as_str())];
+            if show_kind {
+                cells.push(
+                    Cell::from(r.kind.as_str()).style(if r.kind.is_empty() {
+                        row_style
+                    } else {
+                        rt.fg_color(rt.muted)
+                    }),
+                );
+            }
+            cells.extend([
+                Cell::from(r.last_s.as_str()),
+                Cell::from(r.chg_s.as_str())
+                    .style(rt.fg_color(r.chg_color)),
+                Cell::from(r.pct_s.as_str())
+                    .style(rt.fg_color(r.chg_color)),
+                Cell::from(r.vol_s.as_str()),
+            ]);
+            Row::new(cells).height(1).style(row_style)
+        })
+        .collect();
 
     let constraints: Vec<Constraint> = if show_kind {
         vec![

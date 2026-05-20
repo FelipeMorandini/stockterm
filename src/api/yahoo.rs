@@ -15,19 +15,18 @@ use crate::api::error::{ProviderError, ProviderResult};
 use crate::api::historical_query::HistoricalQuery;
 use crate::api::provider::MarketDataProvider;
 use crate::api::retry::execute_get_text_with_retry;
-use crate::config::Config;
+use crate::api::symbol::resolve_provider_symbol;
+use crate::config::{Config, MarketProviderKind};
 use crate::models::historical::{HistoricalData, HistoricalResponse};
 use crate::models::news::{NewsItem, NewsResponse, Publisher};
 use crate::models::search::{SymbolResult, SymbolSearchResponse};
-use crate::models::symbol::normalize_symbol;
 use crate::models::ticker::{TickerResponse, TickerResult};
 
 const QUERY1: &str = "https://query1.finance.yahoo.com";
 const QUERY2: &str = "https://query2.finance.yahoo.com";
 
-/// Compact symbol for Yahoo HTTP (Issue #23 — chart paths 404 on whitespace).
-fn yahoo_api_symbol(symbol: &str) -> String {
-    normalize_symbol(symbol).unwrap_or_else(|| symbol.trim().to_uppercase())
+fn yahoo_wire_symbol(symbol: &str) -> String {
+    resolve_provider_symbol(MarketProviderKind::Yahoo, symbol)
 }
 
 /// On **404**, retry the same path on `query2` (mirrors §34 quote fallback resilience).
@@ -125,6 +124,7 @@ struct V7QuoteWireError {
 #[serde(rename_all = "camelCase")]
 struct V7QuoteItem {
     symbol: Option<String>,
+    quote_type: Option<String>,
     regular_market_price: Option<f64>,
     regular_market_open: Option<f64>,
     regular_market_day_high: Option<f64>,
@@ -159,7 +159,7 @@ fn normalize_v7_symbol_key(s: &str) -> String {
     s.trim().to_uppercase()
 }
 
-/// Maps one **`V7QuoteItem`** into [`TickerResponse`] (one synthetic bar). See table in [`v7_envelope_to_ticker`].
+/// Maps one **`V7QuoteItem`** into [`TickerResponse`] (one synthetic bar). See [`v7_envelope_to_ticker_with_type`].
 fn v7_item_to_ticker_response(q: &V7QuoteItem, requested: &str) -> ProviderResult<TickerResponse> {
     let close = q.regular_market_price.ok_or_else(|| {
         ProviderError::ApiMessage(format!("No regularMarketPrice for {}", requested))
@@ -219,7 +219,7 @@ fn v7_select_item_for_symbol<'a>(
         .or_else(|| items.first())
 }
 
-/// Maps Yahoo **`v7/finance/quote`** payload into [`TickerResponse`] (one synthetic bar).
+/// Maps Yahoo **`v7/finance/quote`** payload into [`TickerResponse`] and optional **`quoteType`**.
 ///
 /// | Yahoo field | `TickerResult` |
 /// |-------------|----------------|
@@ -229,7 +229,10 @@ fn v7_select_item_for_symbol<'a>(
 /// | `regularMarketPrice` | **`c`** (required for a successful row) |
 /// | `regularMarketVolume` | **`v`** |
 /// | `regularMarketTime` (Unix **seconds**) | **`t`** = ms |
-fn v7_envelope_to_ticker(env: &V7QuoteEnvelope, requested: &str) -> ProviderResult<TickerResponse> {
+fn v7_envelope_to_ticker_with_type(
+    env: &V7QuoteEnvelope,
+    requested: &str,
+) -> ProviderResult<(TickerResponse, Option<String>)> {
     if let Some(err) = &env.quote_response.error {
         let msg = err
             .description
@@ -239,13 +242,14 @@ fn v7_envelope_to_ticker(env: &V7QuoteEnvelope, requested: &str) -> ProviderResu
         return Err(ProviderError::ApiMessage(msg));
     }
     let Some(items) = env.quote_response.result.as_ref() else {
-        return Ok(empty_v7_ticker_response());
+        return Ok((empty_v7_ticker_response(), None));
     };
     let Some(q) = v7_select_item_for_symbol(items, requested) else {
-        return Ok(empty_v7_ticker_response());
+        return Ok((empty_v7_ticker_response(), None));
     };
 
-    v7_item_to_ticker_response(q, requested)
+    let qt = q.quote_type.clone();
+    Ok((v7_item_to_ticker_response(q, requested)?, qt))
 }
 
 /// Last index wins if Yahoo returns duplicate **`symbol`** rows.
@@ -322,18 +326,20 @@ async fn yahoo_quote_v7_batch_chunk(chunk: &[String]) -> ProviderResult<V7QuoteE
 pub(crate) async fn yahoo_latest_quotes_for_symbols(
     symbols: &[String],
     max_concurrent_fallbacks: usize,
-) -> (HashMap<String, TickerResponse>, Vec<(String, ProviderError)>) {
+) -> (
+    HashMap<String, TickerResponse>,
+    HashMap<String, String>,
+    Vec<(String, ProviderError)>,
+) {
     let mut quotes = HashMap::new();
+    let mut instrument_types = HashMap::new();
     let mut errors: Vec<(String, ProviderError)> = Vec::new();
 
     if symbols.is_empty() {
-        return (quotes, errors);
+        return (quotes, instrument_types, errors);
     }
 
-    let symbols: Vec<String> = symbols
-        .iter()
-        .map(|s| yahoo_api_symbol(s))
-        .collect();
+    let symbols: Vec<String> = symbols.iter().map(|s| yahoo_wire_symbol(s)).collect();
     let chunks = chunk_symbols_for_v7_quote_url(&symbols);
     let mut pending_fallback: Vec<String> = Vec::new();
 
@@ -355,6 +361,9 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
                     match index.get(&key).copied() {
                         Some(idx) => match v7_item_to_ticker_response(&items[idx], sym) {
                             Ok(t) if !t.results.is_empty() => {
+                                if let Some(qt) = items[idx].quote_type.as_deref() {
+                                    instrument_types.insert(sym.clone(), qt.to_string());
+                                }
                                 quotes.insert(sym.clone(), t);
                             }
                             Ok(_) | Err(_) => pending_fallback.push(sym.clone()),
@@ -378,16 +387,16 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
         set.spawn(async move {
             let _permit = match acquire_quote_permit(&sem, &sym, "yahoo").await {
                 Ok(p) => p,
-                Err(e) => return (sym, Err(e)),
+                Err(e) => return (sym, Err(e), None),
             };
-            let res = yahoo_latest_quote_at(&sym, QUERY1).await;
-            (sym, res)
+            let (res, qt) = yahoo_latest_quote_at_with_type(&sym, QUERY1).await;
+            (sym, res, qt)
         });
     }
 
     while let Some(joined) = set.join_next().await {
         match joined {
-            Ok((sym, Ok(mut data))) => {
+            Ok((sym, Ok(mut data), qt)) => {
                 if let Some(msg) = data.api_error_message() {
                     errors.push((sym, ProviderError::ApiMessage(msg)));
                     continue;
@@ -395,9 +404,12 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
                 if data.ticker.is_empty() {
                     data.ticker = sym.clone();
                 }
+                if let Some(t) = qt {
+                    instrument_types.insert(sym.clone(), t);
+                }
                 quotes.insert(sym, data);
             }
-            Ok((sym, Err(e))) => errors.push((sym, e)),
+            Ok((sym, Err(e), _)) => errors.push((sym, e)),
             Err(e) => errors.push((
                 String::new(),
                 ProviderError::Transport(format!("task join: {e}")),
@@ -405,7 +417,7 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
         }
     }
 
-    (quotes, errors)
+    (quotes, instrument_types, errors)
 }
 
 fn v7_quote_url(query_base: &str, symbol: &str) -> String {
@@ -420,17 +432,20 @@ fn v8_chart_latest_url(query_base: &str, symbol: &str) -> String {
     format!("{base}/v8/finance/chart/{enc_sym}?range=1d&interval=1d")
 }
 
-async fn yahoo_quote_v7_at(symbol: &str, query_base: &str) -> ProviderResult<TickerResponse> {
-    let sym = yahoo_api_symbol(symbol);
+async fn yahoo_quote_v7_at_with_type(
+    symbol: &str,
+    query_base: &str,
+) -> ProviderResult<(TickerResponse, Option<String>)> {
+    let sym = yahoo_wire_symbol(symbol);
     let url = v7_quote_url(query_base, &sym);
     let text = fetch_text(&url).await?;
     let env: V7QuoteEnvelope = serde_json::from_str(&text)?;
-    v7_envelope_to_ticker(&env, &sym)
+    v7_envelope_to_ticker_with_type(&env, &sym)
 }
 
 /// Latest quote via **v8 chart** `range=1d` (fallback when v7 is empty or errors).
 async fn yahoo_quote_at(symbol: &str, query_base: &str) -> ProviderResult<TickerResponse> {
-    let sym = yahoo_api_symbol(symbol);
+    let sym = yahoo_wire_symbol(symbol);
     let url = v8_chart_latest_url(query_base, &sym);
     let q2_base = if query_base.contains("query2") {
         query_base
@@ -478,15 +493,17 @@ fn maybe_log_yahoo_v7_fallback(symbol: &str, reason: YahooV7FallbackReason) {
 
 /// Try **`v7/finance/quote`** first; on failure or empty body, use v8 chart ([`yahoo_quote_at`]).
 async fn yahoo_latest_quote(symbol: &str) -> ProviderResult<TickerResponse> {
-    yahoo_latest_quote_orchestrate(symbol, QUERY1, true).await
+    yahoo_latest_quote_orchestrate(symbol, QUERY1, true).await.0
 }
 
-/// Same orchestration as [`yahoo_latest_quote`] with an injectable Yahoo **`query1`** base (Issue #89 / SPEC §32).
-/// Does not emit §34 fallback stderr diagnostics (batch recovery and tests use this entry point).
-pub(crate) async fn yahoo_latest_quote_at(
+/// Single-symbol v7→v8 orchestration with injectable Yahoo **`query1`** base (Issue #89 / §32 / §44).
+///
+/// Returns the quote and optional Yahoo **`quoteType`** when v7 succeeds. Does not emit §34
+/// fallback stderr diagnostics (batch recovery uses this entry point; live path uses logging).
+pub(crate) async fn yahoo_latest_quote_at_with_type(
     symbol: &str,
     query_base: &str,
-) -> ProviderResult<TickerResponse> {
+) -> (ProviderResult<TickerResponse>, Option<String>) {
     yahoo_latest_quote_orchestrate(symbol, query_base, false).await
 }
 
@@ -494,20 +511,20 @@ async fn yahoo_latest_quote_orchestrate(
     symbol: &str,
     query_base: &str,
     log_v7_fallback: bool,
-) -> ProviderResult<TickerResponse> {
-    match yahoo_quote_v7_at(symbol, query_base).await {
-        Ok(t) if !t.results.is_empty() => Ok(t),
+) -> (ProviderResult<TickerResponse>, Option<String>) {
+    match yahoo_quote_v7_at_with_type(symbol, query_base).await {
+        Ok((t, qt)) if !t.results.is_empty() => (Ok(t), qt),
         Ok(_) => {
             if log_v7_fallback {
                 maybe_log_yahoo_v7_fallback(symbol, YahooV7FallbackReason::EmptyV7);
             }
-            yahoo_quote_at(symbol, query_base).await
+            (yahoo_quote_at(symbol, query_base).await, None)
         }
         Err(_) => {
             if log_v7_fallback {
                 maybe_log_yahoo_v7_fallback(symbol, YahooV7FallbackReason::V7Failed);
             }
-            yahoo_quote_at(symbol, query_base).await
+            (yahoo_quote_at(symbol, query_base).await, None)
         }
     }
 }
@@ -592,7 +609,7 @@ async fn yahoo_historical_range(
     range: &str,
     interval: &str,
 ) -> ProviderResult<HistoricalResponse> {
-    let sym = yahoo_api_symbol(symbol);
+    let sym = yahoo_wire_symbol(symbol);
     let enc_sym = encode(&sym);
     let url = format!(
         "{}/v8/finance/chart/{}?range={}&interval={}",
@@ -631,7 +648,7 @@ async fn yahoo_historical(
     )
     .timestamp();
 
-    let sym = yahoo_api_symbol(symbol);
+    let sym = yahoo_wire_symbol(symbol);
     let enc_sym = encode(&sym);
     let url = format!(
         "{}/v8/finance/chart/{}?period1={}&period2={}&interval={}",
@@ -1558,7 +1575,7 @@ mod tests {
             }
         }"#;
         let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
-        let tr = v7_envelope_to_ticker(&env, "AAPL").expect("map");
+        let (tr, _) = v7_envelope_to_ticker_with_type(&env, "AAPL").expect("map");
         let bar = tr.latest_result().expect("bar");
         assert!((bar.c - 195.5).abs() < 1e-9);
     }
@@ -1580,7 +1597,7 @@ mod tests {
             }
         }"#;
         let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
-        let tr = v7_envelope_to_ticker(&env, "AAPL").expect("map");
+        let (tr, _) = v7_envelope_to_ticker_with_type(&env, "AAPL").expect("map");
         assert_eq!(tr.ticker, "aapl");
         let bar = tr.latest_result().expect("bar");
         assert!((bar.c - 195.5).abs() < 1e-9);
@@ -1614,7 +1631,7 @@ mod tests {
             }
         }"#;
         let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
-        let tr = v7_envelope_to_ticker(&env, "AAPL").expect("map");
+        let (tr, _) = v7_envelope_to_ticker_with_type(&env, "AAPL").expect("map");
         let bar = tr.latest_result().expect("bar");
         assert!((bar.c - 400.0).abs() < 1e-9);
     }
@@ -1646,10 +1663,40 @@ mod tests {
     fn v7_envelope_maps_btc_usd_fixture() {
         let json = include_str!("../../tests/fixtures/yahoo_quote_btc_usd.json");
         let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7 btc fixture");
-        let tr = v7_envelope_to_ticker(&env, "BTC-USD").expect("map btc-usd");
+        let item = env
+            .quote_response
+            .result
+            .as_ref()
+            .and_then(|r| r.first())
+            .expect("btc row");
+        assert_eq!(item.quote_type.as_deref(), Some("CRYPTOCURRENCY"));
+        let (tr, _) = v7_envelope_to_ticker_with_type(&env, "BTC-USD").expect("map btc-usd");
         assert_eq!(tr.ticker, "BTC-USD");
         let bar = tr.latest_result().expect("bar");
         assert!((bar.c - 67_234.50).abs() < 1e-6);
+    }
+
+    #[test]
+    fn map_search_bitcoin_fixture_quote_types() {
+        use crate::models::symbol::{classify_from_instrument_type, SymbolKind};
+
+        let json = include_str!("../../tests/fixtures/yahoo_search_bitcoin.json");
+        let env: SearchEnvelope = serde_json::from_str(json).expect("parse search");
+        let mut quotes = env.quotes.expect("quotes");
+        let btc_usd = map_search_quote(quotes.remove(0)).expect("btc-usd row");
+        let btc_etf = map_search_quote(quotes.remove(0)).expect("btc etf row");
+        assert_eq!(btc_usd.ticker, "BTC-USD");
+        assert_eq!(btc_usd.type_, "CRYPTOCURRENCY");
+        assert_eq!(btc_etf.ticker, "BTC");
+        assert_eq!(btc_etf.type_, "ETF");
+        assert_eq!(
+            classify_from_instrument_type(&btc_usd.type_),
+            SymbolKind::Crypto
+        );
+        assert_eq!(
+            classify_from_instrument_type(&btc_etf.type_),
+            SymbolKind::Equity
+        );
     }
 
     #[test]
@@ -1669,7 +1716,7 @@ mod tests {
             }
         }"#;
         let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
-        let tr = v7_envelope_to_ticker(&env, "AAPL").expect("map");
+        let (tr, _) = v7_envelope_to_ticker_with_type(&env, "AAPL").expect("map");
         assert_eq!(tr.ticker, "AAPL");
         let bar = tr.latest_result().expect("bar");
         assert!((bar.c - 195.5).abs() < 1e-9);
@@ -1684,7 +1731,7 @@ mod tests {
     fn v7_envelope_empty_result_yields_no_bars_for_fallback() {
         let json = r#"{"quoteResponse":{"result":[],"error":null}}"#;
         let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse");
-        let tr = v7_envelope_to_ticker(&env, "ZZZZ").expect("ok envelope");
+        let (tr, _) = v7_envelope_to_ticker_with_type(&env, "ZZZZ").expect("ok envelope");
         assert!(tr.results.is_empty());
     }
 
@@ -1692,7 +1739,7 @@ mod tests {
     fn v7_envelope_api_error_returns_err() {
         let json = r#"{"quoteResponse":{"result":null,"error":{"description":"User is not logged in"}}}"#;
         let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse");
-        let e = v7_envelope_to_ticker(&env, "X").unwrap_err();
+        let e = v7_envelope_to_ticker_with_type(&env, "X").unwrap_err();
         match e {
             ProviderError::ApiMessage(s) => assert!(s.contains("logged in")),
             other => panic!("expected ApiMessage, got {:?}", other),
@@ -1703,7 +1750,7 @@ mod tests {
     fn v7_missing_price_returns_err() {
         let json = r#"{"quoteResponse":{"result":[{"symbol":"AAPL","regularMarketOpen":1.0}],"error":null}}"#;
         let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse");
-        assert!(v7_envelope_to_ticker(&env, "AAPL").is_err());
+        assert!(v7_envelope_to_ticker_with_type(&env, "AAPL").is_err());
     }
 
     #[test]
@@ -1920,8 +1967,9 @@ mod wiremock_quote_fallback_tests {
             .await;
         mount_v8_chart_ok(&srv).await;
 
-        let tr = yahoo_latest_quote_at(SYMBOL, &srv.uri())
+        let tr = yahoo_latest_quote_at_with_type(SYMBOL, &srv.uri())
             .await
+            .0
             .expect("v8 fallback");
         assert_chart_quote(&tr);
     }
@@ -1940,8 +1988,9 @@ mod wiremock_quote_fallback_tests {
             .await;
         mount_v8_chart_ok(&srv).await;
 
-        let tr = yahoo_latest_quote_at(SYMBOL, &srv.uri())
+        let tr = yahoo_latest_quote_at_with_type(SYMBOL, &srv.uri())
             .await
+            .0
             .expect("v8 fallback");
         assert_chart_quote(&tr);
     }
@@ -1960,8 +2009,9 @@ mod wiremock_quote_fallback_tests {
             .await;
         mount_v8_chart_ok(&srv).await;
 
-        let tr = yahoo_latest_quote_at(SYMBOL, &srv.uri())
+        let tr = yahoo_latest_quote_at_with_type(SYMBOL, &srv.uri())
             .await
+            .0
             .expect("v8 fallback");
         assert_chart_quote(&tr);
     }

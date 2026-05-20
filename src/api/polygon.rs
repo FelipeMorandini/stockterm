@@ -8,7 +8,8 @@ use crate::api::error::{ProviderError, ProviderResult};
 use crate::api::historical_query::HistoricalQuery;
 use crate::api::provider::MarketDataProvider;
 use crate::api::retry::execute_get_text_with_retry;
-use crate::config::Config;
+use crate::api::symbol::resolve_provider_symbol;
+use crate::config::{Config, MarketProviderKind};
 use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
 use crate::models::search::SymbolSearchResponse;
@@ -18,6 +19,10 @@ const BASE_URL: &str = "https://api.polygon.io";
 
 fn enc(s: &str) -> String {
     encode(s).into_owned()
+}
+
+fn polygon_wire_symbol(user_symbol: &str) -> String {
+    resolve_provider_symbol(MarketProviderKind::Polygon, user_symbol)
 }
 
 fn polygon_key(config: &Config) -> ProviderResult<String> {
@@ -51,7 +56,7 @@ impl MarketDataProvider for PolygonProvider {
         let url = format!(
             "{}/v2/aggs/ticker/{}/range/1/day/{}/{}?adjusted=true&sort=desc&limit=5&apiKey={}",
             BASE_URL,
-            enc(symbol),
+            enc(&polygon_wire_symbol(symbol)),
             enc(&from),
             enc(&to),
             enc(&key)
@@ -73,7 +78,7 @@ impl MarketDataProvider for PolygonProvider {
         let url = format!(
             "{}/v2/aggs/ticker/{}/range/{}/{}/{}/{}?adjusted=true&sort=asc&limit=50000&apiKey={}",
             BASE_URL,
-            enc(symbol),
+            enc(&polygon_wire_symbol(symbol)),
             query.polygon_multiplier,
             enc(query.polygon_timespan),
             enc(query.from),
@@ -99,7 +104,7 @@ impl MarketDataProvider for PolygonProvider {
         let url = format!(
             "{}/v2/reference/news?ticker={}&apiKey={}",
             BASE_URL,
-            enc(symbol),
+            enc(&polygon_wire_symbol(symbol)),
             enc(&key)
         );
         fetch_json(&url).await

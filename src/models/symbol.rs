@@ -1,4 +1,4 @@
-//! Symbol normalization and classification (Issue #23 / SPEC §43).
+//! Symbol normalization and classification (Issue #23 / SPEC §43; metadata §44.2).
 
 /// Map Unicode dash characters to ASCII `-` (Yahoo `BTC-USD` chart paths).
 fn normalize_symbol_dash(c: char) -> char {
@@ -12,7 +12,7 @@ fn normalize_symbol_dash(c: char) -> char {
 ///
 /// Yahoo chart URLs return **404** when the path contains spaces (e.g. `BTC - USD`);
 /// compacting to `BTC-USD` avoids that class of failures. Used by the app layer and
-/// [`crate::api::yahoo`] quote/historical requests.
+/// [`crate::api::symbol::resolve_provider_symbol`] for Yahoo HTTP paths.
 pub fn normalize_symbol(s: &str) -> Option<String> {
     let t = s.trim();
     if t.is_empty() {
@@ -40,17 +40,8 @@ pub enum SymbolKind {
 
 const CRYPTO_QUOTE_SUFFIXES: &[&str] = &["-USD", "-USDT", "-EUR", "-GBP", "-BTC"];
 
-/// Yahoo Search / quote often return short crypto tickers (`BTC`, `ETH`) instead of `BTC-USD`.
-const YAHOO_CRYPTO_SHORT_SYMBOLS: &[&str] = &[
-    "ADA", "ATOM", "AVAX", "BCH", "BTC", "DOGE", "DOT", "ETC", "ETH", "FIL", "LINK", "LTC",
-    "MATIC", "SHIB", "SOL", "TRX", "UNI", "XLM", "XRP",
-];
-
-fn is_crypto_symbol(sym: &str) -> bool {
-    CRYPTO_QUOTE_SUFFIXES
-        .iter()
-        .any(|suffix| sym.ends_with(suffix))
-        || YAHOO_CRYPTO_SHORT_SYMBOLS.contains(&sym)
+fn is_crypto_symbol_heuristic(sym: &str) -> bool {
+    CRYPTO_QUOTE_SUFFIXES.iter().any(|suffix| sym.ends_with(suffix))
 }
 
 fn is_fx_symbol(sym: &str) -> bool {
@@ -71,16 +62,38 @@ fn is_equity_symbol(sym: &str) -> bool {
     chars.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '.' || c == '-')
 }
 
-/// Classify a normalized ticker (uppercase, trimmed).
+/// Map Yahoo / Polygon instrument type strings to [`SymbolKind`] (Issue #158 / §44.2).
 ///
-/// | Pattern | Kind | Examples |
-/// |---------|------|----------|
-/// | Suffix `-USD`, `-USDT`, … | Crypto | `BTC-USD`, `ETH-USDT` |
-/// | Known Yahoo short tickers | Crypto | `BTC`, `ETH` (Search / v7 symbol field) |
-/// | Suffix `=X` or `/` | Fx | `EURUSD=X`, `EUR/USD` |
-/// | `^[A-Z][A-Z0-9.-]{0,11}$` | Equity | `AAPL`, `BRK.B` |
-/// | Empty / non-ASCII | Unknown | — |
+/// Unknown values return [`SymbolKind::Unknown`] so callers can fall back to heuristics.
+pub fn classify_from_instrument_type(type_str: &str) -> SymbolKind {
+    let upper = type_str.trim().to_ascii_uppercase();
+    if upper.is_empty() {
+        return SymbolKind::Unknown;
+    }
+    if upper == "CRYPTOCURRENCY" {
+        return SymbolKind::Crypto;
+    }
+    if upper == "CURRENCY" || upper == "CURRENCYPAIRS" {
+        return SymbolKind::Fx;
+    }
+    if matches!(
+        upper.as_str(),
+        "EQUITY" | "ETF" | "MUTUALFUND" | "INDEX" | "OPTION"
+    ) {
+        return SymbolKind::Equity;
+    }
+    SymbolKind::Unknown
+}
+
+/// Classify a normalized ticker (uppercase, trimmed) using string heuristics only.
+///
+/// Plain short tickers such as **`BTC`** are **not** treated as crypto here — use
+/// [`classify_symbol_with_hint`] when Yahoo **`quoteType`** metadata is available.
 pub fn classify_symbol(sym: &str) -> SymbolKind {
+    classify_symbol_heuristic(sym)
+}
+
+fn classify_symbol_heuristic(sym: &str) -> SymbolKind {
     let sym = sym.trim();
     if sym.is_empty() {
         return SymbolKind::Unknown;
@@ -92,7 +105,7 @@ pub fn classify_symbol(sym: &str) -> SymbolKind {
     if is_fx_symbol(&upper) {
         return SymbolKind::Fx;
     }
-    if is_crypto_symbol(&upper) {
+    if is_crypto_symbol_heuristic(&upper) {
         return SymbolKind::Crypto;
     }
     if is_equity_symbol(&upper) {
@@ -101,9 +114,23 @@ pub fn classify_symbol(sym: &str) -> SymbolKind {
     SymbolKind::Unknown
 }
 
+/// Prefer provider metadata when present; otherwise [`classify_symbol`] heuristics.
+pub fn classify_symbol_with_hint(sym: &str, instrument_type: Option<&str>) -> SymbolKind {
+    if let Some(t) = instrument_type {
+        let from_meta = classify_from_instrument_type(t);
+        if from_meta != SymbolKind::Unknown {
+            return from_meta;
+        }
+    }
+    classify_symbol_heuristic(sym)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{classify_symbol, normalize_symbol, SymbolKind};
+    use super::{
+        classify_from_instrument_type, classify_symbol, classify_symbol_with_hint,
+        normalize_symbol, SymbolKind,
+    };
 
     #[test]
     fn normalize_symbol_trims_and_uppercases() {
@@ -133,9 +160,9 @@ mod tests {
     }
 
     #[test]
-    fn classify_symbol_btc_short_is_crypto() {
-        assert_eq!(classify_symbol("BTC"), SymbolKind::Crypto);
-        assert_eq!(classify_symbol("ETH"), SymbolKind::Crypto);
+    fn classify_symbol_btc_short_is_equity_without_metadata() {
+        assert_eq!(classify_symbol("BTC"), SymbolKind::Equity);
+        assert_eq!(classify_symbol("ETH"), SymbolKind::Equity);
     }
 
     #[test]
@@ -162,5 +189,39 @@ mod tests {
     #[test]
     fn classify_symbol_eth_usdt_is_crypto() {
         assert_eq!(classify_symbol("ETH-USDT"), SymbolKind::Crypto);
+    }
+
+    #[test]
+    fn classify_from_instrument_type_cryptocurrency() {
+        assert_eq!(
+            classify_from_instrument_type("CRYPTOCURRENCY"),
+            SymbolKind::Crypto
+        );
+    }
+
+    #[test]
+    fn classify_from_instrument_type_etf_is_equity() {
+        assert_eq!(classify_from_instrument_type("ETF"), SymbolKind::Equity);
+    }
+
+    #[test]
+    fn classify_from_instrument_type_currency_is_fx() {
+        assert_eq!(classify_from_instrument_type("CURRENCY"), SymbolKind::Fx);
+    }
+
+    #[test]
+    fn classify_symbol_with_hint_btc_etf_overrides_short_ticker() {
+        assert_eq!(
+            classify_symbol_with_hint("BTC", Some("ETF")),
+            SymbolKind::Equity
+        );
+    }
+
+    #[test]
+    fn classify_symbol_with_hint_btc_usd_cryptocurrency() {
+        assert_eq!(
+            classify_symbol_with_hint("BTC-USD", Some("CRYPTOCURRENCY")),
+            SymbolKind::Crypto
+        );
     }
 }

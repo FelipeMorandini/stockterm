@@ -23,6 +23,9 @@ use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
 use crate::models::portfolio::PortfolioItem;
 use crate::models::search::SymbolSearchResponse;
+use crate::models::symbol::{
+    classify_from_instrument_type, classify_symbol_with_hint, SymbolKind,
+};
 use crate::models::ticker::TickerResponse;
 use crate::models::time_range::TimeRange;
 use ratatui::backend::Backend;
@@ -154,6 +157,8 @@ pub enum FetchDone {
     Stock {
         generation: u64,
         quotes: HashMap<String, TickerResponse>,
+        /// Yahoo v7 `quoteType` per normalized symbol (Issue #158 / §44.2).
+        instrument_types: HashMap<String, String>,
         errors: Vec<(String, ProviderError)>,
     },
     Historical {
@@ -253,6 +258,10 @@ pub struct App {
     pub symbol: String,
     pub watchlist: Vec<String>,
     pub watchlist_quotes: HashMap<String, TickerResponse>,
+    /// In-memory normalized symbol → [`SymbolKind`] from Search `type_` or v7 `quoteType` (Issue #158 / §44.2).
+    ///
+    /// Not persisted to `~/.stockterm.json`; repopulated from Search results and quote batches.
+    pub symbol_kind_cache: HashMap<String, crate::models::symbol::SymbolKind>,
     pub watchlist_state: TableState,
     pub portfolio: Vec<PortfolioItem>,
     pub portfolio_state: TableState,
@@ -386,7 +395,7 @@ async fn run_stock_quote_batch(
     maybe_debug_http_delay().await;
 
     if config.provider == MarketProviderKind::Yahoo {
-        let (quotes_raw, mut errors) =
+        let (quotes_raw, instrument_types, mut errors) =
             crate::api::yahoo::yahoo_latest_quotes_for_symbols(&symbols, MAX_CONCURRENT_QUOTES).await;
         let mut quotes = HashMap::new();
         for (sym, mut data) in quotes_raw {
@@ -402,6 +411,7 @@ async fn run_stock_quote_batch(
         return FetchDone::Stock {
             generation,
             quotes,
+            instrument_types,
             errors,
         };
     }
@@ -449,6 +459,7 @@ async fn run_stock_quote_batch(
     FetchDone::Stock {
         generation,
         quotes,
+        instrument_types: HashMap::new(),
         errors,
     }
 }
@@ -527,6 +538,7 @@ impl App {
             symbol,
             watchlist,
             watchlist_quotes: HashMap::new(),
+            symbol_kind_cache: HashMap::new(),
             watchlist_state,
             portfolio,
             portfolio_state: TableState::default(),
@@ -998,6 +1010,7 @@ impl App {
                     FetchDone::Stock {
                         generation,
                         quotes: HashMap::new(),
+                        instrument_types: HashMap::new(),
                         errors: vec![(
                             String::new(),
                             ProviderError::ApiMessage("quote batch task panicked".into()),
@@ -1018,6 +1031,7 @@ impl App {
         &mut self,
         generation: u64,
         quotes: HashMap<String, TickerResponse>,
+        instrument_types: HashMap<String, String>,
         errors: Vec<(String, ProviderError)>,
     ) {
         // Stale batch: a newer `stock_fetch_generation` means another batch is authoritative; keep
@@ -1032,6 +1046,12 @@ impl App {
 
         for (k, v) in quotes {
             self.watchlist_quotes.insert(k, v);
+        }
+
+        for (sym, qt) in instrument_types {
+            if let Some(n) = normalize_symbol(&sym) {
+                self.remember_symbol_kind_from_instrument_type(&n, &qt);
+            }
         }
 
         self.ticker_data = self.watchlist_quotes.get(&self.symbol).cloned();
@@ -1444,9 +1464,11 @@ impl App {
         else {
             return;
         };
+        let instrument_type = row.type_.clone();
         let Some(sym) = normalize_symbol(&row.ticker) else {
             return;
         };
+        self.remember_symbol_kind_from_instrument_type(&sym, &instrument_type);
         self.symbol = sym;
         self.on_active_symbol_changed_for_charts();
         self.notify_symbol_changed_for_news();
@@ -1845,8 +1867,9 @@ impl App {
             FetchDone::Stock {
                 generation,
                 quotes,
+                instrument_types,
                 errors,
-            } => self.apply_stock_fetch_done(generation, quotes, errors),
+            } => self.apply_stock_fetch_done(generation, quotes, instrument_types, errors),
             FetchDone::Historical {
                 symbol,
                 time_range,
@@ -1961,6 +1984,7 @@ impl App {
                 match result {
                     Ok(data) => {
                         self.search_results = Some(data);
+                        self.cache_symbol_kinds_from_search_results();
                         if matches!(self.last_failed_fetch, LastFailedFetch::Search { .. }) {
                             self.last_failed_fetch = LastFailedFetch::None;
                         }
@@ -2080,6 +2104,53 @@ impl Default for App {
 }
 
 impl App {
+    /// Stores provider-derived kind for a normalized symbol (Issue #158 / §44.2).
+    pub fn remember_symbol_kind(&mut self, normalized: &str, kind: SymbolKind) {
+        if kind != SymbolKind::Unknown {
+            self.symbol_kind_cache.insert(normalized.to_string(), kind);
+        }
+    }
+
+    /// Maps Yahoo **`quoteType`** / Search **`type_`** into the session cache.
+    pub fn remember_symbol_kind_from_instrument_type(
+        &mut self,
+        normalized: &str,
+        instrument_type: &str,
+    ) {
+        let kind = classify_from_instrument_type(instrument_type);
+        self.remember_symbol_kind(normalized, kind);
+    }
+
+    /// Kind for UI: session cache, then string heuristics (§44.2).
+    pub fn symbol_kind_for_display(&self, sym: &str) -> SymbolKind {
+        let Some(n) = normalize_symbol(sym) else {
+            return SymbolKind::Unknown;
+        };
+        if let Some(&k) = self.symbol_kind_cache.get(&n) {
+            return k;
+        }
+        classify_symbol_with_hint(&n, None)
+    }
+
+    fn cache_symbol_kinds_from_search_results(&mut self) {
+        let rows: Vec<(String, String)> = self
+            .search_results
+            .as_ref()
+            .map(|r| {
+                r.results
+                    .iter()
+                    .filter_map(|row| {
+                        normalize_symbol(&row.ticker)
+                            .map(|n| (n, row.type_.clone()))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        for (n, t) in rows {
+            self.remember_symbol_kind_from_instrument_type(&n, &t);
+        }
+    }
+
     /// Aligns watchlist table selection with [`Self::symbol`] (compares via [`normalize_symbol`]).
     ///
     /// When `symbol` is not on the watchlist (or hidden by the active filter), clears the row
@@ -2175,6 +2246,11 @@ impl App {
         }
         self.watchlist.remove(actual);
         self.watchlist_quotes.retain(|k, _| self.watchlist.contains(k));
+        self.symbol_kind_cache.retain(|k, _| {
+            self.watchlist.iter().any(|w| {
+                normalize_symbol(w).as_deref() == Some(k.as_str())
+            })
+        });
         self.config.watchlist = self.watchlist.clone();
         if let Err(e) = self.try_save_config_with_session() {
             self.surface_runtime_error(
@@ -2694,7 +2770,7 @@ mod tests {
         ));
 
         let errors = vec![("AAPL".into(), ProviderError::ApiMessage("bad".into()))];
-        app.apply_stock_fetch_done(1, HashMap::new(), errors);
+        app.apply_stock_fetch_done(1, HashMap::new(), HashMap::new(), errors);
         let msg = app.error_message().expect("merged error");
         assert!(
             msg.contains(ALERTS_SAVE_ERROR_PREFIX),
@@ -2727,7 +2803,7 @@ mod tests {
         ));
 
         let errors = vec![("MSFT".into(), ProviderError::ApiMessage("second".into()))];
-        app.apply_stock_fetch_done(1, HashMap::new(), errors);
+        app.apply_stock_fetch_done(1, HashMap::new(), HashMap::new(), errors);
         let msg = app.error_message().expect("second merge");
         assert!(
             msg.contains(ALERTS_SAVE_ERROR_PREFIX),
