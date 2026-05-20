@@ -460,15 +460,18 @@ fn handle_stock_view_keys(app: &mut App, key: KeyEvent) {
         return;
     }
 
-    // §24.5 / §26 — Stock symbol buffer: letters only (wildcard after keymap); digits are not ticker input here.
+    // §24.5 / §26 / §43.3 — Stock symbol buffer: A–Z, `-`, `.` (wildcard); digits excluded.
     if let KeyEvent {
         code: KeyCode::Char(c),
         modifiers,
         ..
     } = key
     {
-        if c.is_ascii_alphabetic() && letter_key_plain(modifiers) && !app.filter_input_mode {
-            app.symbol.push(c.to_ascii_uppercase());
+        if crate::app::keyboard::stock_symbol_char_allowed(c)
+            && letter_key_plain(modifiers)
+            && !app.filter_input_mode
+        {
+            crate::app::keyboard::push_stock_symbol_char(&mut app.symbol, c);
         }
     }
 }

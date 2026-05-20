@@ -3,6 +3,20 @@
 use crate::config::keymap::Action;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+/// True when `c` may be appended to the Stock View symbol buffer (Issue #23 / SPEC §43.3).
+pub fn stock_symbol_char_allowed(c: char) -> bool {
+    c.is_ascii_alphabetic() || c == '-' || c == '.'
+}
+
+/// Append one Stock View symbol character (uppercase letters; literal `-` / `.`).
+pub fn push_stock_symbol_char(buf: &mut String, c: char) {
+    if c.is_ascii_alphabetic() {
+        buf.push(c.to_ascii_uppercase());
+    } else {
+        buf.push(c);
+    }
+}
+
 /// True if `m` has no Control / Alt / Meta / Hyper / Super (Shift is allowed).
 pub fn letter_key_plain(m: KeyModifiers) -> bool {
     !m.contains(KeyModifiers::CONTROL)
@@ -42,7 +56,10 @@ pub fn should_global_quit(key: &KeyEvent, global_action: Option<Action>) -> bool
 
 #[cfg(test)]
 mod tests {
-    use super::{global_quit_key, letter_key_plain, should_global_quit};
+    use super::{
+        global_quit_key, letter_key_plain, push_stock_symbol_char, should_global_quit,
+        stock_symbol_char_allowed,
+    };
     use crate::config::keymap::Action;
     use crossterm::event::{KeyCode, KeyEvent, KeyEventState, KeyModifiers};
 
@@ -131,5 +148,24 @@ mod tests {
             &key_event(KeyCode::Char('q'), KeyModifiers::NONE),
             Some(Action::Quit),
         ));
+    }
+
+    #[test]
+    fn stock_symbol_char_allowed_hyphen_and_dot() {
+        assert!(stock_symbol_char_allowed('-'));
+        assert!(stock_symbol_char_allowed('.'));
+        assert!(stock_symbol_char_allowed('a'));
+        assert!(!stock_symbol_char_allowed('5'));
+    }
+
+    #[test]
+    fn push_stock_symbol_char_builds_btc_usd() {
+        let mut buf = String::new();
+        for c in "btc-usd".chars() {
+            if stock_symbol_char_allowed(c) {
+                push_stock_symbol_char(&mut buf, c);
+            }
+        }
+        assert_eq!(buf, "BTC-USD");
     }
 }

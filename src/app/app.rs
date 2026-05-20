@@ -361,14 +361,7 @@ fn inflight_stale_after() -> Duration {
         .unwrap_or(INFLIGHT_STALE_AFTER)
 }
 
-/// Trim and uppercase ticker input; returns `None` if empty after trim.
-pub fn normalize_symbol(s: &str) -> Option<String> {
-    let t = s.trim();
-    if t.is_empty() {
-        return None;
-    }
-    Some(t.to_uppercase())
-}
+pub use crate::models::symbol::normalize_symbol;
 
 fn quote_error_digest_for_merge(err: &AppError) -> String {
     match err {
@@ -812,8 +805,10 @@ impl App {
         let mut seen = HashSet::new();
         let mut out = Vec::new();
         for s in &self.watchlist {
-            if seen.insert(s.clone()) {
-                out.push(s.clone());
+            if let Some(sym) = normalize_symbol(s) {
+                if seen.insert(sym.clone()) {
+                    out.push(sym);
+                }
             }
         }
         if let Some(sym) = normalize_symbol(&self.symbol) {
@@ -924,7 +919,7 @@ impl App {
             }
             FilterQueryChar => {
                 if let KeyCode::Char(c) = key.code {
-                    if c.is_ascii_alphanumeric()
+                    if (c.is_ascii_alphanumeric() || c == '-' || c == '.')
                         && self.filter_query.len()
                             < crate::app::table_filter::MAX_FILTER_QUERY_LEN
                     {
@@ -2038,9 +2033,7 @@ impl App {
                             handle_event(self, input);
                             if self.should_fetch_ticker {
                                 self.should_fetch_ticker = false;
-                                self.sync_watchlist_selection_to_symbol();
-                                self.request_immediate_stock_poll();
-                                self.persist_session_to_disk();
+                                self.commit_stock_symbol_from_input();
                             }
                         }
                         Some(Event::Tick) => self.on_background_tick(),
@@ -2087,30 +2080,45 @@ impl Default for App {
 }
 
 impl App {
-    /// Aligns watchlist table selection with `symbol`. When the active filter matches no rows but
-    /// the watchlist is non-empty, clears selection and leaves `symbol` unchanged (detail pane may
-    /// still show a typed ticker not on the watchlist).
+    /// Aligns watchlist table selection with [`Self::symbol`] (compares via [`normalize_symbol`]).
+    ///
+    /// When `symbol` is not on the watchlist (or hidden by the active filter), clears the row
+    /// highlight and **does not** change `symbol` (detail pane keeps a typed ticker off-list).
     pub fn sync_watchlist_selection_to_symbol(&mut self) {
         let f = self.watchlist_filter_indices();
         if f.is_empty() {
             self.watchlist_state.select(None);
             return;
         }
-        if let Some(full_idx) = self.watchlist.iter().position(|s| s == &self.symbol) {
+        let active = self.symbol.as_str();
+        if let Some(full_idx) = self.watchlist.iter().position(|s| {
+            normalize_symbol(s).as_deref() == Some(active)
+        }) {
             if let Some(sel) = f.iter().position(|&i| i == full_idx) {
                 self.watchlist_state.select(Some(sel));
                 return;
             }
         }
-        // Symbol not visible under the current filter — align highlight + active symbol to first match.
-        self.watchlist_state.select(Some(0));
-        let actual = f[0];
-        if self.symbol != self.watchlist[actual] {
-            self.symbol = self.watchlist[actual].clone();
+        self.watchlist_state.select(None);
+    }
+
+    /// Stock View **Enter**: normalize typed symbol, sync watchlist highlight, poll immediately.
+    ///
+    /// Replaces the pre–§43.13 path that called [`sync_watchlist_selection_to_symbol`] alone and
+    /// could overwrite a typed off-list ticker with the first watchlist row.
+    pub fn commit_stock_symbol_from_input(&mut self) {
+        let Some(sym) = normalize_symbol(&self.symbol) else {
+            return;
+        };
+        let symbol_changed = self.symbol != sym;
+        self.symbol = sym;
+        self.sync_watchlist_selection_to_symbol();
+        if symbol_changed {
             self.on_active_symbol_changed_for_charts();
-            self.notify_symbol_changed_for_news();
-            self.persist_session_to_disk();
         }
+        self.notify_symbol_changed_for_news();
+        self.request_immediate_stock_poll();
+        self.persist_session_to_disk();
     }
 
     pub fn add_current_to_watchlist(&mut self) {
@@ -2469,7 +2477,7 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{
-        data_poll_interval_secs, normalize_symbol, search_result_matches_current, App,
+        data_poll_interval_secs, search_result_matches_current, App,
     };
     use crate::app::app_error::{push_error_log, ErrorLogEntry, UiErrorCategory, ERROR_LOG_CAP};
     use crate::app::Tab;
@@ -2761,13 +2769,23 @@ mod tests {
     }
 
     #[test]
-    fn normalize_symbol_trims_and_uppercases() {
-        assert_eq!(
-            normalize_symbol("  aapl  ").as_deref(),
-            Some("AAPL")
-        );
-        assert_eq!(normalize_symbol("   "), None);
-        assert_eq!(normalize_symbol(""), None);
+    fn sync_watchlist_selection_keeps_typed_symbol_not_in_watchlist() {
+        let mut app = App::new();
+        app.watchlist = vec!["AAPL".into(), "MSFT".into()];
+        app.symbol = "BTC-USD".to_string();
+        app.sync_watchlist_selection_to_symbol();
+        assert_eq!(app.symbol, "BTC-USD");
+        assert!(app.watchlist_state.selected().is_none());
+    }
+
+    #[test]
+    fn commit_stock_symbol_from_input_normalizes_and_keeps_off_watchlist() {
+        let mut app = App::new();
+        app.watchlist = vec!["AAPL".into()];
+        app.symbol = "eth-usd".to_string();
+        app.commit_stock_symbol_from_input();
+        assert_eq!(app.symbol, "ETH-USD");
+        assert!(app.watchlist_state.selected().is_none());
     }
 
     #[test]
@@ -2850,6 +2868,15 @@ mod tests {
             app.error_message()
                 .is_some_and(|m| m.contains(ALERTS_SAVE_ERROR_PREFIX))
         );
+    }
+
+    #[test]
+    fn collect_symbols_for_quote_fetch_normalizes_watchlist_keys() {
+        let mut app = App::new();
+        app.watchlist = vec!["btc - usd".into(), "AAPL".into()];
+        let syms = app.collect_symbols_for_quote_fetch();
+        assert!(syms.contains(&"BTC-USD".to_string()));
+        assert!(syms.contains(&"AAPL".to_string()));
     }
 
     #[test]

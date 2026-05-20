@@ -1,8 +1,10 @@
 #![allow(clippy::collapsible_match, clippy::needless_return)]
 
+use crate::app::format::{format_usd_price, symbol_kind_label};
 use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
+use crate::models::symbol::classify_symbol;
 use crate::app::layout::centered_rect;
 use crate::app::table_filter::filter_title_suffix;
 use crate::app::{normalize_symbol, App, PortfolioAddField, Tab};
@@ -17,6 +19,9 @@ use ratatui::{
 };
 
 const MAX_HOLDING_INPUT_LEN: usize = 24;
+
+/// Hide portfolio **Kind** column below this width (Issue #23 / SPEC §43.4).
+const PORTFOLIO_KIND_COLUMN_MIN_WIDTH: u16 = 88;
 
 /// Upper sanity bound for shares (paste / typo); SPEC §15.5.
 pub(crate) const MAX_HOLDING_SHARES: f64 = 1_000_000_000.0;
@@ -170,18 +175,16 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
 
         let summary_text = vec![Line::from(vec![
             Span::styled("Total Value: ", theme.canvas()),
-            Span::styled(
-                format!("${:.2}", total_value),
-                theme.fg_accent(),
-            ),
+            Span::styled(format_usd_price(total_value), theme.fg_accent()),
             Span::styled("  |  Cost Basis: ", theme.canvas()),
-            Span::styled(
-                format!("${:.2}", total_cost),
-                theme.fg_foreground(),
-            ),
+            Span::styled(format_usd_price(total_cost), theme.fg_foreground()),
             Span::styled("  |  P/L: ", theme.canvas()),
             Span::styled(
-                format!("${:.2} ({:.2}%)", total_profit_loss, profit_loss_percent),
+                format!(
+                    "{} ({:.2}%)",
+                    format_usd_price(total_profit_loss),
+                    profit_loss_percent
+                ),
                 theme.fg_color(pl_color),
             ),
         ])];
@@ -204,7 +207,30 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
             .fg(theme.foreground)
             .add_modifier(Modifier::BOLD);
 
-        let header_cells = ["Symbol", "Shares", "Avg Price", "Current", "Value", "P/L", "P/L %"]
+        let show_kind = table_chunk.width >= PORTFOLIO_KIND_COLUMN_MIN_WIDTH;
+        let header_labels: &[&str] = if show_kind {
+            &[
+                "Symbol",
+                "Kind",
+                "Shares",
+                "Avg Price",
+                "Current",
+                "Value",
+                "P/L",
+                "P/L %",
+            ]
+        } else {
+            &[
+                "Symbol",
+                "Shares",
+                "Avg Price",
+                "Current",
+                "Value",
+                "P/L",
+                "P/L %",
+            ]
+        };
+        let header_cells = header_labels
             .iter()
             .map(|h| Cell::from(*h).style(theme.fg_foreground()));
 
@@ -246,22 +272,42 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
                     theme.negative
                 };
 
-                let cells = [
-                    Cell::from(item.symbol.clone()),
+                let kind = symbol_kind_label(classify_symbol(&item.symbol));
+                let mut cells = vec![Cell::from(item.symbol.clone())];
+                if show_kind {
+                    cells.push(
+                        Cell::from(kind).style(if kind.is_empty() {
+                            theme.canvas()
+                        } else {
+                            theme.fg_color(theme.muted)
+                        }),
+                    );
+                }
+                cells.extend([
                     Cell::from(format!("{:.2}", item.shares)),
-                    Cell::from(format!("${:.2}", item.purchase_price)),
-                    Cell::from(format!("${:.2}", current_price)),
-                    Cell::from(format!("${:.2}", market_value)),
-                    Cell::from(format!("${:.2}", profit_loss)).style(theme.fg_color(pl_color)),
+                    Cell::from(format_usd_price(item.purchase_price)),
+                    Cell::from(format_usd_price(current_price)),
+                    Cell::from(format_usd_price(market_value)),
+                    Cell::from(format_usd_price(profit_loss)).style(theme.fg_color(pl_color)),
                     Cell::from(format!("{:.2}%", pl_percent)).style(theme.fg_color(pl_color)),
-                ];
+                ]);
 
                 Row::new(cells).height(1).style(theme.canvas())
             });
 
-            let table = Table::new(
-                rows,
-                [
+            let constraints: Vec<Constraint> = if show_kind {
+                vec![
+                    Constraint::Length(8),
+                    Constraint::Length(6),
+                    Constraint::Length(8),
+                    Constraint::Length(10),
+                    Constraint::Length(10),
+                    Constraint::Length(10),
+                    Constraint::Length(10),
+                    Constraint::Length(10),
+                ]
+            } else {
+                vec![
                     Constraint::Length(8),
                     Constraint::Length(8),
                     Constraint::Length(10),
@@ -269,8 +315,10 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
                     Constraint::Length(10),
                     Constraint::Length(10),
                     Constraint::Length(10),
-                ],
-            )
+                ]
+            };
+
+            let table = Table::new(rows, constraints)
             .header(header)
             .block(
                 Block::default()

@@ -3437,3 +3437,129 @@ No live-Yahoo manual step is required — behavior is parser-level. Optional: if
 | #51 quit + Tab manual | maintainer | 2026-05-19 | Pass |
 | #28 env overlay + file unchanged manual | maintainer | 2026-05-19 | Pass |
 | §8 / §24 / §13 regression | maintainer | 2026-05-19 | Pass |
+
+---
+
+## Issue #23 — Cryptocurrency quotes (Yahoo `BTC-USD`, formatting, Kind column)
+
+**Scope:**
+
+- [GitHub Issue #23](https://github.com/FelipeMorandini/stockterm/issues/23) — Track crypto in the same watchlist/charts as equities: Yahoo spot crypto **`BTC-USD`** / **`ETH-USD`** (Search), adaptive USD formatting, `SymbolKind` UI label, Stock View `-` entry, filter parity, README symbol table.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §43.
+
+**Prerequisite:** Implementation matches §43.1–§43.8 (`models/symbol.rs`, `app/format.rs`, Stock View symbol charset, filter `-`/`.`, Kind column, Yahoo fixture test, README).
+
+**Provider:** Manual steps assume **`"provider": "yahoo"`** in `~/.stockterm.json` (Polygon crypto is out of scope per §43.11).
+
+### Automated (local) — required
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+2. Symbol classification:
+
+   ```bash
+   cargo test classify_symbol
+   ```
+
+   **Pass:** `BTC-USD` and `BTC` → Crypto, `AAPL` → Equity, `EURUSD=X` → Fx (or per §43.1 table).
+
+3. Price formatting:
+
+   ```bash
+   cargo test format_usd_price
+   ```
+
+   **Pass:** Micro-price (`0.0000123`) not rendered as `$0.00`; large price (`100_000.45`) uses coarser decimals per §43.2.
+
+4. Stock symbol charset (if named tests exist):
+
+   ```bash
+   cargo test stock_symbol_char
+   ```
+
+   **Pass:** `-` allowed; digits rejected in Stock View buffer.
+
+5. Yahoo fixture parse (if added):
+
+   ```bash
+   cargo test yahoo_quote_btc
+   ```
+
+   **Pass:** Fixture deserializes; quote path returns finite price for `BTC-USD`.
+
+### Manual — Issue #23 (crypto watchlist + quote)
+
+**Prep:** `provider: "yahoo"`. Network required for live quotes. Optional: backup `~/.stockterm.json`.
+
+1. **Search** (preferred) — query `bitcoin` → pick **`BTC-USD`** row → **Enter**.
+   **Pass:** Active symbol **`BTC-USD`**; detail fetches with spot BTC price (tens of thousands USD, not ~$30 ETF).
+2. **Stock View** — type `btc-usd` (no spaces), **Enter**.
+   **Pass:** Symbol **`BTC-USD`**; quote succeeds on Yahoo (not HTTP **404**). Typing `btc - usd` with spaces should still work after normalize compacts to **`BTC-USD`**.
+3. Press **`w`** → watchlist row **`BTC-USD`**, **Kind** **CRYPTO**, live **Last** price.
+4. **Negative check:** type plain **`BTC`** only → **Enter**.
+   **Pass:** Either fails or shows ETF-scale price (~$30–$60), **not** spot BTC — documents Yahoo symbol pitfall per README.
+5. Add **`ETH-USD`** via Search (`ethereum`) → **`w`**.
+   **Pass:** Second crypto row; independent quotes.
+
+### Manual — Issue #23 (charts 24/7)
+
+1. With **`BTC`** or **`BTC-USD`** active, open **Charts** tab.
+2. Press **`2`** (**W1**) then **`1`** (**D1**).
+   **Pass:** Candlestick/line renders; series is not empty; **W1** does not show a flat empty chart (if empty, status shows API message — note for bug).
+3. Visually scan **W1** for weekend days (Sat/Sun).
+   **Pass:** Bars present across weekend (crypto trades 24/7); no false “market closed” empty gap unless Yahoo returned no data (then note provider).
+
+### Manual — Issue #23 (adaptive formatting)
+
+1. Watchlist row for **`BTC`** (or **`BTC-USD`**) — high price.
+   **Pass:** Last price readable; no column overflow off terminal edge on 80×24.
+2. If available, add a very low-priced crypto ticker (e.g. a micro-cap `-USD` pair from Search) or use unit-test values only for sub-cent display.
+   **Pass:** Sub-cent prices show **more than two** decimal places (not `$0.00` when price &gt; 0).
+
+### Manual — Issue #23 (filter + equity regression)
+
+1. Press **`/`**, type `btc`.
+   **Pass:** Watchlist filters to the crypto row (`btc` matches `BTC`); **Esc** clears filter mode.
+2. Switch symbol to **`AAPL`**, confirm **Kind** shows equity (blank or **EQ** per implementation).
+   **Pass:** Equities unchanged; **`w`** / **`j`** / **`k`** still work (§8).
+
+### Manual — Issue #23 (portfolio / alerts — optional)
+
+1. **Portfolio** → add holding for active **`BTC-USD`** (if add dialog accepts symbol).
+   **Pass:** Row saves; market value uses adaptive formatting.
+2. **Alerts** → **`a`** → symbol buffer accepts `BTC-USD` style tickers.
+   **Pass:** Alert saves; threshold display uses `format_usd_price`.
+
+### README check
+
+1. Open [`README.md`](../README.md) **Symbols** subsection (§43.7).
+   **Pass:** Documents spot crypto **`BTC-USD`** / **`ETH-USD`**, warns plain **`BTC`** is ETF; Polygon crypto unsupported in v1.
+
+### Regression — §3 / §8 / §11 / §23 / §34
+
+| Check | Pass criteria |
+|-------|----------------|
+| §3 watchlist | Multi-symbol refresh still runs |
+| §8 Stock View | `w`/`x`/`j`/`k` hotkeys; Shift-first-letter for `wmt` still documented behavior |
+| §11 Charts | `AAPL` charts still load after crypto session |
+| §23 filter | Equity filter `aapl` still works |
+| §34 Yahoo quote | v7→v8 fallback still works for equities (stderr only when `STOCKTERM_DEBUG_YAHOO_QUOTE=1`) |
+
+### Sign-off — Issue #23
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo clippy` + `cargo test` | maintainer | 2026-05-19 | Pass |
+| #23 watchlist + quote manual | maintainer | 2026-05-19 | Pass |
+| #23 charts W1/D1 manual | maintainer | 2026-05-19 | Pass |
+| #23 formatting manual | maintainer | 2026-05-19 | Pass |
+| §3 / §8 / §11 regression | maintainer | 2026-05-19 | Pass |
