@@ -1048,9 +1048,12 @@ impl App {
             self.watchlist_quotes.insert(k, v);
         }
 
-        for (sym, qt) in instrument_types {
-            if let Some(n) = normalize_symbol(&sym) {
-                self.remember_symbol_kind_from_instrument_type(&n, &qt);
+        // Issue #160 / §45.1 — Yahoo `quoteType` only; ignore stale Yahoo batches after Polygon switch.
+        if self.config.provider == MarketProviderKind::Yahoo {
+            for (sym, qt) in instrument_types {
+                if let Some(n) = normalize_symbol(&sym) {
+                    self.remember_symbol_kind_from_instrument_type(&n, &qt);
+                }
             }
         }
 
@@ -1740,6 +1743,7 @@ impl App {
             0 | 1 => self.settings_begin_edit(),
             2 => self.settings_toggle_notifications(),
             3 => self.settings_commit_theme_preset(),
+            4 => self.settings_toggle_provider(),
             6 => self.settings_commit_layout_preset(),
             _ => {}
         }
@@ -1813,6 +1817,48 @@ impl App {
 
     pub fn settings_cycle_layout_draft_prev(&mut self) {
         self.settings_layout_draft = self.settings_layout_draft.prev();
+    }
+
+    /// Clears session symbol-kind metadata after provider change (Issue #160 / §45.1).
+    fn clear_symbol_kind_cache(&mut self) {
+        self.symbol_kind_cache.clear();
+    }
+
+    /// Toggle `yahoo` ↔ `polygon`, clear Kind cache, persist, and refresh quotes (§45.1).
+    pub(crate) fn settings_toggle_provider(&mut self) {
+        self.settings_inline_error = None;
+        let next = match self.config.provider {
+            MarketProviderKind::Yahoo => MarketProviderKind::Polygon,
+            MarketProviderKind::Polygon => MarketProviderKind::Yahoo,
+        };
+        if next == MarketProviderKind::Polygon && self.config.effective_api_key().is_empty() {
+            self.settings_inline_error = Some(MISSING_API_KEY_FOR_POLYGON_MSG.into());
+            return;
+        }
+        if next == self.config.provider {
+            return;
+        }
+        let previous = self.config.provider;
+        self.clear_symbol_kind_cache();
+        self.config.provider = next;
+        if let Err(e) = self.try_save_config_with_session() {
+            self.config.provider = previous;
+            self.surface_runtime_error(
+                Tab::Settings,
+                ErrorSourceDomain::Settings,
+                AppError::ConfigSave(format!("Failed to save settings: {e}")),
+                true,
+            );
+        } else {
+            if self.active_runtime_error.as_ref().is_some_and(|a| {
+                a.source_domain == ErrorSourceDomain::Settings
+            }) {
+                self.active_runtime_error = None;
+            }
+            self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
+            self.reset_network_poll_clocks();
+            self.request_immediate_stock_poll();
+        }
     }
 
     /// SPEC §18.7 — toggle desktop toasts for alert fires (bell always rings).
@@ -3041,6 +3087,81 @@ mod tests {
         fn drop(&mut self) {
             std::env::remove_var("STOCKTERM_INFLIGHT_STALE_SECS");
         }
+    }
+
+    /// Clears `STOCKTERM_API_KEY` for hermetic provider-toggle tests; restores on drop.
+    struct ApiKeyEnvGuard {
+        prev: Option<String>,
+    }
+
+    impl ApiKeyEnvGuard {
+        fn without_env() -> Self {
+            let prev = std::env::var("STOCKTERM_API_KEY").ok();
+            // SAFETY: test-only; restored in `Drop`.
+            unsafe { std::env::remove_var("STOCKTERM_API_KEY") };
+            Self { prev }
+        }
+    }
+
+    impl Drop for ApiKeyEnvGuard {
+        fn drop(&mut self) {
+            match &self.prev {
+                Some(v) => unsafe { std::env::set_var("STOCKTERM_API_KEY", v) },
+                None => unsafe { std::env::remove_var("STOCKTERM_API_KEY") },
+            }
+        }
+    }
+
+    /// Issue #160 / SPEC §45.1 — provider toggle clears Yahoo-derived Kind cache.
+    #[test]
+    fn settings_toggle_provider_clears_symbol_kind_cache() {
+        use crate::config::MarketProviderKind;
+        use crate::models::symbol::SymbolKind;
+
+        let _env = ApiKeyEnvGuard::without_env();
+        let mut app = App::new();
+        app.config.provider = MarketProviderKind::Yahoo;
+        app.remember_symbol_kind("BTC-USD", SymbolKind::Crypto);
+        assert!(app.symbol_kind_cache.contains_key("BTC-USD"));
+
+        app.config.api_key = "test-polygon-key".into();
+        app.settings_toggle_provider();
+        assert_eq!(app.config.provider, MarketProviderKind::Polygon);
+        assert!(app.symbol_kind_cache.is_empty());
+    }
+
+    /// Issue #160 / SPEC §45.1 — cannot switch to Polygon without an API key.
+    #[test]
+    fn settings_toggle_provider_polygon_requires_api_key() {
+        use crate::config::MarketProviderKind;
+
+        let _env = ApiKeyEnvGuard::without_env();
+        let mut app = App::new();
+        app.config.provider = MarketProviderKind::Yahoo;
+        app.config.api_key.clear();
+        app.settings_toggle_provider();
+        assert_eq!(app.config.provider, MarketProviderKind::Yahoo);
+        assert!(app.settings_inline_error.is_some());
+    }
+
+    /// Issue #160 / audit — stale Yahoo `instrument_types` must not refill cache on Polygon.
+    #[test]
+    fn apply_stock_fetch_done_skips_instrument_types_when_provider_polygon() {
+        use crate::config::MarketProviderKind;
+        use crate::models::symbol::SymbolKind;
+        use std::collections::HashMap;
+
+        let mut app = App::new();
+        app.config.provider = MarketProviderKind::Polygon;
+        app.config.api_key = "test-key".into();
+        app.stock_fetch_generation = 1;
+
+        let mut instrument_types = HashMap::new();
+        instrument_types.insert("BTC".to_string(), "ETF".to_string());
+
+        app.apply_stock_fetch_done(1, HashMap::new(), instrument_types, vec![]);
+        assert!(app.symbol_kind_cache.is_empty());
+        assert_eq!(app.symbol_kind_for_display("BTC"), SymbolKind::Equity);
     }
 }
 

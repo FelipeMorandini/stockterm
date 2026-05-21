@@ -841,8 +841,9 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
         Span::styled(theme_s, rt.canvas()),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("4. Provider (read-only): ", row_style(4)),
+        Span::styled("4. Provider: ", row_style(4)),
         Span::styled(provider_s, rt.canvas()),
+        Span::styled("  (Enter toggles)", rt.fg_muted()),
     ]));
     let keymap_count = app.config.keymap.as_ref().map_or(0, |m| m.len());
     let keymap_value = if keymap_count == 0 {

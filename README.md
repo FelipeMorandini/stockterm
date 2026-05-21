@@ -58,7 +58,7 @@ Symbols are stored **uppercase** in `watchlist` and `portfolio` after normalizat
 | Provider | Equities | Crypto (examples) | FX (examples) |
 |----------|----------|-------------------|---------------|
 | **yahoo** (default) | `AAPL`, `BRK.B` | Spot crypto: **`BTC-USD`**, **`ETH-USD`** (Search → bitcoin / ethereum) | `EURUSD=X` |
-| **polygon** | `AAPL` | Not supported in v1 | Not supported in v1 |
+| **polygon** | `AAPL` | **`BTC-USD`**, **`ETH-USD`** (wire `X:BTCUSD`, `X:ETHUSD`) | Not supported in v1 |
 
 **Yahoo crypto symbols (important):**
 
@@ -67,9 +67,11 @@ Symbols are stored **uppercase** in `watchlist` and `portfolio` after normalizat
 - Type **`BTC-USD`** without spaces (`BTC - USD` can return HTTP **404** from Yahoo). The app compacts whitespace on input.
 - **`BTCUSD`** (no hyphen) is **not** a valid Yahoo chart symbol (404).
 
-Crypto and FX use the same quote and chart paths as equities when `provider` is **yahoo**. Polygon mode does not translate crypto ticker namespaces.
+Crypto and FX use the same quote and chart paths as equities when `provider` is **yahoo**. On **polygon**, hyphenated crypto pairs in the watchlist are translated to Polygon’s `X:…` wire symbols (see below).
 
-**Provider wire symbols (Issue #157 / §44):** The app stores **normalized user** tickers in `watchlist` / `portfolio` (uppercase, compact, e.g. `BTC-USD`). HTTP requests map through a single resolver: Yahoo uses the same compact form; Polygon uses the same for US equities (`AAPL`). Polygon crypto namespaces (`X:BTCUSD`) are **not** auto-translated in v1.
+**Settings provider (Issue #160 / §45):** On the **Settings** tab, row **4. Provider** — press **Enter** to toggle **yahoo** ↔ **polygon** (requires a Polygon API key to switch to **polygon**). Switching provider clears in-session **Kind** metadata so labels are not reused from the previous provider.
+
+**Provider wire symbols (Issues #157 / #161 / §44–§45):** The app stores **normalized user** tickers in `watchlist` / `portfolio` (uppercase, compact, e.g. `BTC-USD`). HTTP requests map through a single resolver: Yahoo uses the same compact form; Polygon uses the same for US equities (`AAPL`). Polygon maps hyphenated crypto pairs to `X:…` wire symbols (e.g. `BTC-USD` → `X:BTCUSD`). **`BTCUSD`** without a hyphen is **not** auto-translated — use **`BTC-USD`** in the watchlist.
 
 **Kind column (Issue #158 / §44):** When Yahoo Search or v7 quotes return **`quoteType`**, the **Kind** label uses that metadata (e.g. `BTC-USD` → **CRYPTO**, plain `BTC` ETF → **EQ**). Without metadata, hyphenated pairs (`BTC-USD`) still show **CRYPTO** via suffix rules; plain `BTC` is **EQ**, not spot crypto.
 
