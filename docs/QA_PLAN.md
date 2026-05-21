@@ -3669,3 +3669,90 @@ No live-Yahoo manual step is required — behavior is parser-level. Optional: if
 | #158 Search BTC-USD / BTC Kind manual | maintainer | 2026-05-20 | Pass |
 | #157 spaced symbol / chart manual | maintainer | 2026-05-20 | Pass |
 | §43 / §3 regression | maintainer | 2026-05-20 | Pass |
+
+---
+
+## Issues #160, #161 — Provider switch Kind cache + Polygon crypto wire
+
+**Scope:**
+
+- [GitHub Issue #160](https://github.com/FelipeMorandini/stockterm/issues/160) — Clear **`symbol_kind_cache`** when Settings **provider** is toggled and saved; no cache persistence to disk.
+- [GitHub Issue #161](https://github.com/FelipeMorandini/stockterm/issues/161) — Polygon **`resolve_provider_symbol`** maps hyphenated crypto (**`BTC-USD`**) to **`X:BTCUSD`**; Yahoo path unchanged.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §45.
+
+**Prerequisite:** §44 shipped; Settings row **4** supports **Enter** provider toggle (not read-only).
+
+**Provider:** Steps below use in-app Settings toggle unless noted.
+
+### Automated (local) — required
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+2. Polygon crypto wire mapping:
+
+   ```bash
+   cargo test resolve_provider_symbol_polygon_maps_btc_usd
+   cargo test resolve_provider_symbol_polygon_leaves_equity
+   cargo test resolve_provider_symbol_yahoo_unchanged_for_crypto
+   ```
+
+   **Pass:** `BTC-USD` + Polygon → `X:BTCUSD`; `aapl` + Polygon → `AAPL`; `BTC-USD` + Yahoo → `BTC-USD`.
+
+### Manual — Issue #160 (Kind cache on provider switch)
+
+**Prep:** `provider: "yahoo"`. Watchlist includes **`BTC-USD`** (and optionally **`AAPL`**). Network required. Valid Polygon API key available for toggle test (env or `api_key`).
+
+1. **Yahoo session** — Search `bitcoin` → pick **`BTC-USD`** → **Enter** → **`w`** to watchlist.
+   **Pass:** **Kind** **CRYPTO** (Yahoo metadata).
+2. **Settings** — row **4. Provider** → **Enter** to switch to **polygon** (with API key configured).
+   **Pass:** Provider shows **polygon**; saved flash or no error.
+3. **Stock View** — inspect **`BTC-USD`** row **before** quote refresh completes (immediately after toggle if possible).
+   **Pass:** **Kind** is **not** stuck on Yahoo-only metadata — shows heuristic **CRYPTO** (suffix) or blank until Polygon refresh; must **not** incorrectly show **EQ** from stale ETF cache for a different symbol.
+4. Wait for quote refresh (status clears / prices update).
+   **Pass:** Quotes attempt Polygon wire (no silent Yahoo path); errors surface in status if key/plan invalid.
+5. **Toggle back** — Settings row **4** → **Enter** → **yahoo**.
+   **Pass:** **`symbol_kind_cache`** cleared again; after Search or quote refresh, **`BTC-USD`** **Kind** **CRYPTO** from Yahoo metadata.
+6. **Polygon without key** — clear `api_key` and `STOCKTERM_API_KEY` → Settings → **Enter** on provider while on **yahoo**.
+   **Pass:** Inline error; provider stays **yahoo**; cache unchanged.
+
+### Manual — Issue #161 (Polygon crypto wire)
+
+**Prep:** `"provider": "polygon"` with valid API key. Watchlist **`BTC-USD`** only (remove plain **`BTC`** ETF row).
+
+1. **Stock View** — active **`BTC-USD`**, wait for quote refresh.
+   **Pass:** Last price loads (non-zero spot-scale BTC price) or clear Polygon error — not permanent empty from wrong ticker namespace.
+2. **Charts** — **D1** / **W1** with **`BTC-USD`** active.
+   **Pass:** Bars load or provider error shown; URL path uses **`X:BTCUSD`** (optional: `STOCKTERM_DEBUG` / logs if available).
+3. **Equity regression** — add **`AAPL`**, refresh.
+   **Pass:** Quote works (wire symbol **`AAPL`**, not **`X:AAPL`**).
+
+### README check
+
+1. Open [`README.md`](../README.md) Symbols / provider wire subsection.
+   **Pass:** Documents Settings provider **Enter** toggle (#160); Polygon **`BTC-USD` → `X:BTCUSD`** (#161); **`BTCUSD`** without hyphen not translated; Yahoo table unchanged.
+
+### Regression — §44 / §43
+
+| Check | Pass criteria |
+|-------|----------------|
+| §44 #157 resolver | Spaced `btc - usd` on Yahoo still → `BTC-USD` |
+| §44 #158 Kind | Search **`BTC`** ETF → **EQ** on Yahoo |
+| §43 #23 crypto | Yahoo **`ETH-USD`** Search + formatting unchanged |
+
+### Sign-off — Issues #160, #161
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo clippy` + `cargo test` | maintainer | 2026-05-20 | Pass |
+| #160 provider toggle + Kind cache manual | maintainer | 2026-05-20 | Pass |
+| #161 Polygon BTC-USD quote/chart manual | maintainer | 2026-05-20 | Pass |
+| §44 / §43 regression | maintainer | 2026-05-20 | Pass |

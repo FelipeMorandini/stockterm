@@ -40,7 +40,8 @@ pub enum SymbolKind {
 
 const CRYPTO_QUOTE_SUFFIXES: &[&str] = &["-USD", "-USDT", "-EUR", "-GBP", "-BTC"];
 
-fn is_crypto_symbol_heuristic(sym: &str) -> bool {
+/// True when a normalized ticker looks like a hyphenated crypto pair (§45.2 / Issue #161).
+pub(crate) fn is_crypto_symbol_heuristic(sym: &str) -> bool {
     CRYPTO_QUOTE_SUFFIXES.iter().any(|suffix| sym.ends_with(suffix))
 }
 
