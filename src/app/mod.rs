@@ -9,6 +9,7 @@ pub mod handlers;
 pub mod keyboard;
 mod layout;
 pub mod charts;
+mod backtest_ui;
 pub mod portfolio;
 pub mod alerts;
 mod table_filter;

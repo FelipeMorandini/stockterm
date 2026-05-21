@@ -8,6 +8,7 @@ use super::layout::Layout;
 use super::theme::Theme;
 use std::collections::HashMap;
 use crate::models::alerts::Alert;
+use crate::models::backtest::{BacktestConfig, BacktestStrategyParams};
 use crate::models::portfolio::PortfolioItem;
 use thiserror::Error;
 
@@ -72,6 +73,12 @@ pub struct Config {
     /// Layout visibility and pane sizing (Issue #15 / §31).
     #[serde(default)]
     pub layout: Layout,
+    /// Backtest simulation parameters (Issue #25 / §47).
+    #[serde(default)]
+    pub backtest: BacktestConfig,
+    /// Active backtest strategy and periods (Issue #25 / §47).
+    #[serde(default)]
+    pub backtest_strategy: BacktestStrategyParams,
 }
 
 fn default_notifications_enabled() -> bool {
@@ -94,6 +101,8 @@ impl Default for Config {
             last_symbol: None,
             keymap: None,
             layout: Layout::default(),
+            backtest: BacktestConfig::default(),
+            backtest_strategy: BacktestStrategyParams::default(),
         }
     }
 }

@@ -2,6 +2,7 @@ pub mod app;
 pub mod api;
 pub mod config;
 pub mod indicators;
+pub mod backtest;
 pub mod logging;
 pub mod models;
 

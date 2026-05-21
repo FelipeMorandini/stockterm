@@ -17,7 +17,9 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 | `theme` | object or null | `null` | Theme preset and hex overrides (see [`docs/SPEC.md`](docs/SPEC.md) §21). |
 | `provider` | string | `"yahoo"` | `"yahoo"` or `"polygon"`. |
 | `notifications_enabled` | boolean | `true` | Desktop toasts for alert fires (bell always rings). |
-| `last_tab` | string or omitted | omitted | Last tab: `stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `settings` (Issue #19 / §22). |
+| `last_tab` | string or omitted | omitted | Last tab: `stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `settings`, `backtest` (Issue #19 / §22). |
+| `backtest` | object | see below | Simulation capital, commission, slippage (Issue #25 / §47). |
+| `backtest_strategy` | object | SMA 50/200 | Strategy kind and periods (Issue #25 / §47). |
 | `last_symbol` | string or omitted | omitted | Last active ticker when `watchlist` was empty at launch (normalized). |
 | `keymap` | object or omitted | omitted | Optional chord → action overrides (see **Keymap** below; Issue #13 / [`docs/SPEC.md`](docs/SPEC.md) §24). |
 | `layout` | object | omitted → built-in defaults | Shell chrome and pane sizing (Issue #15 / [`docs/SPEC.md`](docs/SPEC.md) §31). |
@@ -51,6 +53,20 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 
 On **Settings** row **6. Layout**, use **←/→** or **h**/**l** to preview presets and **Enter** to save.
 
+#### `backtest` / `backtest_strategy` (Issue #25)
+
+| Field | Default | Notes |
+|-------|---------|--------|
+| `backtest.initial_capital` | `10000` | Starting cash (USD). |
+| `backtest.commission_per_trade` | `0` | Flat fee per buy/sell fill. |
+| `backtest.slippage_bps` | `5` | Slippage in basis points on fill price. |
+| `backtest_strategy.kind` | `sma_crossover` | `sma_crossover` or `rsi_mean_reversion`. |
+| `backtest_strategy.sma_fast` / `sma_slow` | `50` / `200` | SMA crossover periods. |
+| `backtest_strategy.rsi_period` | `14` | RSI length. |
+| `backtest_strategy.rsi_oversold` / `rsi_overbought` | `30` / `70` | RSI thresholds. |
+
+Edit capital/fees on **Settings** rows **7–9**. Strategy kind cycles on the **Backtest** tab with **`n`**.
+
 ### Symbols — equities, crypto, FX (Issue #23 / [`docs/SPEC.md`](docs/SPEC.md) §43)
 
 Symbols are stored **uppercase** in `watchlist` and `portfolio` after normalization. On **Stock View**, type letters plus **`-`** and **`.`** (for example `BTC-USD`, `BRK.B`), then **Enter** to fetch.
@@ -80,6 +96,8 @@ Crypto and FX use the same quote and chart paths as equities when `provider` is 
 Optional JSON object: each key is a **chord** string, each value is an **`Action`** name in **PascalCase** (for example `"Quit"`, `"StockRowDown"`). Overrides replace the default binding for that action in every [`BindingLayer`](src/config/keymap.rs) where built-in defaults register it (for example portfolio row **↑/↓** while remove-confirm is armed — Issue #134 / [`docs/SPEC.md`](docs/SPEC.md) §25); see [`src/config/keymap.rs`](src/config/keymap.rs) for the full default table. **Issues #58 / #59 / §27:** On the **News** tab, default **`NewsEnter`** is **Enter** (open selected article URL in the browser) and **`NewsCopyUrl`** is **`c`** (copy URL to the clipboard). **Issue #136 / §26:** These stay **wildcard** (no per-letter `Action` rows): Stock View symbol letters and Search query characters. Explicit defaults cover portfolio / alert dialog **digits** and **`.`**, plus Settings edit buffer input: **`PortfolioDialogDigitOrDot`**, **`AlertDialogDigitOrDot`**, **`SettingsEditDigit`**, and **`SettingsEditSymbolChar`** (default-symbol row only for letters). **Issue #139 / §29 — alert add dialog:** **`AlertDialogSymbolChar`** (`c`–`z`, `-`), **`AlertDialogConditionAbove`** (`a`), **`AlertDialogConditionBelow`** (`b`); on **Symbol** focus, `a`/`b` still append **`A`/`B`** via the condition actions (Shift/Caps per §8). Remapping a condition key frees that chord for symbol typing when unbound (optional wildcard fallback). **Issue #137 / §28 — table filter:** **`StockFilterToggle`** / **`PortfolioFilterToggle`** enter filter mode on **Stock View** / **Portfolio**; while filter input is active, keys resolve on **`FilterInput`** only — **`FilterClear`**, **`FilterCommit`**, **`FilterBackspace`**, **`FilterSlash`**, and per-character **`FilterQueryChar`** (`char:0`–`9`, `char:a`–`z` defaults). Unmapped keys in filter mode are ignored (they do not reach watchlist/portfolio actions). Remapping a **`Filter*`** action onto a chord already used by another action on **`FilterInput`** (for example **`FilterClear`** → **`char:a`**) is rejected and the app falls back to the full built-in keymap (same as §24 duplicate-chord rules).
 
 **Charts tab (Issue #21 / §46):** With the Charts tab focused, **`s`** toggles SMA(20), **`e`** EMA(20), **`r`** RSI(14) (sub-pane), **`m`** MACD 12/26/9 (sub-pane). SMA/EMA overlay the **line** chart (`c` to switch from candles). Indicator toggles are session-only (not saved in `~/.stockterm.json`).
+
+**Backtest tab (Issue #25 / §47):** Load historical bars on **Charts** first ( **`4`** = Y1 recommended). **Backtest** tab: **`Enter`** or **`r`** run, **`n`** cycle strategy (SMA crossover ↔ RSI mean-reversion), **`x`** export `~/.stockterm/backtest_<symbol>_<ts>.{csv,json}`, **`j`**/**`k`** scroll trades. Long-only, fills at bar **close**, force-flat on the last bar.
 
 **Chord grammar** (ASCII, case-insensitive except `char:` payload):
 

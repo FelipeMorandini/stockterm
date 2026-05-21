@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-_No open items._
+<!-- Empty — deferred items from Issue #25 ship triage filed as GitHub issues. -->

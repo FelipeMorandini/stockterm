@@ -69,6 +69,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
                 "News",
                 "Charts",
                 "Settings",
+                "Backtest",
             ];
 
             let tabs = Tabs::new(titles.iter().map(|t| Line::from(*t)).collect())
@@ -87,6 +88,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
                     Tab::News => 4,
                     Tab::Charts => 5,
                     Tab::Settings => 6,
+                    Tab::Backtest => 7,
                 })
                 .style(Style::default())
                 .highlight_style(Style::default().add_modifier(Modifier::BOLD));
@@ -109,6 +111,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
             Tab::News => draw_news(f, app, body, rt),
             Tab::Charts => draw_charts(f, app, body, rt, layout),
             Tab::Settings => draw_settings(f, app, body, rt),
+            Tab::Backtest => crate::app::backtest_ui::draw_backtest(f, app, body, rt),
         }
 
         if layout.show_status_bar {
@@ -145,6 +148,7 @@ fn error_log_tab_label(tab: Tab) -> &'static str {
         Tab::News => "News",
         Tab::Charts => "Charts",
         Tab::Settings => "Sets",
+        Tab::Backtest => "BT",
     }
 }
 
@@ -862,6 +866,36 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
         Span::styled(layout_s, rt.canvas()),
     ]));
 
+    let bt_cap = if app.settings_editing == Some(SettingsEdit::BacktestCapital) {
+        format!("> {}_", app.settings_edit_buffer)
+    } else {
+        format!("{:.2}", app.config.backtest.initial_capital)
+    };
+    lines.push(Line::from(vec![
+        Span::styled("7. Backtest capital ($): ", row_style(7)),
+        Span::styled(bt_cap, rt.canvas()),
+    ]));
+
+    let bt_comm = if app.settings_editing == Some(SettingsEdit::BacktestCommission) {
+        format!("> {}_", app.settings_edit_buffer)
+    } else {
+        format!("{:.2}", app.config.backtest.commission_per_trade)
+    };
+    lines.push(Line::from(vec![
+        Span::styled("8. Commission/trade ($): ", row_style(8)),
+        Span::styled(bt_comm, rt.canvas()),
+    ]));
+
+    let bt_slip = if app.settings_editing == Some(SettingsEdit::BacktestSlippage) {
+        format!("> {}_", app.settings_edit_buffer)
+    } else {
+        format!("{:.1}", app.config.backtest.slippage_bps)
+    };
+    lines.push(Line::from(vec![
+        Span::styled("9. Slippage (bps): ", row_style(9)),
+        Span::styled(bt_slip, rt.canvas()),
+    ]));
+
     if let Some(e) = &app.settings_inline_error {
         lines.push(Line::from(vec![Span::styled(
             e.as_str(),
@@ -971,6 +1005,15 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
             "Refreshing quotes…",
             rt.fg_accent(),
         )])]
+    } else if app.active_tab == Tab::Backtest {
+        if let Some(hint) = app.backtest_status_hint() {
+            vec![Line::from(vec![Span::styled(hint, rt.fg_accent())])]
+        } else {
+            vec![Line::from(vec![Span::styled(
+                "Backtest: load Charts data · Enter run · n strategy · x export",
+                rt.canvas(),
+            )])]
+        }
     } else if app.active_tab == Tab::StockView && stock_view_status_is_hint_mode(app) {
         stock_view_status_lines(area.width.max(1), rt)
     } else {
