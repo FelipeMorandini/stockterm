@@ -1,6 +1,6 @@
 # QA Plan — Manual verification
 
-Use the sections below per milestone. **[Issues #32](https://github.com/FelipeMorandini/stockterm/issues/32), [#33](https://github.com/FelipeMorandini/stockterm/issues/33), [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** cover **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, and API error taxonomy audit (see [`docs/SPEC.md`](SPEC.md) §41; sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[Issues #36](https://github.com/FelipeMorandini/stockterm/issues/36), [#56](https://github.com/FelipeMorandini/stockterm/issues/56), [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** cover Charts timestamp panic hardening + tests, explicit quote-batch **`Semaphore`** acquire failures, and §18.15 post-audit **`centered_rect`** / notify **`body`** hardening (see [`docs/SPEC.md`](SPEC.md) §40; sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[Issues #108](https://github.com/FelipeMorandini/stockterm/issues/108), [#78](https://github.com/FelipeMorandini/stockterm/issues/78), [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** cover event-thread clean shutdown, inflight recovery when both channel sends fail, and documented **`mpsc`** back-pressure policy (see [`docs/SPEC.md`](SPEC.md) §39; sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[Issues #76](https://github.com/FelipeMorandini/stockterm/issues/76), [#85](https://github.com/FelipeMorandini/stockterm/issues/85), [#86](https://github.com/FelipeMorandini/stockterm/issues/86), [#117](https://github.com/FelipeMorandini/stockterm/issues/117), [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** cover async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured HTTP client init (see [`docs/SPEC.md`](SPEC.md) §38; sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[Issues #81](https://github.com/FelipeMorandini/stockterm/issues/81), [#82](https://github.com/FelipeMorandini/stockterm/issues/82), [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** cover Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, and **`add_to_portfolio`** false-path documentation (see [`docs/SPEC.md`](SPEC.md) §37; sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[Issue #54](https://github.com/FelipeMorandini/stockterm/issues/54)** covers Yahoo news **`query2`** parse resilience and optional **`STOCKTERM_DEBUG_YAHOO_NEWS`** attempt logging (see [`docs/SPEC.md`](SPEC.md) §36; sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[Issue #4](https://github.com/FelipeMorandini/stockterm/issues/4)** covers **`Config.refresh_rate`** vs the ~200 ms UI tick, in-flight quote guards, and Settings persistence (see [`docs/SPEC.md`](SPEC.md) §35; sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60)** covers Search **Esc** not clearing runtime errors from other tabs (see [`docs/SPEC.md`](SPEC.md) §33). **[Issue #89](https://github.com/FelipeMorandini/stockterm/issues/89)** covers automated **`wiremock`** proof that Yahoo **`yahoo_latest_quote`** falls back from **`v7/finance/quote`** to **`v8/finance/chart`** (see [`docs/SPEC.md`](SPEC.md) §32). **[Issues #90](https://github.com/FelipeMorandini/stockterm/issues/90) and [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** cover optional v7→v8 stderr diagnostics and v7 multi-row **symbol** matching (see [`docs/SPEC.md`](SPEC.md) §34). **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issue #15** covers **layout / widget visibility** (`Config.layout`, shell chrome, Stock View + Charts pane splits — see [`docs/SPEC.md`](SPEC.md) §31). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7). **[Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16)** covers substring filter on **Portfolio** holdings and **Stock View** watchlist (`/`, **Esc** clears, **Enter** commits, **Tab** unchanged — see [`docs/SPEC.md`](SPEC.md) §23). **Issues [#58](https://github.com/FelipeMorandini/stockterm/issues/58), [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** cover News clipboard copy and non-blocking **`http`/`https`** URL open (see [`docs/SPEC.md`](SPEC.md) §27). **[Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137)** covers remappable filter-input mode (`BindingLayer::FilterInput` — see [`docs/SPEC.md`](SPEC.md) §28). **[Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139)** covers explicit alert add-dialog symbol + condition keymap actions (see [`docs/SPEC.md`](SPEC.md) §29). **[Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138)** covers compile-time default keymap chord table refactor — no user-visible behavior change (see [`docs/SPEC.md`](SPEC.md) §30; manual sign-off **2026-05-17**).
+Use the sections below per milestone. **[Issue #21](https://github.com/FelipeMorandini/stockterm/issues/21)** covers Charts technical indicators (SMA / EMA / RSI / MACD) — see [`docs/SPEC.md`](SPEC.md) §46 (sign-off **2026-05-21**; **PR:** [#164](https://github.com/FelipeMorandini/stockterm/pull/164)). **[Issues #32](https://github.com/FelipeMorandini/stockterm/issues/32), [#33](https://github.com/FelipeMorandini/stockterm/issues/33), [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** cover **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, and API error taxonomy audit (see [`docs/SPEC.md`](SPEC.md) §41; sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[Issues #36](https://github.com/FelipeMorandini/stockterm/issues/36), [#56](https://github.com/FelipeMorandini/stockterm/issues/56), [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** cover Charts timestamp panic hardening + tests, explicit quote-batch **`Semaphore`** acquire failures, and §18.15 post-audit **`centered_rect`** / notify **`body`** hardening (see [`docs/SPEC.md`](SPEC.md) §40; sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[Issues #108](https://github.com/FelipeMorandini/stockterm/issues/108), [#78](https://github.com/FelipeMorandini/stockterm/issues/78), [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** cover event-thread clean shutdown, inflight recovery when both channel sends fail, and documented **`mpsc`** back-pressure policy (see [`docs/SPEC.md`](SPEC.md) §39; sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[Issues #76](https://github.com/FelipeMorandini/stockterm/issues/76), [#85](https://github.com/FelipeMorandini/stockterm/issues/85), [#86](https://github.com/FelipeMorandini/stockterm/issues/86), [#117](https://github.com/FelipeMorandini/stockterm/issues/117), [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** cover async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured HTTP client init (see [`docs/SPEC.md`](SPEC.md) §38; sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[Issues #81](https://github.com/FelipeMorandini/stockterm/issues/81), [#82](https://github.com/FelipeMorandini/stockterm/issues/82), [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** cover Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, and **`add_to_portfolio`** false-path documentation (see [`docs/SPEC.md`](SPEC.md) §37; sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[Issue #54](https://github.com/FelipeMorandini/stockterm/issues/54)** covers Yahoo news **`query2`** parse resilience and optional **`STOCKTERM_DEBUG_YAHOO_NEWS`** attempt logging (see [`docs/SPEC.md`](SPEC.md) §36; sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[Issue #4](https://github.com/FelipeMorandini/stockterm/issues/4)** covers **`Config.refresh_rate`** vs the ~200 ms UI tick, in-flight quote guards, and Settings persistence (see [`docs/SPEC.md`](SPEC.md) §35; sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[Issue #60](https://github.com/FelipeMorandini/stockterm/issues/60)** covers Search **Esc** not clearing runtime errors from other tabs (see [`docs/SPEC.md`](SPEC.md) §33). **[Issue #89](https://github.com/FelipeMorandini/stockterm/issues/89)** covers automated **`wiremock`** proof that Yahoo **`yahoo_latest_quote`** falls back from **`v7/finance/quote`** to **`v8/finance/chart`** (see [`docs/SPEC.md`](SPEC.md) §32). **[Issues #90](https://github.com/FelipeMorandini/stockterm/issues/90) and [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** cover optional v7→v8 stderr diagnostics and v7 multi-row **symbol** matching (see [`docs/SPEC.md`](SPEC.md) §34). **Issue #3** remains the regression baseline for the watchlist; **Issue #44** adds keyboard modifier behavior (Stock View / Alerts). **Issue #15** covers **layout / widget visibility** (`Config.layout`, shell chrome, Stock View + Charts pane splits — see [`docs/SPEC.md`](SPEC.md) §31). **Issues #48 / #6** extend modifier parity and portfolio add/remove UX on the Portfolio tab (see [`docs/SPEC.md`](SPEC.md) §§12–13). **Issue #31** covers the Yahoo/Polygon provider adapter and structured errors. **Issue #53** covers Yahoo **`v7`** multi-symbol quote batching (see [`docs/SPEC.md`](SPEC.md) §9.15). **Issues #29 / #5 / #11 / #12** cover the Search, News, and Settings tabs (M3). **Issues #9, #8, #7** cover Charts time ranges, zoom/pan, and candlesticks (M4 — see [`docs/SPEC.md`](SPEC.md) §11). **Issues #62, #63, #64** cover M4 Charts polish (symbol/series coherence, Yahoo W1 fallback, fetch resilience — see [`docs/SPEC.md`](SPEC.md) §11.11). **Issues #71, #72, #73, #74** cover M4 follow-up hardening (inflight/channel parity, dead historical helper removal, W1 unit tests, watchlist chart flicker — see [`docs/SPEC.md`](SPEC.md) §11.12). **Issues #43, #49, #50, #67, #69** cover Alerts title/copy, Stock View typing hint, Portfolio dialog Tab focus, and commit validation (see [`docs/SPEC.md`](SPEC.md) §15). **Issues #17, #46, #77** cover async loop close-out, quote-batch panic hardening, and pending-flag behavior on stock recovery (see [`docs/SPEC.md`](SPEC.md) §16). **Issue #2** covers latest-session quote adapters (Yahoo v7 primary + v8 fallback, Polygon daily latest bar — see [`docs/SPEC.md`](SPEC.md) §17). **Issues #10, #42** cover Alerts add dialog, bell + desktop notifications, Settings toggle, and latched Status vs `triggered` (see [`docs/SPEC.md`](SPEC.md) §18). **Issues #93, #94, #95** cover shared modal `centered_rect`, alert Condition **←/→** keys, and optional stderr for desktop **`show()`** outcomes (see [`docs/SPEC.md`](SPEC.md) §18.13 — manual sign-off 2026-05-12). **Issues #96, #97, #98** cover alerts **`try_save`** failure UX, one coalesced desktop toast per crossing batch, and sanitized notification text (see [`docs/SPEC.md`](SPEC.md) §18.14 — [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); run the **Issues #96, #97, #98** section for manual sign-off). **Issues #100, #101, #104** cover `centered_rect` percent contract, README debug env documentation, and total notify **`body`** byte cap (see [`docs/SPEC.md`](SPEC.md) §18.15). **Issue #18** covers API robustness: HTTP timeouts, 429 / **`Retry-After`**, backoff, and extended **`ProviderError`** (see [`docs/SPEC.md`](SPEC.md) §19 — [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual sign-off** in **Issue #18** below). **Issues #110, #111, #112, #113, #114, #116** cover §19 post-audit hardening (bounded error reads, **`Retry-After`** cap + rate-limit **`Display`**, HTTP-date tolerance, test-harness docs, retry cleanup, **`Debug`** URL redaction — see [`docs/SPEC.md`](SPEC.md) §19.13 and **Issues #110–#114, #116** in this file). **Issue #20** covers error UX: categorized status line, **`Ctrl+E`** error log overlay, **`Ctrl+R`** retry last failed fetch, transient auto-clear, startup banner (see [`docs/SPEC.md`](SPEC.md) §20). **Issue #14** covers the theme system: presets + JSON overrides, Settings row **3** commit + preview, and `ResolvedTheme` / `theme.canvas()` across tabs (see [`docs/SPEC.md`](SPEC.md) §21 — [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126); manual sign-off 2026-05-13). **Issues #19, #103** cover config persistence polish (`~/.stockterm.json`, last tab/symbol, documented schema) and keeping **`Failed to save alerts:`** visible when quote batches surface errors (see [`docs/SPEC.md`](SPEC.md) §22). **Issues #34, #35, #40, #129** cover API-key operator documentation, config load failure visibility, optional non-blocking saves, and session-write debouncing (see [`docs/SPEC.md`](SPEC.md) §22.7). **[Issue #16](https://github.com/FelipeMorandini/stockterm/issues/16)** covers substring filter on **Portfolio** holdings and **Stock View** watchlist (`/`, **Esc** clears, **Enter** commits, **Tab** unchanged — see [`docs/SPEC.md`](SPEC.md) §23). **Issues [#58](https://github.com/FelipeMorandini/stockterm/issues/58), [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** cover News clipboard copy and non-blocking **`http`/`https`** URL open (see [`docs/SPEC.md`](SPEC.md) §27). **[Issue #137](https://github.com/FelipeMorandini/stockterm/issues/137)** covers remappable filter-input mode (`BindingLayer::FilterInput` — see [`docs/SPEC.md`](SPEC.md) §28). **[Issue #139](https://github.com/FelipeMorandini/stockterm/issues/139)** covers explicit alert add-dialog symbol + condition keymap actions (see [`docs/SPEC.md`](SPEC.md) §29). **[Issue #138](https://github.com/FelipeMorandini/stockterm/issues/138)** covers compile-time default keymap chord table refactor — no user-visible behavior change (see [`docs/SPEC.md`](SPEC.md) §30; manual sign-off **2026-05-17**).
 
 ## Issues #19, #103 — Config persistence & alerts-save / quote error coordination
 
@@ -3756,3 +3756,122 @@ No live-Yahoo manual step is required — behavior is parser-level. Optional: if
 | #160 provider toggle + Kind cache manual | maintainer | 2026-05-20 | Pass |
 | #161 Polygon BTC-USD quote/chart manual | maintainer | 2026-05-20 | Pass |
 | §44 / §43 regression | maintainer | 2026-05-20 | Pass |
+
+---
+
+## Issue #21 — Technical indicators (SMA / EMA / RSI / MACD)
+
+**Scope:**
+
+- [GitHub Issue #21](https://github.com/FelipeMorandini/stockterm/issues/21) — Pure indicator functions (`sma`, `ema`, `rsi`, `macd`) with reference fixtures; Charts tab toggles; SMA/EMA overlay on **line** chart; RSI/MACD sub-pane; disabling all indicators restores pre-#21 chart behavior.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §46.
+
+**Prerequisite:** Implementation matches §46.1–§46.4 (`src/indicators/*`, `ChartIndicatorToggles`, `ChartIndicatorCache`, Charts keys **`s` / `e` / `r` / `m`**).
+
+**Provider:** Manual steps assume **`"provider": "yahoo"`** and network for historical data. Symbol **`AAPL`** (liquid, stable daily bars).
+
+### Automated (local) — required
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0.
+
+2. Indicator unit tests:
+
+   ```bash
+   cargo test sma
+   cargo test ema
+   cargo test rsi
+   cargo test macd
+   ```
+
+   **Pass:** Reference fixture comparisons within SPEC tolerance.
+
+3. Static gate — indicator module exists:
+
+   ```bash
+   test -d src/indicators && ls src/indicators/*.rs
+   ```
+
+   **Pass:** `mod.rs`, `sma.rs`, `ema.rs`, `rsi.rs`, `macd.rs` (or equivalent per §46.1).
+
+4. No draw-path logging:
+
+   ```bash
+   rg 'println!|eprintln!|dbg!' src/app/charts.rs
+   ```
+
+   **Pass:** No matches.
+
+### Manual — indicator toggles & overlays (line chart)
+
+**Prep:** Launch `cargo run --release`. Go to **Charts** tab with **`AAPL`** active. Wait for historical bars. Press **`c`** until block title shows **line** mode (not candles).
+
+1. **Baseline** — with all indicators off, chart shows single close line only (today’s behavior).
+   **Pass:** One price series; no RSI/MACD sub-pane; key hints include **`S SMA │ E EMA │ R RSI │ M MACD`** (or README equivalent).
+
+2. **SMA(20)** — press **`s`** once.
+   **Pass:** Second line appears on the price chart (smoother than close); toggling **`s`** again removes it.
+
+3. **EMA(20)** — press **`e`** once (SMA may stay on).
+   **Pass:** EMA line visible; distinct from SMA when both enabled.
+
+4. **RSI(14)** — press **`r`** once.
+   **Pass:** Chart area splits: price pane on top, RSI pane below with 0–100 scale; pan/zoom (**`h`/`l`**, **`+`/`-`**) keeps RSI aligned with visible price bars.
+
+5. **MACD** — press **`m`** once.
+   **Pass:** MACD sub-pane shows MACD line, signal line, and histogram (or documented equivalent); still readable with RSI off.
+
+6. **RSI + MACD** — enable both **`r`** and **`m`**.
+   **Pass:** Bottom band stacks RSI and MACD without overlapping labels; price pane remains usable.
+
+7. **Disable all** — toggle **`s`**, **`e`**, **`r`**, **`m`** off until none active.
+   **Pass:** Chart returns to single-pane close line only (same as step 1).
+
+### Manual — candlestick interaction
+
+1. Press **`c`** to **candlestick** mode with SMA or EMA still enabled (if toggles persist across mode — enable **`s`** first).
+   **Pass:** Candles render; no SMA/EMA drawn through candle bodies; muted hint to switch to line chart for overlays (per §46.3).
+
+2. Press **`c`** back to line — overlays reappear if toggles still on.
+   **Pass:** SMA/EMA visible again without refetch.
+
+### Manual — range & symbol regression
+
+1. **`1`–`4`** — cycle **D1 / W1 / M1 / Y1** with **SMA** enabled.
+   **Pass:** Indicator recomputes after new data loads; no panic; empty/error states show existing loading messages.
+
+2. **Symbol change** — **Stock View** → **`MSFT`** → **Charts**.
+   **Pass:** Prior symbol’s indicator lines do not bleed; cache rebuilds after MSFT historical loads.
+
+### README check
+
+1. Open [`README.md`](../README.md) Charts / keymap section.
+   **Pass:** Documents **`s` / `e` / `r` / `m`** toggles and default periods (20 / 20 / 14 / 12-26-9).
+
+### Regression — §11 / §31 / §40
+
+| Check | Pass criteria |
+|-------|----------------|
+| §11 viewport | `0` full range; `+`/`-` zoom; `h`/`l` pan |
+| §11 candle | `c` toggles line ↔ candles when indicators off |
+| §31 layout | `charts_chart_pct: 100` → full chart; &lt;100 → chrome strip still works with sub-pane |
+| §40 timestamps | No panic switching ranges with indicators on |
+
+### Sign-off — Issue #21
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo clippy` + `cargo test` | maintainer | 2026-05-21 | Pass |
+| Indicator fixture tests | maintainer | 2026-05-21 | Pass |
+| #21 SMA/EMA overlay manual | maintainer | 2026-05-21 | Pass |
+| #21 RSI/MACD sub-pane manual | maintainer | 2026-05-21 | Pass |
+| #21 disable-all / candle hint manual | maintainer | 2026-05-21 | Pass |
+| §11 regression | maintainer | 2026-05-21 | Pass |

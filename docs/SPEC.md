@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#160](https://github.com/FelipeMorandini/stockterm/issues/160) / [#161](https://github.com/FelipeMorandini/stockterm/issues/161)** — §44 follow-ons: clear **`symbol_kind_cache`** on Settings provider change + Polygon crypto **`X:`** wire mapping in **`resolve_provider_symbol`** (**§45**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#160, #161** — sign-off **2026-05-20**; **PR:** [#163](https://github.com/FelipeMorandini/stockterm/pull/163)). **[#157](https://github.com/FelipeMorandini/stockterm/issues/157) / [#158](https://github.com/FelipeMorandini/stockterm/issues/158)** — provider-aware symbol resolver (Yahoo vs Polygon HTTP namespaces) + **`SymbolKind`** from Yahoo **`quoteType`** metadata with heuristic fallback (**§44**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#157, #158** — sign-off **2026-05-20**; **PR:** [#162](https://github.com/FelipeMorandini/stockterm/pull/162)). **[#23](https://github.com/FelipeMorandini/stockterm/issues/23)** — cryptocurrency quotes via Yahoo-style symbols (`BTC-USD`), adaptive price formatting, **`SymbolKind`** UI label, Stock View hyphen entry, §43.13 quote-cache alignment (**§43**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#23** — sign-off **2026-05-19**; **PR:** [#159](https://github.com/FelipeMorandini/stockterm/pull/159)). **[#51](https://github.com/FelipeMorandini/stockterm/issues/51) / [#28](https://github.com/FelipeMorandini/stockterm/issues/28)** — global **`q`/`Q`** quit via **`should_global_quit`**, Tab meta policy, **`STOCKTERM_API_KEY`** runtime overlay (no env merge on load — **§42**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** — sign-off **2026-05-19**; **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156)). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**[#21](https://github.com/FelipeMorandini/stockterm/issues/21)** — technical indicators (SMA / EMA / RSI / MACD) on the Charts tab (**§46**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21** — sign-off **2026-05-21**; **PR:** [#164](https://github.com/FelipeMorandini/stockterm/pull/164)). **Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#160](https://github.com/FelipeMorandini/stockterm/issues/160) / [#161](https://github.com/FelipeMorandini/stockterm/issues/161)** — §44 follow-ons: clear **`symbol_kind_cache`** on Settings provider change + Polygon crypto **`X:`** wire mapping in **`resolve_provider_symbol`** (**§45**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#160, #161** — sign-off **2026-05-20**; **PR:** [#163](https://github.com/FelipeMorandini/stockterm/pull/163)). **[#157](https://github.com/FelipeMorandini/stockterm/issues/157) / [#158](https://github.com/FelipeMorandini/stockterm/issues/158)** — provider-aware symbol resolver (Yahoo vs Polygon HTTP namespaces) + **`SymbolKind`** from Yahoo **`quoteType`** metadata with heuristic fallback (**§44**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#157, #158** — sign-off **2026-05-20**; **PR:** [#162](https://github.com/FelipeMorandini/stockterm/pull/162)). **[#23](https://github.com/FelipeMorandini/stockterm/issues/23)** — cryptocurrency quotes via Yahoo-style symbols (`BTC-USD`), adaptive price formatting, **`SymbolKind`** UI label, Stock View hyphen entry, §43.13 quote-cache alignment (**§43**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#23** — sign-off **2026-05-19**; **PR:** [#159](https://github.com/FelipeMorandini/stockterm/pull/159)). **[#51](https://github.com/FelipeMorandini/stockterm/issues/51) / [#28](https://github.com/FelipeMorandini/stockterm/issues/28)** — global **`q`/`Q`** quit via **`should_global_quit`**, Tab meta policy, **`STOCKTERM_API_KEY`** runtime overlay (no env merge on load — **§42**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** — sign-off **2026-05-19**; **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156)). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -7192,3 +7192,318 @@ After maintainer approval of §45, the **engineer** may implement per [`.cursor/
 - **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#160, #161** — maintainer sign-off **2026-05-20**.
 - **Depends on:** **§44** shipped ([#162](https://github.com/FelipeMorandini/stockterm/pull/162)).
 - **Post-audit:** `apply_stock_fetch_done` applies Yahoo **`instrument_types`** only when **`config.provider == Yahoo`** (stale-batch race, Issue #160).
+
+---
+
+## 46. Issue [#21](https://github.com/FelipeMorandini/stockterm/issues/21) — Technical indicators (SMA / EMA / RSI / MACD)
+
+**Sources:**
+
+- [Issue #21](https://github.com/FelipeMorandini/stockterm/issues/21) — *Advanced: technical indicators (SMA / EMA / RSI / MACD) — post-MVP* (`roadmap`).
+- [`docs/ROADMAP.md`](ROADMAP.md) §4.19 / §6 **M8** — indicators explicitly **post-MVP optional**; no in-tree code today.
+
+**Related:** **§11** (Charts tab, line + candlestick, viewport, `TimeRange` keys), **§31** (Charts pane split via `charts_chart_pct`), **§24** (keymap / `BindingLayer::Charts`), **§21** (theme colors for overlay lines).
+
+**Product goal:** On the **Charts** tab, traders can toggle common indicators computed from **close** prices and see them without leaving the terminal: **SMA** and **EMA** overlaid on the **line** price chart; **RSI** and **MACD** in a dedicated sub-pane below the price chart when enabled.
+
+**Verified baseline (tree, 2026-05-21):**
+
+| Area | Current behavior | Gap |
+|------|------------------|-----|
+| **`src/indicators/`** | Does not exist | No SMA/EMA/RSI/MACD math |
+| **`draw_charts_inner`** | Single close-price `Dataset` (line) or `CandlestickChart` widget | No overlay series; no oscillator pane |
+| **`App` chart state** | `chart_mode`, `chart_viewport`, `time_range` | No indicator enable flags or precomputed series |
+| **§11.8 out of scope** | “MACD, indicators” listed as future | This slice implements that follow-up |
+| **Persistence** | `time_range` / `chart_mode` not in `~/.stockterm.json` | Indicator toggles also **session-only** in v1 |
+
+**Product decisions (this slice):**
+
+1. **Close-only input:** All indicators use the **`c`** (close) field from `HistoricalData` in bar order (oldest → newest). Volume/OHLC variants are out of scope.
+2. **Default periods (fixed in v1):** SMA **20**, EMA **20**, RSI **14**, MACD **12 / 26 / 9** (fast / slow / signal). No Settings editor for periods in v1 (key toggles only).
+3. **Session toggles:** Four independent booleans on `App` (not persisted). Disabling all indicators restores today’s chart layout and datasets.
+4. **Line mode overlays:** SMA/EMA render as extra `ratatui::widgets::Chart` `Dataset` lines sharing the **price** Y-axis. **Candlestick mode:** do not draw overlays on the custom candle widget; show a one-line muted hint in the chart block: *“Indicators: press `c` for line chart”* when any overlay toggle is on.
+5. **Oscillator sub-pane:** When **RSI** and/or **MACD** is enabled, split the chart **inner** area vertically: price pane ≥ **55%**, indicator pane(s) share the remainder. If both RSI and MACD are on, stack **two** indicator rows (RSI above MACD) within the bottom band.
+6. **Viewport alignment:** Compute indicators on the **full** `historical_data.results` series, then **slice** with the same `visible_slice` / index range as the price chart so pan/zoom stays aligned.
+7. **Update-phase compute:** Rebuild indicator cache in **`App`** when historical data, symbol, `time_range`, or indicator toggles change — **not** inside `draw_*` (60 fps rule).
+8. **Yahoo primary:** No new HTTP endpoints; indicators are derived locally from existing historical fetches.
+
+**Suggested PR:** **“§46 Charts technical indicators (SMA/EMA/RSI/MACD)”** — `src/indicators/*`, `src/lib.rs`, `src/app/charts.rs`, `src/app/app.rs`, `src/app/handlers.rs`, `src/config/keymap.rs`, `tests/fixtures/indicators_*.json`, `README.md` keymap line.
+
+---
+
+### 46.1 Pure indicator library (`src/indicators/`)
+
+**Crate layout:**
+
+| File | Responsibility |
+|------|----------------|
+| [`src/indicators/mod.rs`](../src/indicators/mod.rs) | `pub mod` wiring; re-export `sma`, `ema`, `rsi`, `macd`, `IndicatorPoint` |
+| [`src/indicators/types.rs`](../src/indicators/types.rs) | `IndicatorPoint`, `MacdSeries`, shared constants |
+| [`src/indicators/sma.rs`](../src/indicators/sma.rs) | `sma(closes, period)` |
+| [`src/indicators/ema.rs`](../src/indicators/ema.rs) | `ema(closes, period)` |
+| [`src/indicators/rsi.rs`](../src/indicators/rsi.rs) | `rsi(closes, period)` |
+| [`src/indicators/macd.rs`](../src/indicators/macd.rs) | `macd(closes, fast, slow, signal)` |
+
+**Add to [`src/lib.rs`](../src/lib.rs):**
+
+```rust
+pub mod indicators;
+```
+
+**Shared type — aligned series (warmup = `None`):**
+
+```rust
+/// One scalar per input bar; `None` until the indicator has enough history.
+pub type IndicatorSeries = Vec<Option<f64>>;
+
+pub struct MacdOutput {
+    pub macd: IndicatorSeries,
+    pub signal: IndicatorSeries,
+    pub histogram: IndicatorSeries,
+}
+```
+
+**Public functions (all `pub fn`, `///` documented):**
+
+| Function | Signature | Notes |
+|----------|-----------|-------|
+| `sma` | `sma(closes: &[f64], period: usize) -> IndicatorSeries` | `period == 0` → empty vec; `closes.len() < period` → all `None` |
+| `ema` | `ema(closes: &[f64], period: usize) -> IndicatorSeries` | Standard smoothing: \(\alpha = 2 / (period + 1)\); seed SMA at index `period - 1` |
+| `rsi` | `rsi(closes: &[f64], period: usize) -> IndicatorSeries` | Wilder smoothing (not simple MA of gains); default caller period **14** |
+| `macd` | `macd(closes: &[f64], fast: usize, slow: usize, signal: usize) -> MacdOutput` | MACD line = EMA(fast) − EMA(slow); signal = EMA(signal) of MACD line; histogram = macd − signal |
+
+**Floating-point contract:** Unit tests compare against JSON fixtures with **`approx::assert_relative_eq!`** (add **`approx`** dev-dependency only if not already present; prefer inline `((a - b).abs() <= eps)` in `#[cfg(test)]` to avoid new deps — engineer choice, but tolerance must be documented as **`1e-6` relative** or **`1e-4` absolute** for RSI bounds).
+
+**Reference fixtures:** `tests/fixtures/indicators_sma_20.json`, `indicators_ema_20.json`, `indicators_rsi_14.json`, `indicators_macd_12_26_9.json` — short synthetic close arrays (≥ 35 bars) with expected outputs at tail indices.
+
+**Non-goals:** Streaming/incremental updates; WASM; external TA crates; volume-based indicators.
+
+---
+
+### 46.2 App state & cache invalidation
+
+**New types in `src/app/charts.rs` (or `src/app/chart_indicators.rs` if file grows):**
+
+```rust
+/// Session-only indicator toggles (Issue #21 / §46.2).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ChartIndicatorToggles {
+    pub sma_20: bool,
+    pub ema_20: bool,
+    pub rsi_14: bool,
+    pub macd: bool,
+}
+
+impl ChartIndicatorToggles {
+    pub fn any_enabled(self) -> bool {
+        self.sma_20 || self.ema_20 || self.rsi_14 || self.macd
+    }
+    pub fn needs_subpane(self) -> bool {
+        self.rsi_14 || self.macd
+    }
+}
+
+/// Precomputed indicator values for the current full series (re-sliced at draw).
+pub struct ChartIndicatorCache {
+    pub sma_20: IndicatorSeries,
+    pub ema_20: IndicatorSeries,
+    pub rsi_14: IndicatorSeries,
+    pub macd: MacdOutput,
+}
+```
+
+**`App` fields:**
+
+```rust
+pub chart_indicators: ChartIndicatorToggles,
+chart_indicator_cache: Option<ChartIndicatorCache>,
+```
+
+**Rebuild `chart_indicator_cache` in `App::rebuild_chart_indicator_cache()` (`pub(crate)`):**
+
+1. If `!chart_indicators.any_enabled()` → `chart_indicator_cache = None` (skip math).
+2. If `historical_data` is `None` or `results.is_empty()` → `chart_indicator_cache = None`.
+3. Else `closes: Vec<f64> = results.iter().map(|b| b.c).collect()`.
+4. Fill `ChartIndicatorCache` via `indicators::{sma, ema, rsi, macd}` with default periods.
+
+**Call sites (invalidate + rebuild):**
+
+| Event | Action |
+|-------|--------|
+| `FetchDone::Historical` success | `rebuild_chart_indicator_cache()` |
+| `set_charts_time_range` | clear `historical_data` path already; rebuild after fetch — also clear cache immediately |
+| Symbol change clearing `historical_data` | `chart_indicator_cache = None` |
+| Toggle method `charts_toggle_sma` / `_ema` / `_rsi` / `_macd` | flip bool; **no** refetch; `sync_chart_indicator_cache_after_toggle()` rebuilds or clears cache |
+
+**Toggle helpers on `App`:**
+
+```rust
+pub fn charts_toggle_sma_20(&mut self) {
+    self.chart_indicators.sma_20 = !self.chart_indicators.sma_20;
+    self.sync_chart_indicator_cache_after_toggle();
+}
+// ... ema, rsi, macd — same pattern
+```
+
+---
+
+### 46.3 Rendering (`src/app/charts.rs`)
+
+**Helper — map visible bars to chart coordinates (reuse line-chart X rule):**
+
+```rust
+fn indicator_xy_visible(
+    slice: &[HistoricalData],
+    series: &[Option<f64>],
+    global_start: usize,
+) -> Vec<(f64, f64)>
+```
+
+- `global_start` = viewport `start` index into full `results`.
+- Skip points where `series[i]` is `None` or non-finite.
+- X = `t as f64 / 1000.0` (same as close line).
+
+**Price pane (line mode):**
+
+- Build `datasets: Vec<Dataset>` starting with existing **Close** dataset.
+- If `chart_indicators.sma_20` → push **SMA(20)** dataset (`theme.fg_muted()` or dedicated secondary color).
+- If `chart_indicators.ema_20` → push **EMA(20)** dataset (distinct color, e.g. theme accent variant / yellow slot).
+- Extend **Y bounds** to include overlay min/max when overlays present (so SMA/EMA are not clipped).
+
+**Price pane (candlestick + overlay toggles):**
+
+- Render candles as today; append centered `Paragraph` hint (do not overlay on `CandlestickChart` in v1).
+
+**Sub-pane layout:**
+
+When `chart_indicators.needs_subpane()`:
+
+```text
+┌─ Charts block ─────────────────────┐
+│  Price (line or candles + hint)    │  ≥55% inner height
+├────────────────────────────────────┤
+│  RSI(14)  [0–100]                  │  split bottom band
+│  MACD + signal + histogram         │  if both enabled
+└────────────────────────────────────┘
+```
+
+- **RSI chart:** Y bounds `[0, 100]`; horizontal reference at **70** and **30** via extra `Dataset` point pairs or `Block` title suffix.
+- **MACD chart:** Three datasets — MACD line, signal line, histogram (all `GraphType::Line` with Braille markers; ratatui **0.25** has no bar graph type).
+- Title / key hints: extend `charts_key_hints()`:
+
+```text
+1-4 range │ +/- zoom │ h l pan │ 0 reset │ c mode │ S SMA │ E EMA │ R RSI │ M MACD
+```
+
+**Oscillator placeholder:** When `needs_subpane()` and `chart_indicator_cache` is `None`, render muted **“Waiting for chart data…”** in the RSI/MACD band instead of a blank pane.
+
+**Performance:** `indicator_xy_visible` vectors built once per frame in `draw_charts_inner` is acceptable if length ≤ visible bars (~500); prefer storing sliced `(f64,f64)` in cache only if profiling shows allocation pressure (optional optimization, not required for v1).
+
+---
+
+### 46.4 Keymap & handlers
+
+**New `Action` variants** in [`src/config/keymap.rs`](../src/config/keymap.rs):
+
+```rust
+ChartToggleSma,
+ChartToggleEma,
+ChartToggleRsi,
+ChartToggleMacd,
+```
+
+**Default chords (`BindingLayer::Charts`):**
+
+| Chord | Action |
+|-------|--------|
+| `char:s` | `ChartToggleSma` |
+| `char:e` | `ChartToggleEma` |
+| `char:r` | `ChartToggleRsi` |
+| `char:m` | `ChartToggleMacd` |
+
+Requires **`letter_key_plain`** modifier check in [`handle_charts_events`](../src/app/handlers.rs) (same policy as `ChartToggleCandle`).
+
+**Wire:**
+
+```rust
+ChartToggleSma => { if letter_key_plain(key.modifiers) { app.charts_toggle_sma_20(); } }
+```
+
+**Conflict audit:** `s`/`e`/`r`/`m` are not used on Charts layer today; Search tab uses typed chars in query buffer — no conflict when Charts focused.
+
+**Settings panel:** Out of scope for #21 acceptance (issue lists “or Settings” — ship **keys** first; Settings rows for periods/toggles = follow-up issue).
+
+---
+
+### 46.5 Crate & module summary
+
+| Component | Path |
+|-----------|------|
+| Indicator math | `src/indicators/*` |
+| Toggles + cache | `src/app/charts.rs`, `src/app/app.rs` |
+| Draw overlays / sub-pane | `src/app/charts.rs` |
+| Keymap + handlers | `src/config/keymap.rs`, `src/app/handlers.rs` |
+| Fixtures + unit tests | `tests/fixtures/indicators_*.json`, `#[cfg(test)]` in indicator modules |
+| User docs | `README.md` Charts key table |
+
+**New runtime dependencies:** none (stdlib only for math).
+
+**Optional dev-dependency:** `approx` for tests only (engineer discretion).
+
+---
+
+### 46.6 Implementation sequence
+
+1. `src/indicators/` + fixtures + unit tests (acceptance: reference vectors within tolerance).
+2. `ChartIndicatorToggles` + `ChartIndicatorCache` + `rebuild_chart_indicator_cache` + invalidation hooks.
+3. Keymap actions + `handle_charts_events` toggles.
+4. `draw_charts_inner` — line overlays, sub-pane RSI/MACD, candlestick hint.
+5. Update `charts_key_hints` / block title; README Charts keys.
+6. `cargo clippy -- -D warnings`, `cargo test`.
+7. Manual QA — [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21**.
+
+---
+
+### 46.7 Automated verification
+
+```bash
+cargo build --release
+cargo clippy -- -D warnings
+cargo test sma
+cargo test ema
+cargo test rsi
+cargo test macd
+cargo test indicators
+```
+
+**Pass:** All indicator tests green; no `println!` / `dbg!` in `app::charts` draw path.
+
+---
+
+### 46.8 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #21**. Regression: **§11** charts (range, zoom, candle toggle), **§31** layout split, **§40** timestamp safety.
+
+---
+
+### 46.9 Out of scope
+
+- Persisting indicator toggles or periods in `~/.stockterm.json`.
+- Settings UI rows for indicator configuration.
+- Custom periods, Bollinger Bands, volume profile, Stochastic, etc.
+- Overlaying SMA/EMA on **candlestick** widget body (hint-only in v1).
+- Polygon/Yahoo new endpoints or intraday indicator-specific data feeds.
+- Alert rules on indicator crossings (e.g. RSI &gt; 70).
+
+---
+
+### 46.10 Approval
+
+After maintainer approval of §46, the **engineer** may implement per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and run [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21** before merge.
+
+### 46.11 Status
+
+- **Status:** Shipped (2026-05-21). **PR:** [#164](https://github.com/FelipeMorandini/stockterm/pull/164).
+- **Tracking:** [Issue #21](https://github.com/FelipeMorandini/stockterm/issues/21).
+- **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21** — maintainer sign-off **2026-05-21**.
+- **Depends on:** **§11** Charts baseline shipped; historical close series available.

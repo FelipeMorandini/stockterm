@@ -81,6 +81,10 @@ pub enum Action {
     ChartPanLeft,
     ChartPanRight,
     ChartToggleCandle,
+    ChartToggleSma,
+    ChartToggleEma,
+    ChartToggleRsi,
+    ChartToggleMacd,
     SearchEsc,
     SearchBackspace,
     SearchEnter,
@@ -161,7 +165,8 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         StockFilterToggle | WatchlistAdd | WatchlistRemove | WatchlistRemoveShift | StockRowDown
         | StockRowUp | StockBackspace | StockEnter => BindingLayer::StockView,
         ChartRangeD1 | ChartRangeW1 | ChartRangeM1 | ChartRangeY1 | ChartResetViewport
-        | ChartZoomIn | ChartZoomOut | ChartPanLeft | ChartPanRight | ChartToggleCandle => {
+        | ChartZoomIn | ChartZoomOut | ChartPanLeft | ChartPanRight | ChartToggleCandle
+        | ChartToggleSma | ChartToggleEma | ChartToggleRsi | ChartToggleMacd => {
             BindingLayer::Charts
         }
         SearchEsc | SearchBackspace | SearchEnter | SearchRowDown | SearchRowUp => {
@@ -483,6 +488,10 @@ const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = {
         (Charts, "left", ChartPanLeft),
         (Charts, "right", ChartPanRight),
         (Charts, "char:c", ChartToggleCandle),
+        (Charts, "char:s", ChartToggleSma),
+        (Charts, "char:e", ChartToggleEma),
+        (Charts, "char:r", ChartToggleRsi),
+        (Charts, "char:m", ChartToggleMacd),
         (Search, "esc", SearchEsc),
         (Search, "backspace", SearchBackspace),
         (Search, "enter", SearchEnter),
@@ -1063,7 +1072,7 @@ mod tests {
 
     #[test]
     fn default_bindings_total_row_count() {
-        assert_eq!(default_bindings().len(), 220);
+        assert_eq!(default_bindings().len(), 224);
     }
 
     #[test]
