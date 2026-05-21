@@ -175,6 +175,26 @@ fn handle_charts_events(app: &mut App, key: KeyEvent) {
                     app.charts_toggle_mode();
                 }
             }
+            ChartToggleSma => {
+                if letter_key_plain(key.modifiers) {
+                    app.charts_toggle_sma_20();
+                }
+            }
+            ChartToggleEma => {
+                if letter_key_plain(key.modifiers) {
+                    app.charts_toggle_ema_20();
+                }
+            }
+            ChartToggleRsi => {
+                if letter_key_plain(key.modifiers) {
+                    app.charts_toggle_rsi_14();
+                }
+            }
+            ChartToggleMacd => {
+                if letter_key_plain(key.modifiers) {
+                    app.charts_toggle_macd();
+                }
+            }
             _ => {}
         }
     }

@@ -1,8 +1,13 @@
-//! Charts tab: line chart, candlesticks, viewport (Issues #7 / #8 / #9).
+//! Charts tab: line chart, candlesticks, viewport, indicators (Issues #7 / #8 / #9, #21).
 
 use crate::app::styles::ResolvedTheme;
 use crate::app::App;
 use crate::config::ResolvedLayout;
+use crate::indicators::{
+    ema, macd, rsi, sma, MacdOutput, EMA_PERIOD, MACD_FAST, MACD_SIGNAL, MACD_SLOW, RSI_PERIOD,
+    SMA_PERIOD,
+};
+use crate::indicators::types::IndicatorSeries;
 use crate::models::historical::{HistoricalData, HistoricalResponse};
 use crate::models::time_range::TimeRange;
 use chrono::{DateTime, Utc};
@@ -66,6 +71,53 @@ impl ChartDisplayMode {
         match self {
             ChartDisplayMode::Line => "line",
             ChartDisplayMode::Candlestick => "candles",
+        }
+    }
+}
+
+/// Session-only indicator toggles (Issue #21 / SPEC §46.2).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ChartIndicatorToggles {
+    pub sma_20: bool,
+    pub ema_20: bool,
+    pub rsi_14: bool,
+    pub macd: bool,
+}
+
+impl ChartIndicatorToggles {
+    /// True when any indicator toggle is enabled.
+    pub fn any_enabled(self) -> bool {
+        self.sma_20 || self.ema_20 || self.rsi_14 || self.macd
+    }
+
+    /// True when RSI and/or MACD need a sub-pane below the price chart.
+    pub fn needs_subpane(self) -> bool {
+        self.rsi_14 || self.macd
+    }
+
+    /// True when SMA/EMA overlays are enabled (line chart only in v1).
+    pub fn overlay_enabled(self) -> bool {
+        self.sma_20 || self.ema_20
+    }
+}
+
+/// Precomputed indicator values for the full historical series (re-sliced at draw).
+#[derive(Debug, Clone)]
+pub struct ChartIndicatorCache {
+    pub sma_20: IndicatorSeries,
+    pub ema_20: IndicatorSeries,
+    pub rsi_14: IndicatorSeries,
+    pub macd: MacdOutput,
+}
+
+impl ChartIndicatorCache {
+    /// Build all default-period indicators from close prices (oldest → newest).
+    pub fn from_closes(closes: &[f64]) -> Self {
+        Self {
+            sma_20: sma(closes, SMA_PERIOD),
+            ema_20: ema(closes, EMA_PERIOD),
+            rsi_14: rsi(closes, RSI_PERIOD),
+            macd: macd(closes, MACD_FAST, MACD_SLOW, MACD_SIGNAL),
         }
     }
 }
@@ -261,7 +313,88 @@ fn charts_short_title(app: &App) -> String {
 }
 
 fn charts_key_hints() -> &'static str {
-    "1-4 range │ +/- zoom │ h l pan │ 0 reset │ c mode"
+    "1-4 range │ +/- zoom │ h l pan │ 0 reset │ c mode │ S SMA │ E EMA │ R RSI │ M MACD"
+}
+
+/// Start index of the visible window into `historical_data.results`.
+fn viewport_global_start(vp: &ChartViewport, len: usize) -> usize {
+    if len == 0 {
+        return 0;
+    }
+    let end = if vp.end == 0 {
+        len
+    } else {
+        vp.end.min(len).max(1)
+    };
+    vp.start.min(end.saturating_sub(1))
+}
+
+/// Map visible OHLC bars to chart `(time_sec, value)` pairs for an aligned indicator series.
+fn indicator_xy_visible(
+    slice: &[HistoricalData],
+    series: &[Option<f64>],
+    global_start: usize,
+) -> Vec<(f64, f64)> {
+    let mut out = Vec::new();
+    for (j, bar) in slice.iter().enumerate() {
+        let idx = global_start + j;
+        if let Some(v) = series.get(idx).and_then(|x| *x) {
+            if v.is_finite() {
+                out.push((bar.t as f64 / 1000.0, v));
+            }
+        }
+    }
+    out
+}
+
+fn extend_price_bounds(base: (f64, f64), overlay: &[(f64, f64)]) -> (f64, f64) {
+    let (mut lo, mut hi) = base;
+    for &(_, y) in overlay {
+        if y.is_finite() {
+            lo = lo.min(y);
+            hi = hi.max(y);
+        }
+    }
+    if (hi - lo).abs() < f64::EPSILON {
+        let pad = lo.abs() * 0.05 + 0.01;
+        (lo - pad, hi + pad)
+    } else {
+        let pad = (hi - lo) * 0.1;
+        (lo - pad, hi + pad)
+    }
+}
+
+/// Muted placeholder when RSI/MACD are enabled before historical data is ready.
+fn draw_indicator_subpane_placeholder(f: &mut Frame, area: Rect, theme: ResolvedTheme) {
+    if area.width == 0 || area.height == 0 {
+        return;
+    }
+    let line = Line::from(vec![Span::styled(
+        "Waiting for chart data…",
+        theme.fg_muted(),
+    )]);
+    f.render_widget(Paragraph::new(line).style(theme.canvas()), area);
+}
+
+fn oscillator_bounds(values: &[(f64, f64)], default_lo: f64, default_hi: f64) -> [f64; 2] {
+    let mut lo = f64::MAX;
+    let mut hi = f64::MIN;
+    for &(_, y) in values {
+        if y.is_finite() {
+            lo = lo.min(y);
+            hi = hi.max(y);
+        }
+    }
+    if !lo.is_finite() || !hi.is_finite() {
+        return [default_lo, default_hi];
+    }
+    if (hi - lo).abs() < f64::EPSILON {
+        let pad = 0.5;
+        [lo - pad, hi + pad]
+    } else {
+        let pad = (hi - lo) * 0.1;
+        [lo - pad, hi + pad]
+    }
 }
 
 fn charts_block_title(app: &App, include_key_hints: bool) -> String {
@@ -374,77 +507,283 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    if matches!(app.chart_mode, ChartDisplayMode::Candlestick) {
-        if slice.len() < 2 {
-            let msg = Line::from(vec![Span::styled(
-                format!(
-                    "Candles need 2+ bars (visible {}–{}, {} bar(s)). Press `c` for line.",
-                    vis_from, vis_to, slice.len()
-                ),
-                theme.warning_text(),
-            )]);
-            let paragraph = ratatui::widgets::Paragraph::new(msg).style(theme.canvas());
-            f.render_widget(paragraph, inner);
+    let global_start = viewport_global_start(&app.chart_viewport, historical_data.results.len());
+    let cache = app.chart_indicator_cache.as_ref();
+
+    let render_price = |f: &mut Frame, price_area: Rect| {
+        if matches!(app.chart_mode, ChartDisplayMode::Candlestick) {
+            if slice.len() < 2 {
+                let msg = Line::from(vec![Span::styled(
+                    format!(
+                        "Candles need 2+ bars (visible {}–{}, {} bar(s)). Press `c` for line.",
+                        vis_from, vis_to, slice.len()
+                    ),
+                    theme.warning_text(),
+                )]);
+                f.render_widget(Paragraph::new(msg).style(theme.canvas()), price_area);
+                return;
+            }
+            let chart = CandlestickChart {
+                data: slice,
+                min_y: price_min,
+                max_y: price_max,
+                theme,
+            };
+            f.render_widget(chart, price_area);
+            if app.chart_indicators.overlay_enabled() {
+                let hint = Line::from(vec![Span::styled(
+                    "Indicators: press `c` for line chart (SMA/EMA overlays)",
+                    theme.fg_muted(),
+                )]);
+                let hint_area = Rect {
+                    y: price_area
+                        .y
+                        .saturating_add(price_area.height.saturating_sub(1)),
+                    height: 1,
+                    ..price_area
+                };
+                if hint_area.height > 0 && hint_area.width > 0 {
+                    f.render_widget(Paragraph::new(hint).style(theme.canvas()), hint_area);
+                }
+            }
             return;
         }
-        let chart = CandlestickChart {
-            data: slice,
-            min_y: price_min,
-            max_y: price_max,
-            theme,
+
+        let mut sma_data: Vec<(f64, f64)> = Vec::new();
+        let mut ema_data: Vec<(f64, f64)> = Vec::new();
+        if let Some(c) = cache {
+            if app.chart_indicators.sma_20 {
+                sma_data = indicator_xy_visible(slice, &c.sma_20, global_start);
+            }
+            if app.chart_indicators.ema_20 {
+                ema_data = indicator_xy_visible(slice, &c.ema_20, global_start);
+            }
+        }
+
+        let mut y_bounds = (price_min, price_max);
+        y_bounds = extend_price_bounds(y_bounds, &sma_data);
+        y_bounds = extend_price_bounds(y_bounds, &ema_data);
+        let (y_min, y_max) = y_bounds;
+
+        let mut datasets = vec![Dataset::default()
+            .name("Close")
+            .marker(symbols::Marker::Braille)
+            .graph_type(GraphType::Line)
+            .style(theme.fg_accent())
+            .data(&data)];
+        if !sma_data.is_empty() {
+            datasets.push(
+                Dataset::default()
+                    .name("SMA(20)")
+                    .marker(symbols::Marker::Braille)
+                    .graph_type(GraphType::Line)
+                    .style(theme.fg_muted())
+                    .data(&sma_data),
+            );
+        }
+        if !ema_data.is_empty() {
+            datasets.push(
+                Dataset::default()
+                    .name("EMA(20)")
+                    .marker(symbols::Marker::Braille)
+                    .graph_type(GraphType::Line)
+                    .style(theme.fg_positive())
+                    .data(&ema_data),
+            );
+        }
+
+        let format_time = |time: &f64| format_time_axis(*time * 1000.0, intraday);
+        let format_price = |price: &f64| crate::app::format::format_usd_price(*price);
+
+        let chart = Chart::new(datasets)
+            .x_axis(
+                Axis::default()
+                    .title(Line::from(vec![Span::styled(
+                        format!("UTC  {vis_from} → {vis_to}"),
+                        theme.fg_foreground(),
+                    )]))
+                    .style(theme.fg_foreground())
+                    .bounds([min_time, max_time])
+                    .labels(vec![
+                        Span::styled(format_time(&min_time), theme.fg_foreground()),
+                        Span::styled(
+                            format_time(&((min_time + max_time) / 2.0)),
+                            theme.fg_foreground(),
+                        ),
+                        Span::styled(format_time(&max_time), theme.fg_foreground()),
+                    ]),
+            )
+            .y_axis(
+                Axis::default()
+                    .title(Line::from(vec![Span::styled(
+                        "Price",
+                        theme.fg_foreground(),
+                    )]))
+                    .style(theme.fg_foreground())
+                    .bounds([y_min, y_max])
+                    .labels(vec![
+                        Span::styled(format_price(&y_min), theme.fg_foreground()),
+                        Span::styled(
+                            format_price(&((y_min + y_max) / 2.0)),
+                            theme.fg_foreground(),
+                        ),
+                        Span::styled(format_price(&y_max), theme.fg_foreground()),
+                    ]),
+            );
+        f.render_widget(chart, price_area);
+    };
+
+    let render_rsi = |f: &mut Frame, rsi_area: Rect| {
+        let Some(c) = cache else {
+            return;
         };
-        f.render_widget(chart, inner);
-        return;
+        let rsi_data = indicator_xy_visible(slice, &c.rsi_14, global_start);
+        if rsi_data.is_empty() {
+            return;
+        }
+        let ref_30 = vec![(min_time, 30.0), (max_time, 30.0)];
+        let ref_70 = vec![(min_time, 70.0), (max_time, 70.0)];
+        let datasets = vec![
+            Dataset::default()
+                .name("RSI(14)")
+                .marker(symbols::Marker::Braille)
+                .graph_type(GraphType::Line)
+                .style(theme.fg_accent())
+                .data(&rsi_data),
+            Dataset::default()
+                .name("30")
+                .graph_type(GraphType::Line)
+                .style(theme.fg_muted())
+                .data(&ref_30),
+            Dataset::default()
+                .name("70")
+                .graph_type(GraphType::Line)
+                .style(theme.fg_muted())
+                .data(&ref_70),
+        ];
+        let chart = Chart::new(datasets)
+            .block(
+                Block::default()
+                    .title("RSI(14)")
+                    .borders(Borders::TOP)
+                    .style(theme.canvas())
+                    .border_style(Style::default().fg(theme.border).bg(theme.background)),
+            )
+            .x_axis(
+                Axis::default()
+                    .style(theme.fg_foreground())
+                    .bounds([min_time, max_time]),
+            )
+            .y_axis(
+                Axis::default()
+                    .style(theme.fg_foreground())
+                    .bounds([0.0, 100.0]),
+            );
+        f.render_widget(chart, rsi_area);
+    };
+
+    let render_macd = |f: &mut Frame, macd_area: Rect| {
+        let Some(c) = cache else {
+            return;
+        };
+        let macd_data = indicator_xy_visible(slice, &c.macd.macd, global_start);
+        let signal_data = indicator_xy_visible(slice, &c.macd.signal, global_start);
+        let hist_data = indicator_xy_visible(slice, &c.macd.histogram, global_start);
+        if macd_data.is_empty() && signal_data.is_empty() && hist_data.is_empty() {
+            return;
+        }
+        let mut all = Vec::new();
+        all.extend_from_slice(&macd_data);
+        all.extend_from_slice(&signal_data);
+        all.extend_from_slice(&hist_data);
+        let y_bounds = oscillator_bounds(&all, -1.0, 1.0);
+
+        let mut datasets = Vec::new();
+        if !hist_data.is_empty() {
+            datasets.push(
+                Dataset::default()
+                    .name("Hist")
+                    .marker(symbols::Marker::Braille)
+                    .graph_type(GraphType::Line)
+                    .style(theme.fg_border())
+                    .data(&hist_data),
+            );
+        }
+        if !macd_data.is_empty() {
+            datasets.push(
+                Dataset::default()
+                    .name("MACD")
+                    .marker(symbols::Marker::Braille)
+                    .graph_type(GraphType::Line)
+                    .style(theme.fg_accent())
+                    .data(&macd_data),
+            );
+        }
+        if !signal_data.is_empty() {
+            datasets.push(
+                Dataset::default()
+                    .name("Signal")
+                    .marker(symbols::Marker::Braille)
+                    .graph_type(GraphType::Line)
+                    .style(theme.fg_positive())
+                    .data(&signal_data),
+            );
+        }
+        let chart = Chart::new(datasets)
+            .block(
+                Block::default()
+                    .title("MACD 12/26/9")
+                    .borders(Borders::TOP)
+                    .style(theme.canvas())
+                    .border_style(Style::default().fg(theme.border).bg(theme.background)),
+            )
+            .x_axis(
+                Axis::default()
+                    .style(theme.fg_foreground())
+                    .bounds([min_time, max_time]),
+            )
+            .y_axis(
+                Axis::default()
+                    .style(theme.fg_foreground())
+                    .bounds(y_bounds),
+            );
+        f.render_widget(chart, macd_area);
+    };
+
+    if app.chart_indicators.needs_subpane() {
+        let main_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(55), Constraint::Min(4)])
+            .split(inner);
+        render_price(f, main_chunks[0]);
+
+        let sub_constraints = match (app.chart_indicators.rsi_14, app.chart_indicators.macd) {
+            (true, true) => vec![Constraint::Ratio(1, 1), Constraint::Ratio(1, 1)],
+            _ => vec![Constraint::Min(3)],
+        };
+        let sub_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(sub_constraints)
+            .split(main_chunks[1]);
+        let mut idx = 0;
+        if app.chart_indicators.rsi_14 {
+            if cache.is_some() {
+                render_rsi(f, sub_chunks[idx]);
+            } else {
+                draw_indicator_subpane_placeholder(f, sub_chunks[idx], theme);
+            }
+            idx += 1;
+        }
+        if app.chart_indicators.macd {
+            if cache.is_some() {
+                render_macd(f, sub_chunks[idx]);
+            } else {
+                draw_indicator_subpane_placeholder(f, sub_chunks[idx], theme);
+            }
+        }
+    } else {
+        render_price(f, inner);
     }
-
-    let datasets = vec![Dataset::default()
-        .name("Close")
-        .marker(symbols::Marker::Braille)
-        .graph_type(GraphType::Line)
-        .style(theme.fg_accent())
-        .data(&data)];
-
-    let format_time = |time: &f64| format_time_axis(*time * 1000.0, intraday);
-    let format_price =
-        |price: &f64| crate::app::format::format_usd_price(*price);
-
-    let chart = Chart::new(datasets)
-        .x_axis(
-            Axis::default()
-                .title(Line::from(vec![Span::styled(
-                    format!("UTC  {vis_from} → {vis_to}"),
-                    theme.fg_foreground(),
-                )]))
-                .style(theme.fg_foreground())
-                .bounds([min_time, max_time])
-                .labels(vec![
-                    Span::styled(format_time(&min_time), theme.fg_foreground()),
-                    Span::styled(
-                        format_time(&((min_time + max_time) / 2.0)),
-                        theme.fg_foreground(),
-                    ),
-                    Span::styled(format_time(&max_time), theme.fg_foreground()),
-                ]),
-        )
-        .y_axis(
-            Axis::default()
-                .title(Line::from(vec![Span::styled(
-                    "Price",
-                    theme.fg_foreground(),
-                )]))
-                .style(theme.fg_foreground())
-                .bounds([price_min, price_max])
-                .labels(vec![
-                    Span::styled(format_price(&price_min), theme.fg_foreground()),
-                    Span::styled(
-                        format_price(&((price_min + price_max) / 2.0)),
-                        theme.fg_foreground(),
-                    ),
-                    Span::styled(format_price(&price_max), theme.fg_foreground()),
-                ]),
-        );
-
-    f.render_widget(chart, inner);
 }
 
 /// Candlesticks in equal-width slots so bars sit closer than edge-to-edge indexing (Issue #7).

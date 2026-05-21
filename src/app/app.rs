@@ -8,7 +8,10 @@ use crate::app::app_error::{
     push_error_log, persistence_for_app_error, ActiveErrorState, AppError, ErrorLogEntry,
     ErrorPersistence, ErrorSourceDomain, LastFailedFetch, ERROR_TRANSIENT_TTL,
 };
-use crate::app::charts::{viewport_zoom_in, viewport_zoom_out, ChartDisplayMode, ChartViewport};
+use crate::app::charts::{
+    viewport_zoom_in, viewport_zoom_out, ChartDisplayMode, ChartIndicatorCache,
+    ChartIndicatorToggles, ChartViewport,
+};
 use crate::app::event::{join_event_thread, spawn_event_thread, Event};
 use crate::app::fetch_delivery::deliver_fetch_done;
 use crate::app::handlers::handle_event;
@@ -325,6 +328,10 @@ pub struct App {
     pub chart_viewport: ChartViewport,
     /// Line vs candlestick rendering (Issue #7).
     pub chart_mode: ChartDisplayMode,
+    /// Charts tab: SMA/EMA/RSI/MACD toggles (Issue #21 / §46.2).
+    pub chart_indicators: ChartIndicatorToggles,
+    /// Precomputed indicators for `historical_data` (rebuilt on fetch/toggle).
+    pub(crate) chart_indicator_cache: Option<ChartIndicatorCache>,
     /// Issue #6 — add holding (shares / price) modal.
     pub portfolio_dialog: Option<PortfolioAddDialog>,
     /// Issue #6 — first `d` arms; second `d` or `y` confirms remove.
@@ -585,6 +592,8 @@ impl App {
             time_range: TimeRange::default(),
             chart_viewport: ChartViewport::default(),
             chart_mode: ChartDisplayMode::default(),
+            chart_indicators: ChartIndicatorToggles::default(),
+            chart_indicator_cache: None,
             portfolio_dialog: None,
             portfolio_remove_armed: false,
             alert_add_dialog: None,
@@ -1406,7 +1415,34 @@ impl App {
     pub fn on_active_symbol_changed_for_charts(&mut self) {
         self.historical_data = None;
         self.chart_viewport = ChartViewport::default();
+        self.chart_indicator_cache = None;
         self.last_charts_network_poll = None;
+    }
+
+    /// Rebuild indicator cache from the current historical close series (Issue #21 / §46.2).
+    pub(crate) fn rebuild_chart_indicator_cache(&mut self) {
+        if !self.chart_indicators.any_enabled() {
+            self.chart_indicator_cache = None;
+            return;
+        }
+        let Some(h) = self.historical_data.as_ref() else {
+            self.chart_indicator_cache = None;
+            return;
+        };
+        if h.results.is_empty() {
+            self.chart_indicator_cache = None;
+            return;
+        }
+        let closes: Vec<f64> = h.results.iter().map(|b| b.c).collect();
+        self.chart_indicator_cache = Some(ChartIndicatorCache::from_closes(&closes));
+    }
+
+    fn sync_chart_indicator_cache_after_toggle(&mut self) {
+        if self.chart_indicators.any_enabled() {
+            self.rebuild_chart_indicator_cache();
+        } else {
+            self.chart_indicator_cache = None;
+        }
     }
 
     /// Clear news UI when the active symbol changes while on the News tab (SPEC §10.3).
@@ -1938,6 +1974,7 @@ impl App {
                             &symbol,
                         );
                         self.historical_data = Some(data);
+                        self.rebuild_chart_indicator_cache();
                         if matches!(self.last_failed_fetch, LastFailedFetch::Historical) {
                             self.last_failed_fetch = LastFailedFetch::None;
                         }
@@ -2390,6 +2427,7 @@ impl App {
         if changed {
             self.time_range = tr;
             self.historical_data = None;
+            self.chart_indicator_cache = None;
             self.chart_viewport = ChartViewport::default();
             if self.active_runtime_error.as_ref().is_some_and(|a| {
                 a.source_domain == ErrorSourceDomain::Charts
@@ -2445,6 +2483,30 @@ impl App {
 
     pub fn charts_toggle_mode(&mut self) {
         self.chart_mode = self.chart_mode.toggle();
+    }
+
+    /// Toggle SMA(20) overlay on the Charts line chart (Issue #21).
+    pub fn charts_toggle_sma_20(&mut self) {
+        self.chart_indicators.sma_20 = !self.chart_indicators.sma_20;
+        self.sync_chart_indicator_cache_after_toggle();
+    }
+
+    /// Toggle EMA(20) overlay on the Charts line chart (Issue #21).
+    pub fn charts_toggle_ema_20(&mut self) {
+        self.chart_indicators.ema_20 = !self.chart_indicators.ema_20;
+        self.sync_chart_indicator_cache_after_toggle();
+    }
+
+    /// Toggle RSI(14) sub-pane on the Charts tab (Issue #21).
+    pub fn charts_toggle_rsi_14(&mut self) {
+        self.chart_indicators.rsi_14 = !self.chart_indicators.rsi_14;
+        self.sync_chart_indicator_cache_after_toggle();
+    }
+
+    /// Toggle MACD(12/26/9) sub-pane on the Charts tab (Issue #21).
+    pub fn charts_toggle_macd(&mut self) {
+        self.chart_indicators.macd = !self.chart_indicators.macd;
+        self.sync_chart_indicator_cache_after_toggle();
     }
 
     pub fn next_tab(&mut self) {
