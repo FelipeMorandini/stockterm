@@ -35,6 +35,8 @@ pub enum BindingLayer {
     AlertDialog,
     /// Table filter edit mode on Stock View / Portfolio (Issue #137 / SPEC §28).
     FilterInput,
+    /// Backtest tab (Issue #25 / SPEC §47.5).
+    Backtest,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -152,6 +154,14 @@ pub enum Action {
     FilterSlash,
     /// Filter mode: append ASCII alnum to query (`char:0`–`9`, `char:a`–`z` defaults).
     FilterQueryChar,
+    /// Run backtest on loaded historical data (Issue #25).
+    BacktestRun,
+    /// Export last backtest to `~/.stockterm/backtest_*.{csv,json}`.
+    BacktestExport,
+    /// Cycle SMA crossover ↔ RSI mean-reversion strategy.
+    BacktestStrategyNext,
+    BacktestScrollUp,
+    BacktestScrollDown,
 }
 
 #[inline]
@@ -192,6 +202,8 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         FilterClear | FilterCommit | FilterBackspace | FilterSlash | FilterQueryChar => {
             BindingLayer::FilterInput
         }
+        BacktestRun | BacktestExport | BacktestStrategyNext | BacktestScrollUp
+        | BacktestScrollDown => BindingLayer::Backtest,
     }
 }
 
@@ -677,6 +689,14 @@ const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = {
         (FilterInput, "char:x", FilterQueryChar),
         (FilterInput, "char:y", FilterQueryChar),
         (FilterInput, "char:z", FilterQueryChar),
+        (Backtest, "enter", BacktestRun),
+        (Backtest, "char:r", BacktestRun),
+        (Backtest, "char:x", BacktestExport),
+        (Backtest, "char:n", BacktestStrategyNext),
+        (Backtest, "char:j", BacktestScrollDown),
+        (Backtest, "down", BacktestScrollDown),
+        (Backtest, "char:k", BacktestScrollUp),
+        (Backtest, "up", BacktestScrollUp),
     ]
 };
 
@@ -1072,7 +1092,7 @@ mod tests {
 
     #[test]
     fn default_bindings_total_row_count() {
-        assert_eq!(default_bindings().len(), 224);
+        assert_eq!(default_bindings().len(), 232);
     }
 
     #[test]

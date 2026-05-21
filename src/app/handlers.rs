@@ -93,7 +93,48 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             Tab::Charts => {
                 handle_charts_events(app, key);
             }
+            Tab::Backtest => {
+                handle_backtest_events(app, key);
+            }
         },
+    }
+}
+
+fn handle_backtest_events(app: &mut App, key: KeyEvent) {
+    use Action::*;
+    if let Some(a) = app.resolved_keymap.action(BindingLayer::Backtest, &key) {
+        match a {
+            BacktestRun => {
+                let enter = key.code == KeyCode::Enter && key.modifiers == KeyModifiers::NONE;
+                let run_key = matches!(key.code, KeyCode::Char('r') | KeyCode::Char('R'))
+                    && letter_key_plain(key.modifiers);
+                if enter || run_key {
+                    app.request_backtest_run();
+                }
+            }
+            BacktestExport if key.modifiers == KeyModifiers::NONE
+                || (key.code == KeyCode::Char('x') && letter_key_plain(key.modifiers)) =>
+            {
+                if let Err(e) = app.backtest_export_to_disk() {
+                    app.surface_runtime_error(
+                        Tab::Backtest,
+                        crate::app::app_error::ErrorSourceDomain::Backtest,
+                        crate::app::app_error::AppError::Internal(e),
+                        true,
+                    );
+                }
+            }
+            BacktestStrategyNext if letter_key_plain(key.modifiers) => {
+                app.backtest_cycle_strategy();
+            }
+            BacktestScrollDown if letter_key_plain(key.modifiers) => {
+                app.backtest_trade_scroll(true);
+            }
+            BacktestScrollUp if letter_key_plain(key.modifiers) => {
+                app.backtest_trade_scroll(false);
+            }
+            _ => {}
+        }
     }
 }
 
@@ -342,7 +383,10 @@ fn settings_edit_apply_keymap_action(app: &mut App, key: &KeyEvent, action: Acti
         return;
     }
     match (action, mode) {
-        (SettingsEditDigit, _) => {
+        (SettingsEditDigit, SettingsEdit::RefreshRate)
+        | (SettingsEditDigit, SettingsEdit::BacktestCapital)
+        | (SettingsEditDigit, SettingsEdit::BacktestCommission)
+        | (SettingsEditDigit, SettingsEdit::BacktestSlippage) => {
             let _ = settings_edit_append_digit(app, key);
         }
         (SettingsEditSymbolChar, SettingsEdit::DefaultSymbol) => {
@@ -350,8 +394,27 @@ fn settings_edit_apply_keymap_action(app: &mut App, key: &KeyEvent, action: Acti
         }
         // Refresh-rate row: `char:a`–`z` chords resolve to `SettingsEditSymbolChar` but letters are N/A.
         (SettingsEditSymbolChar, SettingsEdit::RefreshRate) => {}
+        (SettingsEditSymbolChar, SettingsEdit::BacktestCapital)
+        | (SettingsEditSymbolChar, SettingsEdit::BacktestCommission)
+        | (SettingsEditSymbolChar, SettingsEdit::BacktestSlippage) => {
+            let _ = settings_edit_append_float_char(app, key);
+        }
         _ => {}
     }
+}
+
+fn settings_edit_append_float_char(app: &mut App, key: &KeyEvent) -> bool {
+    if !letter_key_plain(key.modifiers) {
+        return false;
+    }
+    let KeyCode::Char(c) = key.code else {
+        return false;
+    };
+    if c.is_ascii_digit() || c == '.' {
+        app.settings_edit_buffer.push(c);
+        return true;
+    }
+    false
 }
 
 /// Wildcard append when no `SettingsEdit` chord matched (e.g. Shift+letter).
@@ -362,6 +425,12 @@ fn settings_edit_apply_unmatched_wildcard(app: &mut App, key: &KeyEvent, mode: S
         }
         SettingsEdit::DefaultSymbol => {
             let _ = settings_edit_append_symbol_char(app, key);
+        }
+        SettingsEdit::BacktestCapital
+        | SettingsEdit::BacktestCommission
+        | SettingsEdit::BacktestSlippage => {
+            let _ = settings_edit_append_digit(app, key);
+            let _ = settings_edit_append_float_char(app, key);
         }
     }
 }

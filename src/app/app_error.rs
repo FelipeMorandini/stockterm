@@ -180,6 +180,7 @@ pub enum ErrorSourceDomain {
     Portfolio,
     Alerts,
     NewsOpenUrl,
+    Backtest,
     #[allow(dead_code)]
     Other,
 }

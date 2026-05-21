@@ -14,7 +14,7 @@ pub struct HistoricalResponse {
     pub count: u32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct HistoricalData {
     pub o: f64, // Open
     pub h: f64, // High

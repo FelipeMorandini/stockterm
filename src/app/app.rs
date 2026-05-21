@@ -52,6 +52,7 @@ pub enum Tab {
     News,
     Charts,
     Settings,
+    Backtest,
 }
 
 impl Tab {
@@ -65,6 +66,7 @@ impl Tab {
             Tab::News => "news",
             Tab::Charts => "charts",
             Tab::Settings => "settings",
+            Tab::Backtest => "backtest",
         }
     }
 
@@ -77,6 +79,7 @@ impl Tab {
             "news" | "News" => Tab::News,
             "charts" | "Charts" => Tab::Charts,
             "settings" | "Settings" => Tab::Settings,
+            "backtest" | "Backtest" => Tab::Backtest,
             _ => return None,
         })
     }
@@ -86,6 +89,9 @@ impl Tab {
 pub enum SettingsEdit {
     RefreshRate,
     DefaultSymbol,
+    BacktestCapital,
+    BacktestCommission,
+    BacktestSlippage,
 }
 
 /// Add-holding dialog field focus (Issue #6 / SPEC §13).
@@ -153,6 +159,8 @@ pub enum InflightRecovery {
     Stock,
     /// News tab URL open/copy when [`UrlOpDone`] could not be delivered (§27).
     NewsUrlOp,
+    /// Backtest tab when [`FetchDone::Backtest`] could not be delivered (§47 / audit).
+    Backtest,
 }
 
 /// Outcomes from background HTTP tasks (never awaited on the draw/input hot path).
@@ -177,6 +185,9 @@ pub enum FetchDone {
         generation: u64,
         query: String,
         result: Result<SymbolSearchResponse, ProviderError>,
+    },
+    Backtest {
+        result: Result<crate::models::backtest::BacktestReport, crate::backtest::BacktestError>,
     },
 }
 
@@ -332,6 +343,16 @@ pub struct App {
     pub chart_indicators: ChartIndicatorToggles,
     /// Precomputed indicators for `historical_data` (rebuilt on fetch/toggle).
     pub(crate) chart_indicator_cache: Option<ChartIndicatorCache>,
+    /// Last backtest result (session-only; Issue #25 / §47.3).
+    pub backtest_report: Option<crate::models::backtest::BacktestReport>,
+    pub backtest_inflight: bool,
+    backtest_inflight_since: Option<Instant>,
+    pub backtest_trade_list_state: ratatui::widgets::TableState,
+    pub backtest_flash: Option<(String, Instant)>,
+    /// Precomputed Backtest tab table/chart data (Issue #25 — not built in `draw`).
+    pub(crate) backtest_draw_cache: Option<crate::app::backtest_ui::BacktestDrawCache>,
+    /// Precomputed Backtest left-pane parameter lines (Issue #25 — not built in `draw`).
+    pub(crate) backtest_params_cache: Option<crate::app::backtest_ui::BacktestParamsCache>,
     /// Issue #6 — add holding (shares / price) modal.
     pub portfolio_dialog: Option<PortfolioAddDialog>,
     /// Issue #6 — first `d` arms; second `d` or `y` confirms remove.
@@ -360,7 +381,7 @@ const SEARCH_DEBOUNCE: Duration = Duration::from_millis(250);
 const SESSION_PERSIST_DEBOUNCE: Duration = Duration::from_millis(400);
 
 /// Rows in the Settings tab (refresh, default symbol, notifications, theme, provider, keymap, layout).
-pub const SETTINGS_ROW_COUNT: usize = 7;
+pub const SETTINGS_ROW_COUNT: usize = 10;
 
 const SETTINGS_SAVED_FLASH: Duration = Duration::from_secs(2);
 
@@ -594,6 +615,13 @@ impl App {
             chart_mode: ChartDisplayMode::default(),
             chart_indicators: ChartIndicatorToggles::default(),
             chart_indicator_cache: None,
+            backtest_report: None,
+            backtest_inflight: false,
+            backtest_inflight_since: None,
+            backtest_trade_list_state: ratatui::widgets::TableState::default(),
+            backtest_flash: None,
+            backtest_draw_cache: None,
+            backtest_params_cache: None,
             portfolio_dialog: None,
             portfolio_remove_armed: false,
             alert_add_dialog: None,
@@ -611,6 +639,7 @@ impl App {
             app.alerts_state.select(Some(0));
         }
 
+        crate::app::backtest_ui::rebuild_backtest_params_cache(&mut app);
         app
     }
 
@@ -1316,6 +1345,17 @@ impl App {
             self.search_refresh_inflight = false;
             self.search_inflight_since = None;
         }
+
+        if self.backtest_inflight
+            && Self::inflight_is_stale(self.backtest_inflight_since, stale_after)
+        {
+            tracing::warn!(
+                target: "stockterm::fetch",
+                domain = "backtest",
+                "cleared stale inflight after channel delivery failure"
+            );
+            self.apply_inflight_recovery(InflightRecovery::Backtest);
+        }
     }
 
     fn inflight_is_stale(since: Option<Instant>, stale_after: Duration) -> bool {
@@ -1417,6 +1457,8 @@ impl App {
         self.chart_viewport = ChartViewport::default();
         self.chart_indicator_cache = None;
         self.last_charts_network_poll = None;
+        crate::app::backtest_ui::clear_backtest_session(self);
+        crate::app::backtest_ui::rebuild_backtest_params_cache(self);
     }
 
     /// Rebuild indicator cache from the current historical close series (Issue #21 / §46.2).
@@ -1697,6 +1739,19 @@ impl App {
                 self.settings_editing = Some(SettingsEdit::DefaultSymbol);
                 self.settings_edit_buffer = self.config.default_symbol.clone();
             }
+            7 => {
+                self.settings_editing = Some(SettingsEdit::BacktestCapital);
+                self.settings_edit_buffer = format!("{}", self.config.backtest.initial_capital);
+            }
+            8 => {
+                self.settings_editing = Some(SettingsEdit::BacktestCommission);
+                self.settings_edit_buffer =
+                    format!("{}", self.config.backtest.commission_per_trade);
+            }
+            9 => {
+                self.settings_editing = Some(SettingsEdit::BacktestSlippage);
+                self.settings_edit_buffer = format!("{}", self.config.backtest.slippage_bps);
+            }
             _ => {}
         }
     }
@@ -1765,10 +1820,72 @@ impl App {
                     self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
                 }
             }
+            SettingsEdit::BacktestCapital => {
+                let trimmed = self.settings_edit_buffer.trim();
+                let Ok(v) = trimmed.parse::<f64>() else {
+                    self.settings_inline_error =
+                        Some("Initial capital must be a number.".into());
+                    return true;
+                };
+                if v <= 0.0 {
+                    self.settings_inline_error =
+                        Some("Initial capital must be positive.".into());
+                    return true;
+                }
+                self.config.backtest.initial_capital = v;
+                self.settings_save_backtest_row();
+            }
+            SettingsEdit::BacktestCommission => {
+                let trimmed = self.settings_edit_buffer.trim();
+                let Ok(v) = trimmed.parse::<f64>() else {
+                    self.settings_inline_error =
+                        Some("Commission must be a number.".into());
+                    return true;
+                };
+                if v < 0.0 {
+                    self.settings_inline_error =
+                        Some("Commission cannot be negative.".into());
+                    return true;
+                }
+                self.config.backtest.commission_per_trade = v;
+                self.settings_save_backtest_row();
+            }
+            SettingsEdit::BacktestSlippage => {
+                let trimmed = self.settings_edit_buffer.trim();
+                let Ok(v) = trimmed.parse::<f64>() else {
+                    self.settings_inline_error =
+                        Some("Slippage (bps) must be a number.".into());
+                    return true;
+                };
+                if v < 0.0 {
+                    self.settings_inline_error =
+                        Some("Slippage cannot be negative.".into());
+                    return true;
+                }
+                self.config.backtest.slippage_bps = v;
+                self.settings_save_backtest_row();
+            }
         }
         self.settings_editing = None;
         self.settings_edit_buffer.clear();
         true
+    }
+
+    fn settings_save_backtest_row(&mut self) {
+        if let Err(e) = self.try_save_config_with_session() {
+            self.surface_runtime_error(
+                Tab::Settings,
+                ErrorSourceDomain::Settings,
+                AppError::ConfigSave(format!("Failed to save backtest settings: {e}")),
+                true,
+            );
+        } else if self.active_runtime_error.as_ref().is_some_and(|a| {
+            a.source_domain == ErrorSourceDomain::Settings
+        }) {
+            self.active_runtime_error = None;
+        }
+        crate::app::backtest_ui::rebuild_backtest_params_cache(self);
+        self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
     }
 
     pub fn settings_try_enter_row(&mut self) {
@@ -1776,7 +1893,7 @@ impl App {
             return;
         }
         match self.settings_row {
-            0 | 1 => self.settings_begin_edit(),
+            0 | 1 | 7 | 8 | 9 => self.settings_begin_edit(),
             2 => self.settings_toggle_notifications(),
             3 => self.settings_commit_theme_preset(),
             4 => self.settings_toggle_provider(),
@@ -1941,6 +2058,11 @@ impl App {
                 }
             }
             InflightRecovery::NewsUrlOp => self.news_url_op_inflight = false,
+            InflightRecovery::Backtest => {
+                self.backtest_inflight = false;
+                self.backtest_inflight_since = None;
+                self.backtest_draw_cache = None;
+            }
         }
     }
 
@@ -1974,7 +2096,10 @@ impl App {
                             &symbol,
                         );
                         self.historical_data = Some(data);
+                        // Bars may differ on refresh (same symbol/range); drop stale BT report/hint.
+                        crate::app::backtest_ui::clear_backtest_session(self);
                         self.rebuild_chart_indicator_cache();
+                        crate::app::backtest_ui::rebuild_backtest_params_cache(self);
                         if matches!(self.last_failed_fetch, LastFailedFetch::Historical) {
                             self.last_failed_fetch = LastFailedFetch::None;
                         }
@@ -2105,6 +2230,34 @@ impl App {
                         );
                         self.search_results = None;
                         self.search_table_state.select(None);
+                    }
+                }
+            }
+            FetchDone::Backtest { result } => {
+                self.backtest_inflight = false;
+                self.backtest_inflight_since = None;
+                match result {
+                    Ok(report) => {
+                        let n = report.trades.len();
+                        self.backtest_report = Some(report);
+                        crate::app::backtest_ui::rebuild_backtest_draw_cache(self);
+                        if self.backtest_trade_list_state.selected().is_none() && n > 0 {
+                            self.backtest_trade_list_state.select(Some(0));
+                        }
+                        if self.active_runtime_error.as_ref().is_some_and(|a| {
+                            a.source_domain == ErrorSourceDomain::Backtest
+                        }) {
+                            self.clear_active_runtime_unless_alerts_save();
+                        }
+                    }
+                    Err(err) => {
+                        crate::app::backtest_ui::clear_backtest_session(self);
+                        self.surface_runtime_error(
+                            Tab::Backtest,
+                            ErrorSourceDomain::Backtest,
+                            AppError::Internal(err.to_string()),
+                            true,
+                        );
                     }
                 }
             }
@@ -2429,6 +2582,8 @@ impl App {
             self.historical_data = None;
             self.chart_indicator_cache = None;
             self.chart_viewport = ChartViewport::default();
+            crate::app::backtest_ui::clear_backtest_session(self);
+            crate::app::backtest_ui::rebuild_backtest_params_cache(self);
             if self.active_runtime_error.as_ref().is_some_and(|a| {
                 a.source_domain == ErrorSourceDomain::Charts
             }) {
@@ -2509,6 +2664,191 @@ impl App {
         self.sync_chart_indicator_cache_after_toggle();
     }
 
+    /// Runs backtest off the UI thread (Issue #25 / §47.3).
+    pub fn request_backtest_run(&mut self) {
+        if self.backtest_inflight {
+            return;
+        }
+        let Some(hist) = self.historical_data.as_ref() else {
+            self.surface_runtime_error(
+                Tab::Backtest,
+                ErrorSourceDomain::Backtest,
+                AppError::Internal(
+                    "Load chart data first (Charts tab, Y1 recommended).".into(),
+                ),
+                true,
+            );
+            return;
+        };
+        if hist.results.is_empty() {
+            self.surface_runtime_error(
+                Tab::Backtest,
+                ErrorSourceDomain::Backtest,
+                AppError::Internal("Historical series is empty.".into()),
+                true,
+            );
+            return;
+        };
+        if let Err(e) = crate::backtest::verify_historical_symbol(hist, &self.symbol) {
+            self.surface_runtime_error(
+                Tab::Backtest,
+                ErrorSourceDomain::Backtest,
+                AppError::Internal(e.to_string()),
+                true,
+            );
+            return;
+        }
+        let Some(fetch_tx) = self.fetch_done_tx.clone() else {
+            return;
+        };
+        let recovery_tx = self.inflight_recovery_tx.clone();
+        let bars = hist.results.clone();
+        let symbol = self.symbol.clone();
+        let sim = self.config.backtest.clone();
+        let strategy = self.config.backtest_strategy.clone();
+        self.backtest_inflight = true;
+        self.backtest_inflight_since = Some(Instant::now());
+        tokio::task::spawn_blocking(move || {
+            let result = match std::panic::catch_unwind(AssertUnwindSafe(|| {
+                crate::backtest::run_backtest(&symbol, &bars, &sim, &strategy)
+            })) {
+                Ok(r) => r,
+                Err(payload) => {
+                    #[cfg(debug_assertions)]
+                    log_quote_batch_panic(&*payload);
+                    #[cfg(not(debug_assertions))]
+                    drop(payload);
+                    Err(crate::backtest::BacktestError::TaskPanicked)
+                }
+            };
+            crate::app::fetch_delivery::deliver_fetch_done(
+                &fetch_tx,
+                recovery_tx.as_ref(),
+                FetchDone::Backtest { result },
+                InflightRecovery::Backtest,
+            );
+        });
+    }
+
+    /// Cycles SMA ↔ RSI strategy and persists config (Issue #25).
+    ///
+    /// Does not auto-rerun; operator presses **Enter** / **`r`** on the Backtest tab.
+    pub fn backtest_cycle_strategy(&mut self) {
+        use crate::models::backtest::BacktestStrategyKind;
+        self.config.backtest_strategy.kind = match self.config.backtest_strategy.kind {
+            BacktestStrategyKind::SmaCrossover => BacktestStrategyKind::RsiMeanReversion,
+            BacktestStrategyKind::RsiMeanReversion => BacktestStrategyKind::SmaCrossover,
+        };
+        let _ = self.try_save_config_with_session();
+        crate::app::backtest_ui::rebuild_backtest_params_cache(self);
+    }
+
+    /// Scroll trade list on Backtest tab.
+    pub fn backtest_trade_scroll(&mut self, down: bool) {
+        let n = self
+            .backtest_report
+            .as_ref()
+            .map(|r| r.trades.len())
+            .unwrap_or(0);
+        if n == 0 {
+            return;
+        }
+        let cur = self.backtest_trade_list_state.selected().unwrap_or(0);
+        let next = if down {
+            (cur + 1).min(n - 1)
+        } else {
+            cur.saturating_sub(1)
+        };
+        self.backtest_trade_list_state.select(Some(next));
+    }
+
+    /// Writes JSON + CSV export under `~/.stockterm/` (Issue #25 / §47.6).
+    ///
+    /// Runs synchronously on the UI thread; intended for small report sizes.
+    pub fn backtest_export_to_disk(&mut self) -> Result<String, String> {
+        use crate::models::backtest::BacktestExportBundle;
+        use std::fs;
+        use std::io::Write;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let report = self
+            .backtest_report
+            .as_ref()
+            .ok_or_else(|| "Run a backtest first (Enter or r).".to_string())?;
+        let home = dirs::home_dir().ok_or_else(|| "home directory not found".to_string())?;
+        let dir = home.join(".stockterm");
+        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let sym = report.summary.symbol.replace('/', "_");
+        let stem = format!("backtest_{sym}_{ts}");
+        let json_path = dir.join(format!("{stem}.json"));
+        let csv_path = dir.join(format!("{stem}.csv"));
+
+        let bundle = BacktestExportBundle {
+            report: report.clone(),
+            sim: self.config.backtest.clone(),
+            strategy: self.config.backtest_strategy.clone(),
+        };
+        let json = serde_json::to_string_pretty(&bundle).map_err(|e| e.to_string())?;
+        fs::write(&json_path, json).map_err(|e| e.to_string())?;
+
+        let mut csv = std::io::BufWriter::new(
+            fs::File::create(&csv_path).map_err(|e| e.to_string())?,
+        );
+        writeln!(
+            csv,
+            "entry_ts,exit_ts,side,entry_price,exit_price,shares,pnl"
+        )
+        .map_err(|e| e.to_string())?;
+        for t in &report.trades {
+            writeln!(
+                csv,
+                "{},{},{},{},{},{},{}",
+                t.entry_ts, t.exit_ts, t.side, t.entry_price, t.exit_price, t.shares, t.pnl
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        writeln!(csv, "# symbol,{}", report.summary.symbol).map_err(|e| e.to_string())?;
+        writeln!(csv, "# total_pnl,{}", report.summary.total_pnl)
+            .map_err(|e| e.to_string())?;
+        writeln!(
+            csv,
+            "# max_drawdown_pct,{}",
+            report.summary.max_drawdown_pct
+        )
+        .map_err(|e| e.to_string())?;
+        csv.flush().map_err(|e| e.to_string())?;
+
+        let msg = format!(
+            "Exported to {} and {}",
+            csv_path.display(),
+            json_path.display()
+        );
+        self.backtest_flash = Some((msg.clone(), Instant::now() + Duration::from_secs(5)));
+        Ok(msg)
+    }
+
+    /// Status hint for Backtest tab (export flash or last run summary).
+    pub fn backtest_status_hint(&self) -> Option<String> {
+        if let Some((msg, until)) = &self.backtest_flash {
+            if Instant::now() < *until {
+                return Some(msg.clone());
+            }
+        }
+        if self.backtest_inflight {
+            return Some("Running backtest…".into());
+        }
+        self.backtest_report.as_ref().map(|r| {
+            format!(
+                "BT: {:+.1}% │ {} trades",
+                r.summary.total_return_pct, r.summary.trade_count
+            )
+        })
+    }
+
     pub fn next_tab(&mut self) {
         let from = self.active_tab;
         self.active_tab = match self.active_tab {
@@ -2518,7 +2858,8 @@ impl App {
             Tab::Search => Tab::News,
             Tab::News => Tab::Charts,
             Tab::Charts => Tab::Settings,
-            Tab::Settings => Tab::StockView,
+            Tab::Settings => Tab::Backtest,
+            Tab::Backtest => Tab::StockView,
         };
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
@@ -2530,13 +2871,14 @@ impl App {
     pub fn prev_tab(&mut self) {
         let from = self.active_tab;
         self.active_tab = match self.active_tab {
-            Tab::StockView => Tab::Settings,
+            Tab::StockView => Tab::Backtest,
             Tab::Portfolio => Tab::StockView,
             Tab::Alerts => Tab::Portfolio,
             Tab::Search => Tab::Alerts,
             Tab::News => Tab::Search,
             Tab::Charts => Tab::News,
             Tab::Settings => Tab::Charts,
+            Tab::Backtest => Tab::Settings,
         };
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
@@ -2925,6 +3267,7 @@ mod tests {
         assert_eq!(Tab::Charts.as_config_str(), "charts");
         assert_eq!(Tab::from_config_str("charts"), Some(Tab::Charts));
         assert_eq!(Tab::from_config_str("Charts"), Some(Tab::Charts));
+        assert_eq!(Tab::from_config_str("backtest"), Some(Tab::Backtest));
         assert!(Tab::from_config_str("nope").is_none());
     }
 
