@@ -4,7 +4,7 @@ use crate::app::format::format_usd_price;
 use crate::app::layout::centered_rect;
 use crate::app::styles::ResolvedTheme;
 use crate::app::App;
-use crate::models::options::{OptionContract, OptionsChain};
+use crate::models::options::{OptionContract, OptionsChain, OptionsChainSlice};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -42,9 +42,22 @@ pub struct OptionsDisplayCache {
     pub table_col_widths: Vec<Constraint>,
 }
 
+/// Merges inline expiration blocks from one HTTP response into the session cache (Issue #168).
+pub fn merge_options_inline_slices(
+    cache: &mut std::collections::HashMap<u64, crate::models::options::OptionsChainSlice>,
+    chain: &OptionsChain,
+    extra_slices: &std::collections::HashMap<u64, OptionsChainSlice>,
+) {
+    for (ts, slice) in extra_slices {
+        cache.insert(*ts, slice.clone());
+    }
+    cache.insert(chain.selected_expiration_ts, chain.slice.clone());
+}
+
 /// Clears session options data (symbol change, provider switch).
 pub fn clear_options_session(app: &mut App) {
     app.options_chain = None;
+    app.options_slices_by_ts.clear();
     app.options_no_listed = false;
     app.options_selected_strike = None;
     app.options_display.calls.clear();
@@ -388,7 +401,10 @@ pub fn draw_options(f: &mut Frame, app: &App, area: Rect, rt: &ResolvedTheme) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::options::{Expiration, OptionContract, OptionRight, OptionsChainSlice};
+    use crate::models::options::{
+        Expiration, OptionContract, OptionRight, OptionsChain, OptionsChainSlice,
+    };
+    use std::collections::HashMap;
 
     fn sample_chain() -> OptionsChain {
         OptionsChain {
@@ -459,6 +475,28 @@ mod tests {
     fn canonical_strikes_merges_calls_and_puts() {
         let chain = sample_chain();
         assert_eq!(canonical_strikes(&chain), vec![220.0, 225.0]);
+    }
+
+    #[test]
+    fn merge_options_inline_slices_inserts_all_keys() {
+        let chain = sample_chain();
+        let mut extra = HashMap::new();
+        extra.insert(
+            2,
+            OptionsChainSlice {
+                underlying: "AAPL".into(),
+                expiration: Expiration {
+                    ts: 2,
+                    label: "2026-06-27".into(),
+                },
+                calls: vec![],
+                puts: vec![],
+            },
+        );
+        let mut cache = HashMap::new();
+        merge_options_inline_slices(&mut cache, &chain, &extra);
+        assert!(cache.contains_key(&1));
+        assert!(cache.contains_key(&2));
     }
 
     #[test]

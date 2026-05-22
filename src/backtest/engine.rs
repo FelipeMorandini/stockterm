@@ -278,32 +278,8 @@ mod tests {
         assert_eq!(report.equity_curve.len(), 120);
     }
 
-    #[test]
-    fn run_backtest_fixture_sma_crossover_in_tolerance() {
-        use serde::Deserialize;
-        use std::fs;
-        use std::path::PathBuf;
-
-        #[derive(Deserialize)]
-        struct Fixture {
-            closes: Vec<f64>,
-            sma_fast: usize,
-            sma_slow: usize,
-            initial_capital: f64,
-            commission_per_trade: f64,
-            slippage_bps: f64,
-            expected_trade_count_min: usize,
-            expected_final_equity_min: f64,
-            expected_final_equity_max: f64,
-        }
-
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/backtest_sma_crossover_50_200.json");
-        let raw = fs::read_to_string(&path).expect("fixture");
-        let fixture: Fixture = serde_json::from_str(&raw).expect("parse");
-
-        let bars: Vec<HistoricalData> = fixture
-            .closes
+    fn fixture_bars_from_closes(closes: &[f64]) -> Vec<HistoricalData> {
+        closes
             .iter()
             .enumerate()
             .map(|(i, &c)| HistoricalData {
@@ -316,8 +292,33 @@ mod tests {
                 vw: c,
                 n: None,
             })
-            .collect();
+            .collect()
+    }
 
+    #[test]
+    fn run_backtest_fixture_sma_golden_metrics() {
+        use crate::backtest::test_util::{assert_summary_matches, GoldenSummaryExpect};
+        use serde::Deserialize;
+        use std::fs;
+        use std::path::PathBuf;
+
+        #[derive(Deserialize)]
+        struct Fixture {
+            closes: Vec<f64>,
+            sma_fast: usize,
+            sma_slow: usize,
+            initial_capital: f64,
+            commission_per_trade: f64,
+            slippage_bps: f64,
+            expected: GoldenSummaryExpect,
+        }
+
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/backtest_sma_crossover_50_200.json");
+        let raw = fs::read_to_string(&path).expect("fixture");
+        let fixture: Fixture = serde_json::from_str(&raw).expect("parse");
+
+        let bars = fixture_bars_from_closes(&fixture.closes);
         let sim = BacktestConfig {
             initial_capital: fixture.initial_capital,
             commission_per_trade: fixture.commission_per_trade,
@@ -328,9 +329,27 @@ mod tests {
         params.sma_slow = fixture.sma_slow;
 
         let report = run_backtest("FIX", &bars, &sim, &params).expect("ok");
-        assert!(report.summary.trade_count >= fixture.expected_trade_count_min);
-        let final_eq = report.equity_curve.last().map(|(_, e)| *e).unwrap_or(0.0);
-        assert!(final_eq >= fixture.expected_final_equity_min);
-        assert!(final_eq <= fixture.expected_final_equity_max);
+        assert_summary_matches(&report, &fixture.expected);
+    }
+
+    #[test]
+    fn backtest_fixture_deserializes() {
+        use crate::backtest::test_util::GoldenSummaryExpect;
+        use serde::Deserialize;
+        use std::fs;
+        use std::path::PathBuf;
+
+        #[derive(Deserialize)]
+        struct Fixture {
+            closes: Vec<f64>,
+            expected: GoldenSummaryExpect,
+        }
+
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/backtest_sma_crossover_50_200.json");
+        let raw = fs::read_to_string(&path).expect("fixture");
+        let fixture: Fixture = serde_json::from_str(&raw).expect("parse");
+        assert!(!fixture.closes.is_empty());
+        assert!(fixture.expected.trade_count > 0);
     }
 }

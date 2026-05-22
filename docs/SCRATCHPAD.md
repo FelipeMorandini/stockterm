@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Cleared 2026-05-21: Issue #22 §48 strategic debt → #167 (Polygon options), #168 (expiration slice cache). -->
+<!-- Cleared 2026-05-21: §49 shipped — Issues #165, #168 (PR #170). -->

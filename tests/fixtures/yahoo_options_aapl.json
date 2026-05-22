@@ -75,6 +75,58 @@
                 "impliedVolatility": 0.25
               }
             ]
+          },
+          {
+            "expirationDate": 1732752000,
+            "hasMiniOptions": false,
+            "calls": [
+              {
+                "contractSymbol": "AAPL241227C00230000",
+                "strike": 230.0,
+                "currency": "USD",
+                "lastPrice": 6.0,
+                "bid": 5.9,
+                "ask": 6.1,
+                "volume": 600,
+                "openInterest": 2100,
+                "impliedVolatility": 0.24
+              },
+              {
+                "contractSymbol": "AAPL241227C00235000",
+                "strike": 235.0,
+                "currency": "USD",
+                "lastPrice": 4.1,
+                "bid": 4.0,
+                "ask": 4.2,
+                "volume": 300,
+                "openInterest": 1500,
+                "impliedVolatility": 0.23
+              }
+            ],
+            "puts": [
+              {
+                "contractSymbol": "AAPL241227P00230000",
+                "strike": 230.0,
+                "currency": "USD",
+                "lastPrice": 4.5,
+                "bid": 4.4,
+                "ask": 4.6,
+                "volume": 200,
+                "openInterest": 900,
+                "impliedVolatility": 0.24
+              },
+              {
+                "contractSymbol": "AAPL241227P00235000",
+                "strike": 235.0,
+                "currency": "USD",
+                "lastPrice": 6.2,
+                "bid": 6.1,
+                "ask": 6.3,
+                "volume": 150,
+                "openInterest": 700,
+                "impliedVolatility": 0.22
+              }
+            ]
           }
         ]
       }

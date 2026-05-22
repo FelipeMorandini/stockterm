@@ -7,6 +7,9 @@ mod rsi_reversion;
 mod sma_crossover;
 mod strategy;
 
+#[cfg(test)]
+mod test_util;
+
 pub use engine::{run_backtest, strategy_from_params, verify_historical_symbol};
 pub use error::BacktestError;
 pub use rsi_reversion::RsiMeanReversionStrategy;
