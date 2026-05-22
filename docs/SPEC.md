@@ -9267,7 +9267,7 @@ After maintainer approval of §52, the **engineer** may implement per [`.cursor/
 
 ### 52.7 Status
 
-- **Status:** Shipped (manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#65** + Options polish — sign-off **2026-05-22**).
+- **Status:** Shipped (manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#65** + Options polish — sign-off **2026-05-22**; **PR:** [#178](https://github.com/FelipeMorandini/stockterm/pull/178)).
 - **Tracking:** [Issue #65](https://github.com/FelipeMorandini/stockterm/issues/65); Options polish (§52.2, same PR).
 - **Follow-ups:** [#176](https://github.com/FelipeMorandini/stockterm/issues/176) (Polygon `next_url` pagination), [#177](https://github.com/FelipeMorandini/stockterm/issues/177) (Options zero-clone draw).
 - **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#65**, Options polish section.
