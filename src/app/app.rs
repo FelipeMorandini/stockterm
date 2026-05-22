@@ -2881,20 +2881,30 @@ impl App {
         self.options_inflight_since = Some(Instant::now());
         self.options_no_listed = false;
         tokio::spawn(async move {
-            let (result, extra_slices) = if cfg.provider == MarketProviderKind::Yahoo {
-                match crate::api::yahoo_options::yahoo_options_chain_with_slices(
-                    &sym,
-                    expiration_ts,
-                )
-                .await
-                {
-                    Ok(parsed) => (Ok(parsed.chain), parsed.slices_by_ts),
-                    Err(e) => (Err(e), std::collections::HashMap::new()),
+            let (result, extra_slices) = match cfg.provider {
+                MarketProviderKind::Yahoo => {
+                    match crate::api::yahoo_options::yahoo_options_chain_with_slices(
+                        &sym,
+                        expiration_ts,
+                    )
+                    .await
+                    {
+                        Ok(parsed) => (Ok(parsed.chain), parsed.slices_by_ts),
+                        Err(e) => (Err(e), std::collections::HashMap::new()),
+                    }
                 }
-            } else {
-                let provider = crate::api::market_provider_for(cfg.provider);
-                let result = provider.get_options_chain(&sym, expiration_ts, &cfg).await;
-                (result, std::collections::HashMap::new())
+                MarketProviderKind::Polygon => {
+                    match crate::api::polygon_options::polygon_options_chain_with_slices(
+                        &sym,
+                        expiration_ts,
+                        &cfg,
+                    )
+                    .await
+                    {
+                        Ok(parsed) => (Ok(parsed.chain), parsed.slices_by_ts),
+                        Err(e) => (Err(e), std::collections::HashMap::new()),
+                    }
+                }
             };
             crate::app::fetch_delivery::deliver_fetch_done(
                 &fetch_tx,

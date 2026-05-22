@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**[#165](https://github.com/FelipeMorandini/stockterm/issues/165) / [#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — §47 / §48 follow-ons: backtest golden metric fixtures + Yahoo options expiration slice cache (**§49**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#165, #168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#22](https://github.com/FelipeMorandini/stockterm/issues/22)** — options chains + **Options** tab (calls/puts table, expiration selector, Greeks toggle — **§48**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#22** — sign-off **2026-05-21**; **PR:** [#169](https://github.com/FelipeMorandini/stockterm/pull/169)). **[#25](https://github.com/FelipeMorandini/stockterm/issues/25)** — backtesting engine + **Backtest** tab (strategy trait, SMA crossover / RSI mean-reversion, equity curve, CSV/JSON export — **§47**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#25** — sign-off **2026-05-21**; **PR:** [#166](https://github.com/FelipeMorandini/stockterm/pull/166)). **[#21](https://github.com/FelipeMorandini/stockterm/issues/21)** — technical indicators (SMA / EMA / RSI / MACD) on the Charts tab (**§46**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21** — sign-off **2026-05-21**; **PR:** [#164](https://github.com/FelipeMorandini/stockterm/pull/164)). **Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#160](https://github.com/FelipeMorandini/stockterm/issues/160) / [#161](https://github.com/FelipeMorandini/stockterm/issues/161)** — §44 follow-ons: clear **`symbol_kind_cache`** on Settings provider change + Polygon crypto **`X:`** wire mapping in **`resolve_provider_symbol`** (**§45**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#160, #161** — sign-off **2026-05-20**; **PR:** [#163](https://github.com/FelipeMorandini/stockterm/pull/163)). **[#157](https://github.com/FelipeMorandini/stockterm/issues/157) / [#158](https://github.com/FelipeMorandini/stockterm/issues/158)** — provider-aware symbol resolver (Yahoo vs Polygon HTTP namespaces) + **`SymbolKind`** from Yahoo **`quoteType`** metadata with heuristic fallback (**§44**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#157, #158** — sign-off **2026-05-20**; **PR:** [#162](https://github.com/FelipeMorandini/stockterm/pull/162)). **[#23](https://github.com/FelipeMorandini/stockterm/issues/23)** — cryptocurrency quotes via Yahoo-style symbols (`BTC-USD`), adaptive price formatting, **`SymbolKind`** UI label, Stock View hyphen entry, §43.13 quote-cache alignment (**§43**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#23** — sign-off **2026-05-19**; **PR:** [#159](https://github.com/FelipeMorandini/stockterm/pull/159)). **[#51](https://github.com/FelipeMorandini/stockterm/issues/51) / [#28](https://github.com/FelipeMorandini/stockterm/issues/28)** — global **`q`/`Q`** quit via **`should_global_quit`**, Tab meta policy, **`STOCKTERM_API_KEY`** runtime overlay (no env merge on load — **§42**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** — sign-off **2026-05-19**; **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156)). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**[#167](https://github.com/FelipeMorandini/stockterm/issues/167)** — Polygon.io options chain provider (**§48** follow-up — **§50**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#167** — sign-off **2026-05-22**; **PR:** pending). **[#165](https://github.com/FelipeMorandini/stockterm/issues/165) / [#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — §47 / §48 follow-ons: backtest golden metric fixtures + Yahoo options expiration slice cache (**§49**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#165, #168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#22](https://github.com/FelipeMorandini/stockterm/issues/22)** — options chains + **Options** tab (calls/puts table, expiration selector, Greeks toggle — **§48**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#22** — sign-off **2026-05-21**; **PR:** [#169](https://github.com/FelipeMorandini/stockterm/pull/169)). **[#25](https://github.com/FelipeMorandini/stockterm/issues/25)** — backtesting engine + **Backtest** tab (strategy trait, SMA crossover / RSI mean-reversion, equity curve, CSV/JSON export — **§47**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#25** — sign-off **2026-05-21**; **PR:** [#166](https://github.com/FelipeMorandini/stockterm/pull/166)). **[#21](https://github.com/FelipeMorandini/stockterm/issues/21)** — technical indicators (SMA / EMA / RSI / MACD) on the Charts tab (**§46**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21** — sign-off **2026-05-21**; **PR:** [#164](https://github.com/FelipeMorandini/stockterm/pull/164)). **Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#160](https://github.com/FelipeMorandini/stockterm/issues/160) / [#161](https://github.com/FelipeMorandini/stockterm/issues/161)** — §44 follow-ons: clear **`symbol_kind_cache`** on Settings provider change + Polygon crypto **`X:`** wire mapping in **`resolve_provider_symbol`** (**§45**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#160, #161** — sign-off **2026-05-20**; **PR:** [#163](https://github.com/FelipeMorandini/stockterm/pull/163)). **[#157](https://github.com/FelipeMorandini/stockterm/issues/157) / [#158](https://github.com/FelipeMorandini/stockterm/issues/158)** — provider-aware symbol resolver (Yahoo vs Polygon HTTP namespaces) + **`SymbolKind`** from Yahoo **`quoteType`** metadata with heuristic fallback (**§44**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#157, #158** — sign-off **2026-05-20**; **PR:** [#162](https://github.com/FelipeMorandini/stockterm/pull/162)). **[#23](https://github.com/FelipeMorandini/stockterm/issues/23)** — cryptocurrency quotes via Yahoo-style symbols (`BTC-USD`), adaptive price formatting, **`SymbolKind`** UI label, Stock View hyphen entry, §43.13 quote-cache alignment (**§43**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#23** — sign-off **2026-05-19**; **PR:** [#159](https://github.com/FelipeMorandini/stockterm/pull/159)). **[#51](https://github.com/FelipeMorandini/stockterm/issues/51) / [#28](https://github.com/FelipeMorandini/stockterm/issues/28)** — global **`q`/`Q`** quit via **`should_global_quit`**, Tab meta policy, **`STOCKTERM_API_KEY`** runtime overlay (no env merge on load — **§42**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** — sign-off **2026-05-19**; **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156)). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -7927,7 +7927,7 @@ After maintainer approval of §47, the **engineer** may implement per [`.cursor/
 | **`MarketDataProvider::get_options_chain`** | Yahoo via `src/api/yahoo_options.rs`; Polygon returns explicit error |
 | **`Tab::Options`** | Ninth tab; `last_tab: "options"` |
 | **Yahoo** | `v7/finance/options` + query2 404 fallback |
-| **Polygon** | Deferred — [#167](https://github.com/FelipeMorandini/stockterm/issues/167) |
+| **Polygon** | Shipped [#167](https://github.com/FelipeMorandini/stockterm/issues/167) / **§50** — `v3/snapshot/options` + contracts reference |
 
 **Product decisions (this slice):**
 
@@ -8039,7 +8039,7 @@ async fn get_options_chain(
 - If `expiration_ts` is `Some(ts)` but not in `expirationDates`, return `ProviderError::NotFound` or domain variant **`NoOptionsForExpiration`** mapped to user message.
 - **404 / empty result:** `ProviderError::NotFound` → app shows **“No options available”**.
 
-**Polygon (v1):** `get_options_chain` returns `ProviderError::Unsupported` with message **“Options require Yahoo provider”** (or implement minimal stub only if Settings forces Polygon — prefer hard error to silent empty data).
+**Polygon (§50 / [#167](https://github.com/FelipeMorandini/stockterm/issues/167)):** `src/api/polygon_options.rs` — contracts reference for expirations + snapshot per `expiration_date`; see **§50.1**.
 
 **Module layout:**
 
@@ -8253,9 +8253,250 @@ After maintainer approval of §48, the **engineer** may implement per [`.cursor/
 
 - **Status:** Shipped (PR [#169](https://github.com/FelipeMorandini/stockterm/pull/169); manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#22** sign-off **2026-05-21**).
 - **Tracking:** [Issue #22](https://github.com/FelipeMorandini/stockterm/issues/22).
-- **Follow-ups:** [#167](https://github.com/FelipeMorandini/stockterm/issues/167) Polygon options; expiration slice cache shipped [#168](https://github.com/FelipeMorandini/stockterm/issues/168) / **§49.2**.
+- **Follow-ups:** Polygon expiration list session cache — [#171](https://github.com/FelipeMorandini/stockterm/issues/171); expiration slice cache shipped [#168](https://github.com/FelipeMorandini/stockterm/issues/168) / **§49.2**. Polygon provider shipped [#167](https://github.com/FelipeMorandini/stockterm/issues/167) / **§50**.
 - **Depends on:** **§9** Yahoo HTTP stack; **§44** symbol resolution for wire symbols.
 - **Blocks:** None (additive tab + provider method).
+
+---
+
+## 50. Issue [#167](https://github.com/FelipeMorandini/stockterm/issues/167) — Polygon.io options chain provider (§48 follow-up)
+
+**Sources:**
+
+- [Issue #167](https://github.com/FelipeMorandini/stockterm/issues/167) — *Polygon.io options chain provider (§48 follow-up)* (`roadmap`).
+- [`docs/ROADMAP.md`](ROADMAP.md) §4.19 — options chains shipped Yahoo-only in **§48**; Polygon deferred here.
+
+**Related:** **§48** / [#22](https://github.com/FelipeMorandini/stockterm/issues/22) (shipped Options tab + Yahoo adapter), **§49.2** / [#168](https://github.com/FelipeMorandini/stockterm/issues/168) (session `options_slices_by_ts` cache — reuse for Polygon slices), **§9** / **§19** (`execute_get_text_with_retry`, `ProviderError`, API key), **§44** / **§45** (`resolve_provider_symbol` for Polygon wire tickers), **§17** (existing `PolygonProvider` + `polygon_key`).
+
+**Product goal:** With `provider: polygon` and a valid API key, the **Options** tab loads a listed chain for a liquid equity underlying (calls/puts, expirations, optional Greeks) with the same UX as Yahoo. Yahoo behavior is unchanged. Polygon plan limitations (no options on Basic, delayed data on Starter) surface as clear `ProviderError` / status messages — not silent empty tables.
+
+**Verified baseline (tree, 2026-05-22):**
+
+| Area | Current behavior |
+|------|------------------|
+| **`PolygonProvider::get_options_chain`** | Returns `ProviderError::Unsupported` — *"Options require Yahoo provider"* |
+| **`request_options_fetch`** | Yahoo branch calls `yahoo_options_chain_with_slices`; Polygon uses generic `market_provider_for` → empty `extra_slices` |
+| **Options tab / models** | Unchanged from **§48** — `OptionsChain`, `OptionsDisplayCache`, expiration keys, Greeks toggle |
+| **README** | States Options are **Yahoo-only** |
+
+**Product decisions (this slice):**
+
+1. **Provider parity, not UI redesign:** Reuse **§48** tab layout, keymap, and `apply_options_done` / `options_select_expiration` paths. No new `Tab`, Settings row, or persisted config fields.
+2. **Polygon REST (v1):** Two coordinated endpoints (same host as existing `polygon.rs`):
+   - **Expiration discovery:** `GET /v3/reference/options/contracts?underlying_ticker={wire}&sort=expiration_date&order=asc&limit=1000` (paginate `next_url` until exhausted or cap — see §50.3).
+   - **Chain snapshot:** `GET /v3/snapshot/options/{wire}?expiration_date={YYYY-MM-DD}&limit=250&sort=strike_price&order=asc` (paginate `next_url` for wide strikes).
+3. **Wire symbol:** `resolve_provider_symbol(MarketProviderKind::Polygon, symbol)` — equities pass through; crypto `X:…` symbols are **out of scope** for options (likely empty — show **§48.3** empty state).
+4. **Expiration parameter:** Map `expiration_ts` (Unix seconds) → `YYYY-MM-DD` via `chrono::Utc` for the snapshot query. When `None`, pick the **nearest future** expiration from the contracts list (or earliest listed if all past).
+5. **Slice cache (#168 alignment):** Populate `FetchDone::Options.extra_slices` with **only the active expiration slice** on each Polygon fetch (Polygon does not return multi-expiration blocks in one payload like Yahoo). Session cache still avoids refetch when user cycles back to a previously loaded expiration.
+6. **Greeks:** Map `results[].greeks` when present; omit columns when absent (same **`g`** toggle as **§48**).
+7. **Pricing fields:** Prefer `last_quote.bid` / `last_quote.ask`; fallback to `day.close` or `last_trade.price` for `last` when quote fields missing.
+8. **Errors:** Missing/invalid API key → existing `polygon_key` message. Empty `results` / `status` not OK → `ProviderError::ApiMessage("No options available")` for UI empty state. HTTP/plan errors → `ProviderError` with Polygon body snippet per **§19**.
+
+**Suggested PR:** **“§50 Polygon options adapter (Issue #167)”** — `src/api/polygon_options.rs`, `src/api/polygon.rs` delegate, `src/app/app.rs` Polygon branch in `request_options_fetch`, fixture `tests/fixtures/polygon_options_aapl_snapshot.json`, `README.md`.
+
+---
+
+### 50.1 API module (`src/api/polygon_options.rs`)
+
+**New file** — Polygon options adapter (mirror layout of `yahoo_options.rs`).
+
+```rust
+/// Parsed options chain for one fetch (active view + cacheable slice).
+pub struct PolygonOptionsParseResult {
+    pub chain: OptionsChain,
+    /// Single-slice map for §49.2 (`options_slices_by_ts`); key = `selected_expiration_ts`.
+    pub slices_by_ts: HashMap<u64, OptionsChainSlice>,
+}
+
+pub async fn polygon_options_chain_with_slices(
+    symbol: &str,
+    expiration_ts: Option<u64>,
+    config: &Config,
+) -> ProviderResult<PolygonOptionsParseResult>;
+```
+
+**Internal helpers (private):**
+
+| Function | Role |
+|----------|------|
+| `fetch_contract_expirations` | Paginated contracts reference → `Vec<Expiration>` (unique dates, sorted asc) |
+| `fetch_chain_snapshot` | Paginated snapshot for one `expiration_date` → flat contract rows |
+| `map_snapshot_row` | One `results[]` entry → `OptionContract` |
+| `build_chain` | Join expirations + selected slice → `OptionsChain` |
+
+**DTOs:** `#[derive(Deserialize)]` structs for contracts page + snapshot page only (no ratatui). Follow existing `polygon.rs` pattern: `fetch_json` via `execute_get_text_with_retry` + `serde_json::from_str`.
+
+**Contracts reference URL:**
+
+```text
+{BASE}/v3/reference/options/contracts?underlying_ticker={enc_wire}&sort=expiration_date&order=asc&limit=1000&apiKey={key}
+```
+
+- Extract `results[].expiration_date` (string `YYYY-MM-DD`) → `Expiration { ts: unix_secs_at_utc_midnight, label }`.
+- Deduplicate dates; sort ascending.
+- **Pagination cap:** Follow `next_url` until absent or **`POLYGON_OPTIONS_MAX_CONTRACT_PAGES = 10`** (10 × 1000 dates max — sufficient for QA symbols).
+
+**Snapshot URL:**
+
+```text
+{BASE}/v3/snapshot/options/{enc_wire}?expiration_date={enc_date}&limit=250&sort=strike_price&order=asc&apiKey={key}
+```
+
+- For each `results[]` row:
+  - `details.ticker` → `OptionContract.symbol`
+  - `details.strike_price` → `strike`
+  - `details.contract_type` (`call` / `put`) → `OptionRight`
+  - `details.expiration_date` → verify matches requested date → `expiration_ts`
+  - `last_quote.bid` / `ask`, `day.close` or `last_trade.price` → bid/ask/last
+  - `day.volume` → `volume` (cast to `u64` when finite)
+  - `open_interest` → `open_interest`
+  - `implied_volatility` → `implied_volatility`
+  - `greeks.{delta,gamma,theta,vega}` → `OptionGreeks` (`rho` = `None` unless Polygon adds field)
+- Split rows into `calls` / `puts`; **sort each leg by `strike` ascending** (**§48.1**).
+- **Pagination cap:** `POLYGON_OPTIONS_MAX_SNAPSHOT_PAGES = 40` (40 × 250 = 10k contracts per expiration — liquid names like SPY).
+
+**Empty chain:** No expirations after contracts fetch, or snapshot returns zero rows for selected date → `ProviderError::ApiMessage("No options available".into())`.
+
+**`ProviderError::NotFound`:** Use when Polygon returns HTTP 404 on contracts/snapshot for unknown underlying.
+
+---
+
+### 50.2 `MarketDataProvider` wiring
+
+**[`src/api/polygon.rs`](../src/api/polygon.rs)** — replace stub:
+
+```rust
+async fn get_options_chain(
+    &self,
+    symbol: &str,
+    expiration_ts: Option<u64>,
+    config: &Config,
+) -> ProviderResult<OptionsChain> {
+    Ok(polygon_options::polygon_options_chain_with_slices(symbol, expiration_ts, config)
+        .await?
+        .chain)
+}
+```
+
+**[`src/api/mod.rs`](../src/api/mod.rs)** — `pub mod polygon_options;` (crate-private).
+
+**Yahoo:** No changes to `yahoo_options.rs` / `yahoo.rs` delegation.
+
+---
+
+### 50.3 App async path (`src/app/app.rs`)
+
+**`request_options_fetch`** — extend provider branch (today `else` uses generic provider):
+
+```rust
+let (result, extra_slices) = match cfg.provider {
+    MarketProviderKind::Yahoo => { /* existing yahoo_options_chain_with_slices */ }
+    MarketProviderKind::Polygon => {
+        match polygon_options::polygon_options_chain_with_slices(&sym, expiration_ts, &cfg).await {
+            Ok(parsed) => (Ok(parsed.chain), parsed.slices_by_ts),
+            Err(e) => (Err(e), HashMap::new()),
+        }
+    }
+};
+```
+
+**`apply_options_done`:** Unchanged — `merge_options_inline_slices` already merges `extra_slices` for any provider.
+
+**Invalidation:** Existing **§48.3** + **§45** provider-switch clears apply to Polygon fetches.
+
+**Debug env (optional):**
+
+| Variable | Behavior |
+|----------|----------|
+| **`STOCKTERM_DEBUG_POLYGON_OPTIONS=1`** | `tracing::info!` expiration count, selected date, snapshot row count, pagination pages — **not** stderr |
+
+Reuse target `stockterm::polygon_options` (or `stockterm::api::polygon_options`).
+
+---
+
+### 50.4 Domain mapping reference
+
+| `OptionContract` field | Polygon source (priority order) |
+|------------------------|----------------------------------|
+| `symbol` | `details.ticker` |
+| `strike` | `details.strike_price` |
+| `right` | `details.contract_type` |
+| `expiration_ts` | `details.expiration_date` → UTC midnight unix |
+| `bid` / `ask` | `last_quote.bid` / `last_quote.ask` |
+| `last` | `last_trade.price`, else `day.close` |
+| `volume` | `day.volume` |
+| `open_interest` | `open_interest` |
+| `implied_volatility` | `implied_volatility` |
+| `greeks` | `greeks` object when any field present |
+
+---
+
+### 50.5 Automated verification
+
+```bash
+cargo build --release
+cargo clippy -- -D warnings
+cargo test polygon_options
+cargo test options
+```
+
+**Fixture:** `tests/fixtures/polygon_options_aapl_snapshot.json` — trimmed Polygon sample response (≥2 calls, ≥2 puts, greeks on at least one row, `expiration_date` field).
+
+**Unit tests (`src/api/polygon_options.rs` `#[cfg(test)]`):**
+
+| Test | Asserts |
+|------|---------|
+| `parse_snapshot_fixture` | Calls/puts sorted by strike; IV + greeks mapped |
+| `expiration_date_to_ts` | `2026-06-20` → stable unix label |
+| `build_chain_selects_requested_expiration` | `expiration_ts: Some(ts)` picks matching slice |
+| `empty_results_is_no_options` | Maps to `ApiMessage` / empty expirations |
+
+**`wiremock` (optional):** Mock contracts + snapshot URLs for `AAPL` → `get_options_chain` returns `Ok` with non-empty `expirations`.
+
+**Pass:** No `println!` / `dbg!` in options draw path; clippy clean.
+
+---
+
+### 50.6 Implementation sequence
+
+1. Capture trimmed fixture from Polygon docs sample or live key (redact `apiKey`).
+2. `src/api/polygon_options.rs` — DTOs, pagination helpers, `map_snapshot_row`, `build_chain`, unit tests.
+3. Replace `PolygonProvider::get_options_chain` stub; export module in `api/mod.rs`.
+4. `request_options_fetch` Polygon branch (§50.3).
+5. `README.md` — Options tab supports **Yahoo and Polygon**; note Polygon **Options Starter+** plan requirement and `STOCKTERM_API_KEY` / `api_key`.
+6. `cargo clippy`, `cargo test`, manual QA — [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#167**.
+
+---
+
+### 50.7 Manual QA pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #167**. Regression: **§48** Yahoo options unchanged; **§49.2** cache behavior on Polygon (cache hit when revisiting same expiration).
+
+---
+
+### 50.8 Out of scope
+
+- Options on **crypto** underlyings (`X:BTCUSD` wire) — empty state only; no dedicated Polygon crypto options mapping.
+- Multi-expiration inline blocks in one HTTP response (Yahoo-style); Polygon remains **one expiration per snapshot request**.
+- Prefetching all expirations in background.
+- Persisting options cache / expiration / Greeks toggle across sessions.
+- Changing **§48** tab layout, keymap chords, or `models/options.rs` shapes.
+- Real-time streaming per contract; trade execution; vol surface.
+- FMV (`results[].fmv`) — Business-plan field; ignore in v1.
+
+---
+
+### 50.9 Approval
+
+After maintainer approval of §50, the **engineer** may implement per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and run [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#167** before merge.
+
+### 50.10 Status
+
+- **Status:** Shipped (manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#167** sign-off **2026-05-22**; **PR:** pending).
+- **Tracking:** [Issue #167](https://github.com/FelipeMorandini/stockterm/issues/167).
+- **Follow-up:** [Issue #171](https://github.com/FelipeMorandini/stockterm/issues/171) — session-cache Polygon expiration list.
+- **Depends on:** **§48** (Options tab), **§9** / **§19** (Polygon HTTP), **§44** (wire symbols), **§49.2** (slice cache plumbing).
+- **Blocks:** None.
 
 ---
 
@@ -8531,7 +8772,7 @@ Use **`tracing::info!`** only (no stderr).
 
 **Manual proof:** See [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#168** — network observation with debug env.
 
-**Out of scope (#168):** Polygon options ([#167](https://github.com/FelipeMorandini/stockterm/issues/167)), persisting cache across sessions, prefetching all future expirations in background, changing Yahoo URL scheme.
+**Out of scope (#168):** Polygon options — shipped separately as [#167](https://github.com/FelipeMorandini/stockterm/issues/167) / **§50**; persisting cache across sessions, prefetching all future expirations in background, changing Yahoo URL scheme.
 
 ---
 
@@ -8555,7 +8796,7 @@ Use **`tracing::info!`** only (no stderr).
 
 - New tabs, keymap actions, or Settings rows.
 - Backtest strategy / parameter UI ([#25](https://github.com/FelipeMorandini/stockterm/issues/25) shipped scope).
-- Polygon options provider ([#167](https://github.com/FelipeMorandini/stockterm/issues/167)).
+- Polygon options provider — planned [#167](https://github.com/FelipeMorandini/stockterm/issues/167) / **§50** (moved out of §49 scope).
 - Cross-session options or backtest persistence.
 
 ---

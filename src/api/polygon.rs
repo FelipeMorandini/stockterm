@@ -25,7 +25,8 @@ fn polygon_wire_symbol(user_symbol: &str) -> String {
     resolve_provider_symbol(MarketProviderKind::Polygon, user_symbol)
 }
 
-fn polygon_key(config: &Config) -> ProviderResult<String> {
+/// API key for Polygon HTTP calls (shared with `polygon_options`).
+pub(crate) fn polygon_key(config: &Config) -> ProviderResult<String> {
     let key = config.effective_api_key();
     if key.is_empty() {
         return Err(ProviderError::ApiMessage(
@@ -112,12 +113,16 @@ impl MarketDataProvider for PolygonProvider {
 
     async fn get_options_chain(
         &self,
-        _symbol: &str,
-        _expiration_ts: Option<u64>,
-        _config: &Config,
+        symbol: &str,
+        expiration_ts: Option<u64>,
+        config: &Config,
     ) -> ProviderResult<crate::models::options::OptionsChain> {
-        Err(ProviderError::ApiMessage(
-            "Options require Yahoo provider".into(),
-        ))
+        Ok(
+            crate::api::polygon_options::polygon_options_chain_with_slices(
+                symbol, expiration_ts, config,
+            )
+            .await?
+            .chain,
+        )
     }
 }
