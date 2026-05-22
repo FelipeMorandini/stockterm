@@ -73,7 +73,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
                 "Options",
             ];
 
-            let tabs = Tabs::new(titles.iter().map(|t| Line::from(*t)).collect())
+            let tabs = Tabs::new(titles.iter().map(|t| Line::from(*t)).collect::<Vec<_>>())
                 .block(
                     Block::default()
                         .borders(Borders::ALL)

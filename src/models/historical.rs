@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 /// Polygon aggregates JSON envelope (Yahoo chart adapter leaves pagination fields at default).
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct HistoricalResponse {
     #[serde(default)]
     pub ticker: String,
@@ -41,6 +41,32 @@ impl HistoricalResponse {
 pub fn polygon_page_truncated(resp: &HistoricalResponse, _requested_limit: u32) -> bool {
     resp.next_url.as_ref().is_some_and(|s| !s.is_empty())
         || (resp.results_count > 0 && resp.results_count as usize > resp.results.len())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn polygon_page_truncated_false_when_fully_merged() {
+        let bar = HistoricalData {
+            o: 1.0,
+            h: 1.0,
+            l: 1.0,
+            c: 1.0,
+            v: 0.0,
+            t: 0,
+            vw: 0.0,
+            n: None,
+        };
+        let resp = HistoricalResponse {
+            results_count: 3,
+            results: vec![bar; 3],
+            next_url: None,
+            ..Default::default()
+        };
+        assert!(!polygon_page_truncated(&resp, 500));
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]

@@ -1,0 +1,31 @@
+{
+  "ticker": "AAPL",
+  "queryCount": 3,
+  "resultsCount": 3,
+  "adjusted": true,
+  "count": 2,
+  "status": "OK",
+  "next_url": "https://api.polygon.io/v2/aggs/ticker/AAPL/range/1/minute/2024-01-01/2024-01-02?cursor=page2",
+  "results": [
+    {
+      "v": 100.0,
+      "vw": 150.0,
+      "o": 149.0,
+      "c": 150.0,
+      "h": 151.0,
+      "l": 148.0,
+      "t": 1704067200000,
+      "n": 10
+    },
+    {
+      "v": 110.0,
+      "vw": 151.0,
+      "o": 150.0,
+      "c": 151.0,
+      "h": 152.0,
+      "l": 149.0,
+      "t": 1704067260000,
+      "n": 11
+    }
+  ]
+}
