@@ -198,6 +198,8 @@ pub enum FetchDone {
         symbol: String,
         expiration_ts: Option<u64>,
         result: crate::api::error::ProviderResult<crate::models::options::OptionsChain>,
+        /// Inline expiration blocks from the same HTTP response (Issue #168 / §49.2).
+        extra_slices: std::collections::HashMap<u64, crate::models::options::OptionsChainSlice>,
     },
 }
 
@@ -375,6 +377,11 @@ pub struct App {
     /// True after provider reports no listed options for symbol.
     pub options_no_listed: bool,
     pub options_display: crate::app::options::OptionsDisplayCache,
+    /// Per-expiration chain slices for the active symbol (session-only, Issue #168).
+    pub options_slices_by_ts: std::collections::HashMap<
+        u64,
+        crate::models::options::OptionsChainSlice,
+    >,
     /// Issue #6 — add holding (shares / price) modal.
     pub portfolio_dialog: Option<PortfolioAddDialog>,
     /// Issue #6 — first `d` arms; second `d` or `y` confirms remove.
@@ -652,6 +659,7 @@ impl App {
             options_show_greeks: false,
             options_no_listed: false,
             options_display: crate::app::options::OptionsDisplayCache::default(),
+            options_slices_by_ts: std::collections::HashMap::new(),
             portfolio_dialog: None,
             portfolio_remove_armed: false,
             alert_add_dialog: None,
@@ -2288,6 +2296,7 @@ impl App {
                 symbol,
                 expiration_ts,
                 result,
+                extra_slices,
             } => {
                 self.options_inflight = false;
                 self.options_inflight_since = None;
@@ -2302,6 +2311,14 @@ impl App {
                             self.options_no_listed = true;
                         } else {
                             self.options_no_listed = false;
+                            if expiration_ts.is_none() {
+                                self.options_slices_by_ts.clear();
+                            }
+                            crate::app::options::merge_options_inline_slices(
+                                &mut self.options_slices_by_ts,
+                                &chain,
+                                &extra_slices,
+                            );
                             let spot = self.get_current_price(&self.symbol);
                             self.options_selected_strike = Some(
                                 crate::app::options::default_selected_strike(&chain, spot),
@@ -2864,8 +2881,21 @@ impl App {
         self.options_inflight_since = Some(Instant::now());
         self.options_no_listed = false;
         tokio::spawn(async move {
-            let provider = crate::api::market_provider_for(cfg.provider);
-            let result = provider.get_options_chain(&sym, expiration_ts, &cfg).await;
+            let (result, extra_slices) = if cfg.provider == MarketProviderKind::Yahoo {
+                match crate::api::yahoo_options::yahoo_options_chain_with_slices(
+                    &sym,
+                    expiration_ts,
+                )
+                .await
+                {
+                    Ok(parsed) => (Ok(parsed.chain), parsed.slices_by_ts),
+                    Err(e) => (Err(e), std::collections::HashMap::new()),
+                }
+            } else {
+                let provider = crate::api::market_provider_for(cfg.provider);
+                let result = provider.get_options_chain(&sym, expiration_ts, &cfg).await;
+                (result, std::collections::HashMap::new())
+            };
             crate::app::fetch_delivery::deliver_fetch_done(
                 &fetch_tx,
                 recovery_tx.as_ref(),
@@ -2873,10 +2903,54 @@ impl App {
                     symbol: sym,
                     expiration_ts,
                     result,
+                    extra_slices,
                 },
                 InflightRecovery::Options,
             );
         });
+    }
+
+    /// Select expiration from session cache; network only on cache miss (Issue #168 / §49.2).
+    pub fn options_select_expiration(&mut self, ts: u64) {
+        if self.options_inflight {
+            return;
+        }
+        let Some(chain) = self.options_chain.as_ref() else {
+            self.request_options_fetch(Some(ts));
+            return;
+        };
+        if !chain.expirations.iter().any(|e| e.ts == ts) {
+            return;
+        }
+        if let Some(slice) = self.options_slices_by_ts.get(&ts).cloned() {
+            if std::env::var("STOCKTERM_DEBUG_YAHOO_OPTIONS").as_deref() == Ok("1") {
+                tracing::info!(
+                    target: "stockterm::yahoo_options",
+                    ts,
+                    slices = self.options_slices_by_ts.len(),
+                    "options expiration cache hit"
+                );
+            }
+            if let Some(c) = self.options_chain.as_mut() {
+                c.selected_expiration_ts = ts;
+                c.slice = slice;
+            }
+            let spot = self.get_current_price(&self.symbol);
+            if let Some(ref c) = self.options_chain {
+                self.options_selected_strike =
+                    Some(crate::app::options::default_selected_strike(c, spot));
+            }
+            crate::app::options::rebuild_options_display_cache(self);
+            return;
+        }
+        if std::env::var("STOCKTERM_DEBUG_YAHOO_OPTIONS").as_deref() == Ok("1") {
+            tracing::info!(
+                target: "stockterm::yahoo_options",
+                ts,
+                "options expiration cache miss spawning fetch"
+            );
+        }
+        self.request_options_fetch(Some(ts));
     }
 
     /// Auto-fetch when Options tab is active and chain is missing/stale (§48.3).
@@ -2907,7 +2981,7 @@ impl App {
         self.request_options_fetch(expiration_ts);
     }
 
-    /// Cycle to previous expiration and refetch (Issue #22).
+    /// Cycle to previous expiration (Issue #22; cache-aware — Issue #168).
     pub fn options_expiration_prev(&mut self) {
         let Some(chain) = self.options_chain.clone() else {
             self.request_options_fetch(None);
@@ -2923,10 +2997,10 @@ impl App {
             return;
         }
         let ts = chain.expirations[new_idx].ts;
-        self.request_options_fetch(Some(ts));
+        self.options_select_expiration(ts);
     }
 
-    /// Cycle to next expiration and refetch (Issue #22).
+    /// Cycle to next expiration (Issue #22; cache-aware — Issue #168).
     pub fn options_expiration_next(&mut self) {
         let Some(chain) = self.options_chain.clone() else {
             self.request_options_fetch(None);
@@ -2942,7 +3016,7 @@ impl App {
             return;
         }
         let ts = chain.expirations[new_idx].ts;
-        self.request_options_fetch(Some(ts));
+        self.options_select_expiration(ts);
     }
 
     /// Move shared strike highlight (j/k) along the canonical strike list (calls + puts).
@@ -3829,6 +3903,83 @@ mod tests {
         app.apply_stock_fetch_done(1, HashMap::new(), instrument_types, vec![]);
         assert!(app.symbol_kind_cache.is_empty());
         assert_eq!(app.symbol_kind_for_display("BTC"), SymbolKind::Equity);
+    }
+
+    /// Issue #168 / §49.2 — cached expiration switch must not arm inflight fetch.
+    #[test]
+    fn options_select_expiration_cache_hit() {
+        use crate::models::options::{
+            Expiration, OptionContract, OptionRight, OptionsChain, OptionsChainSlice,
+        };
+
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        let exp1 = Expiration {
+            ts: 100,
+            label: "2026-06-20".into(),
+        };
+        let exp2 = Expiration {
+            ts: 200,
+            label: "2026-06-27".into(),
+        };
+        let slice1 = OptionsChainSlice {
+            underlying: "AAPL".into(),
+            expiration: exp1.clone(),
+            calls: vec![OptionContract {
+                symbol: "C1".into(),
+                strike: 100.0,
+                right: OptionRight::Call,
+                expiration_ts: 100,
+                bid: None,
+                ask: None,
+                last: None,
+                volume: None,
+                open_interest: None,
+                implied_volatility: None,
+                greeks: None,
+            }],
+            puts: vec![],
+        };
+        let slice2 = OptionsChainSlice {
+            underlying: "AAPL".into(),
+            expiration: exp2.clone(),
+            calls: vec![OptionContract {
+                symbol: "C2".into(),
+                strike: 200.0,
+                right: OptionRight::Call,
+                expiration_ts: 200,
+                bid: None,
+                ask: None,
+                last: None,
+                volume: None,
+                open_interest: None,
+                implied_volatility: None,
+                greeks: None,
+            }],
+            puts: vec![],
+        };
+        app.options_slices_by_ts.insert(100, slice1.clone());
+        app.options_slices_by_ts.insert(200, slice2.clone());
+        app.options_chain = Some(OptionsChain {
+            underlying: "AAPL".into(),
+            expirations: vec![exp1, exp2],
+            selected_expiration_ts: 100,
+            slice: slice1,
+        });
+        app.options_select_expiration(200);
+        assert!(!app.options_inflight);
+        assert_eq!(
+            app.options_chain
+                .as_ref()
+                .map(|c| c.selected_expiration_ts),
+            Some(200)
+        );
+        assert_eq!(
+            app.options_chain
+                .as_ref()
+                .and_then(|c| c.slice.calls.first().map(|x| x.strike)),
+            Some(200.0)
+        );
     }
 }
 

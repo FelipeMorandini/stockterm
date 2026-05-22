@@ -18,7 +18,13 @@
   "initial_capital": 10000.0,
   "commission_per_trade": 0.0,
   "slippage_bps": 0.0,
-  "expected_trade_count_min": 1,
-  "expected_final_equity_min": 9500.0,
-  "expected_final_equity_max": 15000.0
+  "expected": {
+    "trade_count": 1,
+    "total_pnl": 4058.823529411764,
+    "total_return_pct": 40.588235294117645,
+    "max_drawdown_pct": 0.0,
+    "win_rate_pct": 100.0,
+    "sharpe": 18.43554257850047,
+    "final_equity": 14058.823529411764
+  }
 }
