@@ -693,6 +693,7 @@ fn chart_to_historical(env: &ChartEnvelope, requested: &str) -> ProviderResult<H
             status: "OK".to_string(),
             request_id: String::new(),
             count: 0,
+            ..Default::default()
         });
     };
     let Some(series) = results.first() else {
@@ -702,6 +703,7 @@ fn chart_to_historical(env: &ChartEnvelope, requested: &str) -> ProviderResult<H
             status: "OK".to_string(),
             request_id: String::new(),
             count: 0,
+            ..Default::default()
         });
     };
 
@@ -759,6 +761,7 @@ fn chart_to_historical(env: &ChartEnvelope, requested: &str) -> ProviderResult<H
         status: "OK".to_string(),
         request_id: String::new(),
         count,
+        ..Default::default()
     })
 }
 

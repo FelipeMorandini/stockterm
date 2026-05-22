@@ -352,6 +352,10 @@ pub struct App {
     pub time_range: TimeRange,
     /// Charts tab: pan/zoom indices into `historical_data.results` (Issue #8).
     pub chart_viewport: ChartViewport,
+    /// Polygon partial-page chart notice (Issue #65 / §52.1.3).
+    pub charts_polygon_truncated: bool,
+    /// Precomputed Charts status suffix when [`charts_polygon_truncated`] (Update only).
+    pub charts_polygon_notice: String,
     /// Line vs candlestick rendering (Issue #7).
     pub chart_mode: ChartDisplayMode,
     /// Charts tab: SMA/EMA/RSI/MACD toggles (Issue #21 / §46.2).
@@ -646,6 +650,8 @@ impl App {
             news_url_flash: None,
             time_range: TimeRange::default(),
             chart_viewport: ChartViewport::default(),
+            charts_polygon_truncated: false,
+            charts_polygon_notice: String::new(),
             chart_mode: ChartDisplayMode::default(),
             chart_indicators: ChartIndicatorToggles::default(),
             chart_indicator_cache: None,
@@ -1266,6 +1272,7 @@ impl App {
                 yahoo_range: params.yahoo_range,
                 polygon_multiplier: params.polygon_multiplier,
                 polygon_timespan: params.polygon_timespan,
+                polygon_limit: params.polygon_limit,
             };
             let provider = market_provider_for(cfg.provider);
             let result = provider.get_historical(&sym, &hq, &cfg).await;
@@ -1507,10 +1514,35 @@ impl App {
         });
     }
 
+    /// Clears Polygon partial-chart notice state (Issue #65 / §52.1.3).
+    fn clear_charts_polygon_notice(&mut self) {
+        self.charts_polygon_truncated = false;
+        self.charts_polygon_notice.clear();
+    }
+
+    /// Updates truncation notice from the current [`historical_data`] when provider is Polygon.
+    fn sync_charts_polygon_notice_from_hist(&mut self) {
+        if self.config.provider != MarketProviderKind::Polygon {
+            self.clear_charts_polygon_notice();
+            return;
+        }
+        let limit = crate::models::time_range::polygon_historical_limit(self.time_range);
+        let truncated = self.historical_data.as_ref().is_some_and(|hist| {
+            crate::models::historical::polygon_page_truncated(hist, limit)
+        });
+        if truncated {
+            self.charts_polygon_truncated = true;
+            self.charts_polygon_notice = "Polygon: partial chart (plan/limit)".into();
+        } else {
+            self.clear_charts_polygon_notice();
+        }
+    }
+
     /// Clear chart series when the active ticker changes (Issue #62 / SPEC §11.11.1).
     pub fn on_active_symbol_changed_for_charts(&mut self) {
         self.historical_data = None;
         self.chart_viewport = ChartViewport::default();
+        self.clear_charts_polygon_notice();
         self.chart_indicator_cache = None;
         self.last_charts_network_poll = None;
         crate::app::backtest_ui::clear_backtest_session(self);
@@ -2053,6 +2085,7 @@ impl App {
         }
         let previous = self.config.provider;
         self.clear_symbol_kind_cache();
+        self.clear_charts_polygon_notice();
         self.config.provider = next;
         if let Err(e) = self.try_save_config_with_session() {
             self.config.provider = previous;
@@ -2160,6 +2193,7 @@ impl App {
                             &symbol,
                         );
                         self.historical_data = Some(data);
+                        self.sync_charts_polygon_notice_from_hist();
                         // Bars may differ on refresh (same symbol/range); drop stale BT report/hint.
                         crate::app::backtest_ui::clear_backtest_session(self);
                         self.rebuild_chart_indicator_cache();
@@ -2174,6 +2208,7 @@ impl App {
                         }
                     }
                     Err(err) => {
+                        self.clear_charts_polygon_notice();
                         self.last_failed_fetch = LastFailedFetch::Historical;
                         self.surface_runtime_error(
                             Tab::Charts,
@@ -2725,6 +2760,7 @@ impl App {
             self.historical_data = None;
             self.chart_indicator_cache = None;
             self.chart_viewport = ChartViewport::default();
+            self.clear_charts_polygon_notice();
             crate::app::backtest_ui::clear_backtest_session(self);
             crate::app::backtest_ui::rebuild_backtest_params_cache(self);
             if self.active_runtime_error.as_ref().is_some_and(|a| {
@@ -3040,39 +3076,47 @@ impl App {
 
     /// Cycle to previous expiration (Issue #22; cache-aware — Issue #168).
     pub fn options_expiration_prev(&mut self) {
-        let Some(chain) = self.options_chain.clone() else {
-            self.request_options_fetch(None);
+        let Some(ts) = (|| {
+            let chain = self.options_chain.as_ref()?;
+            let idx = chain
+                .expirations
+                .iter()
+                .position(|e| e.ts == chain.selected_expiration_ts)
+                .unwrap_or(0);
+            let new_idx = idx.saturating_sub(1);
+            if new_idx == idx {
+                return None;
+            }
+            Some(chain.expirations[new_idx].ts)
+        })() else {
+            if self.options_chain.is_none() {
+                self.request_options_fetch(None);
+            }
             return;
         };
-        let idx = chain
-            .expirations
-            .iter()
-            .position(|e| e.ts == chain.selected_expiration_ts)
-            .unwrap_or(0);
-        let new_idx = idx.saturating_sub(1);
-        if new_idx == idx {
-            return;
-        }
-        let ts = chain.expirations[new_idx].ts;
         self.options_select_expiration(ts);
     }
 
     /// Cycle to next expiration (Issue #22; cache-aware — Issue #168).
     pub fn options_expiration_next(&mut self) {
-        let Some(chain) = self.options_chain.clone() else {
-            self.request_options_fetch(None);
+        let Some(ts) = (|| {
+            let chain = self.options_chain.as_ref()?;
+            let idx = chain
+                .expirations
+                .iter()
+                .position(|e| e.ts == chain.selected_expiration_ts)
+                .unwrap_or(0);
+            let new_idx = (idx + 1).min(chain.expirations.len().saturating_sub(1));
+            if new_idx == idx {
+                return None;
+            }
+            Some(chain.expirations[new_idx].ts)
+        })() else {
+            if self.options_chain.is_none() {
+                self.request_options_fetch(None);
+            }
             return;
         };
-        let idx = chain
-            .expirations
-            .iter()
-            .position(|e| e.ts == chain.selected_expiration_ts)
-            .unwrap_or(0);
-        let new_idx = (idx + 1).min(chain.expirations.len().saturating_sub(1));
-        if new_idx == idx {
-            return;
-        }
-        let ts = chain.expirations[new_idx].ts;
         self.options_select_expiration(ts);
     }
 

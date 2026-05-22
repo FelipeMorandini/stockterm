@@ -237,6 +237,7 @@ mod tests {
             status: String::new(),
             request_id: String::new(),
             count: 0,
+            ..Default::default()
         };
         let err = verify_historical_symbol(&hist, "AAPL").unwrap_err();
         assert!(matches!(err, BacktestError::SymbolMismatch { .. }));

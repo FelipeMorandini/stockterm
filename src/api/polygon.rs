@@ -10,7 +10,7 @@ use crate::api::provider::MarketDataProvider;
 use crate::api::retry::execute_get_text_with_retry;
 use crate::api::symbol::resolve_provider_symbol;
 use crate::config::{Config, MarketProviderKind};
-use crate::models::historical::HistoricalResponse;
+use crate::models::historical::{polygon_page_truncated, HistoricalResponse};
 use crate::models::news::NewsResponse;
 use crate::models::search::SymbolSearchResponse;
 use crate::models::ticker::TickerResponse;
@@ -76,8 +76,9 @@ impl MarketDataProvider for PolygonProvider {
         config: &Config,
     ) -> ProviderResult<HistoricalResponse> {
         let key = polygon_key(config)?;
+        let limit = query.polygon_limit;
         let url = format!(
-            "{}/v2/aggs/ticker/{}/range/{}/{}/{}/{}?adjusted=true&sort=asc&limit=50000&apiKey={}",
+            "{}/v2/aggs/ticker/{}/range/{}/{}/{}/{}?adjusted=true&sort=asc&limit={limit}&apiKey={}",
             BASE_URL,
             enc(&polygon_wire_symbol(symbol)),
             query.polygon_multiplier,
@@ -86,7 +87,27 @@ impl MarketDataProvider for PolygonProvider {
             enc(query.to),
             enc(&key)
         );
-        fetch_json(&url).await
+        let data: HistoricalResponse = fetch_json(&url).await?;
+        if let Some(msg) = data.api_error_message() {
+            if is_polygon_plan_message(&msg) {
+                return Err(ProviderError::ApiMessage(
+                    "Polygon plan does not include this aggregate window (try a shorter range or upgrade)"
+                        .into(),
+                ));
+            }
+            return Err(ProviderError::ApiMessage(msg));
+        }
+        if polygon_page_truncated(&data, limit) {
+            tracing::warn!(
+                target: "stockterm::polygon",
+                limit,
+                results_len = data.results.len(),
+                results_count = data.results_count,
+                has_next_url = data.next_url.is_some(),
+                "polygon historical page truncated"
+            );
+        }
+        Ok(data)
     }
 
     async fn search_symbols(&self, query: &str, config: &Config) -> ProviderResult<SymbolSearchResponse> {
@@ -127,5 +148,85 @@ impl MarketDataProvider for PolygonProvider {
             .await?
             .chain,
         )
+    }
+}
+
+fn is_polygon_plan_message(msg: &str) -> bool {
+    let lower = msg.to_ascii_lowercase();
+    lower.contains("not_authorized")
+        || lower.contains("not authorized")
+        || lower.contains("does not include")
+        || lower.contains("subscription")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::historical::{polygon_page_truncated, HistoricalResponse};
+    use crate::models::time_range::{polygon_historical_limit, TimeRange, POLYGON_AGG_LIMIT_CEILING};
+
+    #[test]
+    fn polygon_historical_limit_ceiling() {
+        for tr in [TimeRange::D1, TimeRange::W1, TimeRange::M1, TimeRange::Y1] {
+            assert!(polygon_historical_limit(tr) <= POLYGON_AGG_LIMIT_CEILING);
+        }
+        assert!(polygon_historical_limit(TimeRange::D1) < 50_000);
+        assert_eq!(polygon_historical_limit(TimeRange::D1), 500);
+    }
+
+    #[test]
+    fn polygon_page_truncated_next_url() {
+        let resp = HistoricalResponse {
+            next_url: Some("https://api.polygon.io/next".into()),
+            ..Default::default()
+        };
+        assert!(polygon_page_truncated(&resp, 500));
+    }
+
+    #[test]
+    fn polygon_page_truncated_results_count() {
+        let bar = crate::models::historical::HistoricalData {
+            o: 1.0,
+            h: 1.0,
+            l: 1.0,
+            c: 1.0,
+            v: 0.0,
+            t: 0,
+            vw: 0.0,
+            n: None,
+        };
+        let resp = HistoricalResponse {
+            results_count: 10,
+            results: vec![bar; 3],
+            ..Default::default()
+        };
+        assert!(polygon_page_truncated(&resp, 500));
+    }
+
+    #[test]
+    fn is_polygon_plan_message_detects_entitlement() {
+        assert!(is_polygon_plan_message("NOT_AUTHORIZED"));
+        assert!(is_polygon_plan_message("Your plan does not include this"));
+        assert!(!is_polygon_plan_message("implementation plan rejected"));
+    }
+
+    #[test]
+    fn polygon_page_truncated_full_page_not_flagged_without_next_url() {
+        let bar = crate::models::historical::HistoricalData {
+            o: 1.0,
+            h: 1.0,
+            l: 1.0,
+            c: 1.0,
+            v: 0.0,
+            t: 0,
+            vw: 0.0,
+            n: None,
+        };
+        let resp = HistoricalResponse {
+            results_count: 499,
+            results: vec![bar; 499],
+            ..Default::default()
+        };
+        assert!(!polygon_page_truncated(&resp, 500));
     }
 }
