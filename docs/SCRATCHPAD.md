@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Empty — deferred items from Issue #25 ship triage filed as GitHub issues. -->
+<!-- Cleared 2026-05-21: Issue #22 §48 strategic debt → #167 (Polygon options), #168 (expiration slice cache). -->

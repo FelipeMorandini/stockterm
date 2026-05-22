@@ -96,7 +96,49 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             Tab::Backtest => {
                 handle_backtest_events(app, key);
             }
+            Tab::Options => {
+                handle_options_events(app, key);
+            }
         },
+    }
+}
+
+fn handle_options_events(app: &mut App, key: KeyEvent) {
+    use Action::*;
+    if let Some(a) = app.resolved_keymap.action(BindingLayer::Options, &key) {
+        match a {
+            OptionsRefresh if letter_key_plain(key.modifiers)
+                || (key.code == KeyCode::Char('r') && letter_key_plain(key.modifiers)) =>
+            {
+                let exp = app
+                    .options_chain
+                    .as_ref()
+                    .map(|c| c.selected_expiration_ts);
+                app.request_options_fetch(exp);
+            }
+            OptionsExpirationPrev
+                if key.modifiers == KeyModifiers::NONE
+                    || letter_key_plain(key.modifiers) =>
+            {
+                app.options_expiration_prev();
+            }
+            OptionsExpirationNext
+                if key.modifiers == KeyModifiers::NONE
+                    || letter_key_plain(key.modifiers) =>
+            {
+                app.options_expiration_next();
+            }
+            OptionsStrikeDown if letter_key_plain(key.modifiers) => {
+                app.options_strike_scroll(true);
+            }
+            OptionsStrikeUp if letter_key_plain(key.modifiers) => {
+                app.options_strike_scroll(false);
+            }
+            OptionsToggleGreeks if letter_key_plain(key.modifiers) => {
+                app.options_toggle_greeks();
+            }
+            _ => {}
+        }
     }
 }
 

@@ -1,0 +1,83 @@
+{
+  "optionChain": {
+    "result": [
+      {
+        "underlyingSymbol": "AAPL",
+        "expirationDates": [1732147200, 1732752000],
+        "hasMiniOptions": false,
+        "quote": {
+          "regularMarketPrice": 225.5
+        },
+        "options": [
+          {
+            "expirationDate": 1732147200,
+            "hasMiniOptions": false,
+            "calls": [
+              {
+                "contractSymbol": "AAPL241220C00220000",
+                "strike": 220.0,
+                "currency": "USD",
+                "lastPrice": 8.5,
+                "bid": 8.4,
+                "ask": 8.6,
+                "volume": 1200,
+                "openInterest": 4500,
+                "impliedVolatility": 0.28,
+                "inTheMoney": true,
+                "greeks": {
+                  "delta": 0.62,
+                  "gamma": 0.02,
+                  "theta": -0.08,
+                  "vega": 0.15,
+                  "rho": 0.01
+                }
+              },
+              {
+                "contractSymbol": "AAPL241220C00225000",
+                "strike": 225.0,
+                "currency": "USD",
+                "lastPrice": 5.2,
+                "bid": 5.1,
+                "ask": 5.3,
+                "volume": 800,
+                "openInterest": 3200,
+                "impliedVolatility": 0.26
+              }
+            ],
+            "puts": [
+              {
+                "contractSymbol": "AAPL241220P00220000",
+                "strike": 220.0,
+                "currency": "USD",
+                "lastPrice": 3.1,
+                "bid": 3.0,
+                "ask": 3.2,
+                "volume": 500,
+                "openInterest": 2100,
+                "impliedVolatility": 0.27,
+                "greeks": {
+                  "delta": -0.38,
+                  "gamma": 0.02,
+                  "theta": -0.06,
+                  "vega": 0.14,
+                  "rho": -0.01
+                }
+              },
+              {
+                "contractSymbol": "AAPL241220P00225000",
+                "strike": 225.0,
+                "currency": "USD",
+                "lastPrice": 5.8,
+                "bid": 5.7,
+                "ask": 5.9,
+                "volume": 400,
+                "openInterest": 1800,
+                "impliedVolatility": 0.25
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

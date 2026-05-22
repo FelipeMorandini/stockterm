@@ -8,6 +8,7 @@ pub(crate) mod retry;
 pub mod provider;
 pub mod symbol;
 pub mod yahoo;
+pub mod yahoo_options;
 
 pub use error::ProviderError;
 pub use historical_query::HistoricalQuery;

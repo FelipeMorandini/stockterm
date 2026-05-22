@@ -181,6 +181,7 @@ pub enum ErrorSourceDomain {
     Alerts,
     NewsOpenUrl,
     Backtest,
+    Options,
     #[allow(dead_code)]
     Other,
 }
