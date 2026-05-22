@@ -11,4 +11,6 @@ pub struct HistoricalQuery<'a> {
     pub yahoo_range: Option<&'static str>,
     pub polygon_multiplier: u32,
     pub polygon_timespan: &'a str,
+    /// Polygon aggregates `limit=` cap for this request (Yahoo ignores this field).
+    pub polygon_limit: u32,
 }

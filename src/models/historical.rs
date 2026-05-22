@@ -1,6 +1,7 @@
 use serde::Deserialize;
 
-#[derive(Deserialize, Debug)]
+/// Polygon aggregates JSON envelope (Yahoo chart adapter leaves pagination fields at default).
+#[derive(Deserialize, Debug, Default)]
 pub struct HistoricalResponse {
     #[serde(default)]
     pub ticker: String,
@@ -12,6 +13,34 @@ pub struct HistoricalResponse {
     pub request_id: String,
     #[serde(default)]
     pub count: u32,
+    /// Polygon `resultsCount` — total matching aggregates for the query (Issue #65 / §52.1.2).
+    #[serde(default, alias = "resultsCount")]
+    pub results_count: u32,
+    /// Present when more pages exist beyond `limit` (Issue #65 / §52.1.2).
+    #[serde(default)]
+    pub next_url: Option<String>,
+    #[serde(default)]
+    pub error: Option<String>,
+}
+
+impl HistoricalResponse {
+    /// User-visible API failure when HTTP was 200 but JSON indicates an error (Polygon).
+    pub fn api_error_message(&self) -> Option<String> {
+        if let Some(e) = &self.error {
+            return Some(e.clone());
+        }
+        let s = self.status.as_str();
+        if !s.is_empty() && s != "OK" && s != "DELAYED" {
+            return Some(format!("Polygon status: {s}"));
+        }
+        None
+    }
+}
+
+/// True when a single Polygon aggregates page is likely incomplete (Issue #65 / §52.1.2).
+pub fn polygon_page_truncated(resp: &HistoricalResponse, _requested_limit: u32) -> bool {
+    resp.next_url.as_ref().is_some_and(|s| !s.is_empty())
+        || (resp.results_count > 0 && resp.results_count as usize > resp.results.len())
 }
 
 #[derive(Deserialize, Debug, Clone)]

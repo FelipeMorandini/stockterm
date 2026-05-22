@@ -2,7 +2,7 @@
 
 use crate::app::styles::ResolvedTheme;
 use crate::app::App;
-use crate::config::ResolvedLayout;
+use crate::config::{MarketProviderKind, ResolvedLayout};
 use crate::indicators::{
     ema, macd, rsi, sma, MacdOutput, EMA_PERIOD, MACD_FAST, MACD_SIGNAL, MACD_SLOW, RSI_PERIOD,
     SMA_PERIOD,
@@ -304,12 +304,20 @@ fn format_time_axis(ts_ms: f64, intraday: bool) -> String {
 }
 
 fn charts_short_title(app: &App) -> String {
-    format!(
+    let base = format!(
         "{} · {} · {}",
         app.symbol,
         app.time_range.label(),
         app.chart_mode.label()
-    )
+    );
+    if app.config.provider == MarketProviderKind::Polygon
+        && app.charts_polygon_truncated
+        && !app.charts_polygon_notice.is_empty()
+    {
+        format!("{base} · {}", app.charts_polygon_notice)
+    } else {
+        base
+    }
 }
 
 fn charts_key_hints() -> &'static str {
@@ -976,6 +984,7 @@ mod tests {
             status: "OK".into(),
             request_id: String::new(),
             count: bars as u32,
+            ..Default::default()
         }
     }
 

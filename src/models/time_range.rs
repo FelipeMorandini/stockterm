@@ -44,6 +44,7 @@ impl TimeRange {
                 yahoo_range: Some("1d"),
                 polygon_multiplier: 5,
                 polygon_timespan: "minute",
+                polygon_limit: polygon_historical_limit(TimeRange::D1),
             },
             TimeRange::W1 => HistoricalQueryParams {
                 from: (today - Duration::days(8))
@@ -54,6 +55,7 @@ impl TimeRange {
                 yahoo_range: Some("5d"),
                 polygon_multiplier: 30,
                 polygon_timespan: "minute",
+                polygon_limit: polygon_historical_limit(TimeRange::W1),
             },
             TimeRange::M1 => HistoricalQueryParams {
                 from: (today - Duration::days(32))
@@ -64,6 +66,7 @@ impl TimeRange {
                 yahoo_range: Some("1mo"),
                 polygon_multiplier: 1,
                 polygon_timespan: "day",
+                polygon_limit: polygon_historical_limit(TimeRange::M1),
             },
             TimeRange::Y1 => HistoricalQueryParams {
                 from: (today - Duration::days(400))
@@ -74,9 +77,24 @@ impl TimeRange {
                 yahoo_range: Some("1y"),
                 polygon_multiplier: 1,
                 polygon_timespan: "week",
+                polygon_limit: polygon_historical_limit(TimeRange::Y1),
             },
         }
     }
+}
+
+/// Hard ceiling for any single Polygon aggregates request (Issue #65 / §52.1.1).
+pub const POLYGON_AGG_LIMIT_CEILING: u32 = 5_000;
+
+/// Per-`TimeRange` bar caps for Polygon `limit=` (sort=asc).
+pub fn polygon_historical_limit(tr: TimeRange) -> u32 {
+    let n = match tr {
+        TimeRange::D1 => 500,
+        TimeRange::W1 => 400,
+        TimeRange::M1 => 45,
+        TimeRange::Y1 => 60,
+    };
+    n.min(POLYGON_AGG_LIMIT_CEILING)
 }
 
 /// Owned parameters for a historical request; converted to [`crate::api::HistoricalQuery`] at the call site.
@@ -88,6 +106,7 @@ pub struct HistoricalQueryParams {
     pub yahoo_range: Option<&'static str>,
     pub polygon_multiplier: u32,
     pub polygon_timespan: &'static str,
+    pub polygon_limit: u32,
 }
 
 #[cfg(test)]
@@ -108,5 +127,18 @@ mod tests {
             assert!(!p.to.is_empty());
             assert!(p.yahoo_range.is_some());
         }
+    }
+
+    #[test]
+    fn historical_params_includes_polygon_limit() {
+        let now = Local::now();
+        assert_eq!(
+            TimeRange::D1.historical_params(now).polygon_limit,
+            500
+        );
+        for tr in [TimeRange::D1, TimeRange::W1, TimeRange::M1, TimeRange::Y1] {
+            assert!(tr.historical_params(now).polygon_limit <= POLYGON_AGG_LIMIT_CEILING);
+        }
+        assert!(polygon_historical_limit(TimeRange::D1) < 50_000);
     }
 }

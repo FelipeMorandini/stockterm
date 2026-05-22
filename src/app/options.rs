@@ -15,6 +15,11 @@ use std::cmp::Ordering;
 
 const EM_DASH: &str = "—";
 const STRIKE_MATCH_EPS: f64 = 1e-6;
+/// Estimated visible data rows per options table (scroll centering — §52.2.2).
+const OPTIONS_TABLE_VIEWPORT_ROWS: usize = 24;
+
+/// Key hints shown in the Options tab header (Update-only — §52.2.3).
+pub const OPTIONS_KEY_HINTS: &str = " │ [ ] h/l exp · j/k strike · r refresh";
 
 /// Preformatted row for one calls/puts table line (built in Update, not draw).
 #[derive(Debug, Clone)]
@@ -24,6 +29,8 @@ pub struct OptionsRowDisplay {
     pub bid_label: String,
     pub ask_label: String,
     pub last_label: String,
+    pub vol_label: String,
+    pub oi_label: String,
     pub iv_label: String,
     pub greek_labels: Option<[String; 5]>,
 }
@@ -35,10 +42,16 @@ pub struct OptionsDisplayCache {
     pub empty_hint: String,
     pub header_primary: String,
     pub header_muted: String,
+    pub key_hints: String,
+    pub calls_table_scroll: u16,
+    pub puts_table_scroll: u16,
     pub calls: Vec<OptionsRowDisplay>,
     pub puts: Vec<OptionsRowDisplay>,
     pub call_table_rows: Vec<Row<'static>>,
     pub put_table_rows: Vec<Row<'static>>,
+    /// Visible window (~24 rows) into [`call_table_rows`] / [`put_table_rows`]; rebuilt on scroll/strike change; draw clones for `Table::new` (§52.2.3).
+    pub call_table_visible: Vec<Row<'static>>,
+    pub put_table_visible: Vec<Row<'static>>,
     pub table_header: Row<'static>,
     pub table_col_widths: Vec<Constraint>,
 }
@@ -74,9 +87,13 @@ pub fn clear_options_session(app: &mut App) {
     app.options_display.puts.clear();
     app.options_display.call_table_rows.clear();
     app.options_display.put_table_rows.clear();
+    app.options_display.call_table_visible.clear();
+    app.options_display.put_table_visible.clear();
     app.options_display.table_col_widths.clear();
     app.options_display.header_primary.clear();
     app.options_display.header_muted.clear();
+    app.options_display.calls_table_scroll = 0;
+    app.options_display.puts_table_scroll = 0;
     sync_options_chrome(app);
 }
 
@@ -88,6 +105,7 @@ pub fn sync_options_chrome(app: &mut App) {
     } else {
         "Press r to load options chain".to_string()
     };
+    app.options_display.key_hints = OPTIONS_KEY_HINTS.to_string();
 }
 
 fn format_opt_price(v: Option<f64>) -> String {
@@ -111,6 +129,70 @@ fn format_greek(v: Option<f64>) -> String {
     }
 }
 
+fn format_compact_qty(v: Option<u64>) -> String {
+    match v {
+        Some(n) => {
+            if n >= 10_000 {
+                let k = n as f64 / 1000.0;
+                format!("{k:.1}K")
+            } else {
+                format!("{n}")
+            }
+        }
+        None => EM_DASH.to_string(),
+    }
+}
+
+/// Vertical scroll offset so `selected_idx` stays near the center (§52.2.2).
+pub fn table_scroll_offset(selected_idx: usize, row_count: usize, viewport_rows: usize) -> u16 {
+    if row_count == 0 || viewport_rows == 0 {
+        return 0;
+    }
+    if row_count <= viewport_rows {
+        return 0;
+    }
+    let half = viewport_rows.saturating_sub(1) / 2;
+    let ideal = selected_idx.saturating_sub(half);
+    let max_scroll = row_count.saturating_sub(viewport_rows);
+    ideal.min(max_scroll) as u16
+}
+
+fn selected_row_index(rows: &[OptionsRowDisplay], selected_strike: Option<f64>) -> usize {
+    let Some(s) = selected_strike else {
+        return 0;
+    };
+    rows.iter()
+        .position(|r| strikes_match(r.strike, s))
+        .unwrap_or(0)
+}
+
+fn slice_visible_rows(rows: &[Row<'static>], scroll: u16) -> Vec<Row<'static>> {
+    let start = scroll as usize;
+    rows.iter()
+        .skip(start)
+        .take(OPTIONS_TABLE_VIEWPORT_ROWS)
+        .cloned()
+        .collect()
+}
+
+fn rebuild_options_table_scroll(cache: &mut OptionsDisplayCache, selected_strike: Option<f64>) {
+    let calls_idx = selected_row_index(&cache.calls, selected_strike);
+    let puts_idx = selected_row_index(&cache.puts, selected_strike);
+    cache.calls_table_scroll = table_scroll_offset(
+        calls_idx,
+        cache.calls.len(),
+        OPTIONS_TABLE_VIEWPORT_ROWS,
+    );
+    cache.puts_table_scroll = table_scroll_offset(
+        puts_idx,
+        cache.puts.len(),
+        OPTIONS_TABLE_VIEWPORT_ROWS,
+    );
+    cache.call_table_visible =
+        slice_visible_rows(&cache.call_table_rows, cache.calls_table_scroll);
+    cache.put_table_visible = slice_visible_rows(&cache.put_table_rows, cache.puts_table_scroll);
+}
+
 fn row_from_contract(c: &OptionContract, show_greeks: bool) -> OptionsRowDisplay {
     let greek_labels = if show_greeks {
         c.greeks.as_ref().map(|g| {
@@ -131,6 +213,8 @@ fn row_from_contract(c: &OptionContract, show_greeks: bool) -> OptionsRowDisplay
         bid_label: format_opt_price(c.bid),
         ask_label: format_opt_price(c.ask),
         last_label: format_opt_price(c.last),
+        vol_label: format_compact_qty(c.volume),
+        oi_label: format_compact_qty(c.open_interest),
         iv_label: format_iv(c.implied_volatility),
         greek_labels,
     }
@@ -162,6 +246,8 @@ fn table_row_from_display(
         Cell::from(r.bid_label.clone()),
         Cell::from(r.ask_label.clone()),
         Cell::from(r.last_label.clone()),
+        Cell::from(r.vol_label.clone()),
+        Cell::from(r.oi_label.clone()),
         Cell::from(r.iv_label.clone()),
     ];
     if show_greeks {
@@ -180,7 +266,7 @@ fn table_row_from_display(
 }
 
 fn header_row(show_greeks: bool) -> Row<'static> {
-    let mut headers = vec!["Strike", "Bid", "Ask", "Last", "IV"];
+    let mut headers = vec!["Strike", "Bid", "Ask", "Last", "Vol", "OI", "IV"];
     if show_greeks {
         headers.extend(["Δ", "Γ", "Θ", "ν", "ρ"]);
     }
@@ -191,22 +277,26 @@ fn col_widths(show_greeks: bool) -> Vec<Constraint> {
     if show_greeks {
         vec![
             Constraint::Length(9),
-            Constraint::Length(8),
-            Constraint::Length(8),
-            Constraint::Length(8),
-            Constraint::Length(6),
-            Constraint::Length(6),
-            Constraint::Length(6),
-            Constraint::Length(6),
-            Constraint::Length(6),
-            Constraint::Length(6),
+            Constraint::Length(7),
+            Constraint::Length(7),
+            Constraint::Length(7),
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Min(4),
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Length(5),
+            Constraint::Length(5),
         ]
     } else {
         vec![
             Constraint::Length(9),
-            Constraint::Length(8),
-            Constraint::Length(8),
-            Constraint::Length(8),
+            Constraint::Length(7),
+            Constraint::Length(7),
+            Constraint::Length(7),
+            Constraint::Length(5),
+            Constraint::Length(5),
             Constraint::Min(4),
         ]
     }
@@ -228,6 +318,7 @@ fn rebuild_options_table_rows(app: &mut App, rt: &ResolvedTheme) {
         .collect();
     cache.table_header = header_row(show_greeks);
     cache.table_col_widths = col_widths(show_greeks);
+    rebuild_options_table_scroll(cache, selected);
 }
 
 /// Rebuilds cached table rows after strike highlight changes (j/k only).
@@ -249,6 +340,8 @@ pub fn rebuild_options_display_cache(app: &mut App) {
         app.options_display.puts.clear();
         app.options_display.call_table_rows.clear();
         app.options_display.put_table_rows.clear();
+        app.options_display.call_table_visible.clear();
+        app.options_display.put_table_visible.clear();
         app.options_display.table_col_widths.clear();
         return;
     };
@@ -378,7 +471,7 @@ pub fn draw_options(f: &mut Frame, app: &App, area: Rect, rt: &ResolvedTheme) {
     let header_line = Line::from(vec![
         Span::styled(&cache.header_primary, Style::default().fg(rt.foreground)),
         Span::styled(&cache.header_muted, Style::default().fg(rt.muted)),
-        Span::raw(" │ [ ] h/l exp · j/k strike · r refresh"),
+        Span::raw(cache.key_hints.as_str()),
     ]);
     f.render_widget(Paragraph::new(header_line), chunks[0]);
 
@@ -397,10 +490,12 @@ pub fn draw_options(f: &mut Frame, app: &App, area: Rect, rt: &ResolvedTheme) {
         .title(" PUTS ")
         .style(rt.canvas());
 
-    let calls_table = Table::new(cache.call_table_rows.clone(), cache.table_col_widths.clone())
+    // `Table::new` owns rows — clone bounded visible window (~24) per table; full rows rebuilt on scroll only (§52.2.3).
+    let widths = cache.table_col_widths.as_slice();
+    let calls_table = Table::new(cache.call_table_visible.clone(), widths)
         .header(cache.table_header.clone())
         .block(calls_block);
-    let puts_table = Table::new(cache.put_table_rows.clone(), cache.table_col_widths.clone())
+    let puts_table = Table::new(cache.put_table_visible.clone(), widths)
         .header(cache.table_header.clone())
         .block(puts_block);
 
@@ -554,6 +649,35 @@ mod tests {
         invalidate_options_refresh_caches(&mut app);
         assert!(app.options_slices_by_ts.is_empty());
         assert!(app.options_polygon_expirations_cache.is_none());
+    }
+
+    #[test]
+    fn row_from_contract_formats_vol_oi() {
+        let row = row_from_contract(
+            &OptionContract {
+                symbol: "C".into(),
+                strike: 100.0,
+                right: OptionRight::Call,
+                expiration_ts: 1,
+                bid: None,
+                ask: None,
+                last: None,
+                volume: Some(12_500),
+                open_interest: Some(800),
+                implied_volatility: None,
+                greeks: None,
+            },
+            false,
+        );
+        assert_eq!(row.vol_label, "12.5K");
+        assert_eq!(row.oi_label, "800");
+    }
+
+    #[test]
+    fn table_scroll_offset_centers_selection() {
+        assert_eq!(table_scroll_offset(50, 100, 10), 46);
+        assert_eq!(table_scroll_offset(0, 5, 24), 0);
+        assert_eq!(table_scroll_offset(99, 100, 10), 90);
     }
 
     #[test]
