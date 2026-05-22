@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Cleared 2026-05-21: §49 shipped — Issues #165, #168 (PR #170). -->
+<!-- Cleared 2026-05-22: §50 shipped — Issue #167 (PR #172). Follow-up → #171 (Polygon options expiration list cache). -->

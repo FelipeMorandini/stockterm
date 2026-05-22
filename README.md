@@ -99,7 +99,7 @@ Optional JSON object: each key is a **chord** string, each value is an **`Action
 
 **Backtest tab (Issue #25 / §47):** Load historical bars on **Charts** first ( **`4`** = Y1 recommended). **Backtest** tab: **`Enter`** or **`r`** run, **`n`** cycle strategy (SMA crossover ↔ RSI mean-reversion), **`x`** export `~/.stockterm/backtest_<symbol>_<ts>.{csv,json}`, **`j`**/**`k`** scroll trades. Long-only, fills at bar **close**, force-flat on the last bar.
 
-**Options tab (Issue #22 / §48):** **Yahoo provider only** (`provider: "yahoo"`). Set a symbol on **Stock View** (e.g. **`AAPL`**), open **Options**: **`r`** refresh chain, **`[`** / **`]`** or **`h`** / **`l`** cycle expirations, **`j`** / **`k`** move strike highlight (calls + puts), **`g`** toggle Greeks columns. Symbols without listed options show **No options available**. Polygon mode returns an explicit error (switch provider in Settings).
+**Options tab (Issue #22 / §48, Polygon #167 / §50):** **Yahoo** (`provider: "yahoo"`) or **Polygon** (`provider: "polygon"` + `api_key` / `STOCKTERM_API_KEY`; requires Polygon **Options Starter** plan or higher). Set a symbol on **Stock View** (e.g. **`AAPL`**), open **Options**: **`r`** refresh chain, **`[`** / **`]`** or **`h`** / **`l`** cycle expirations, **`j`** / **`k`** move strike highlight (calls + puts), **`g`** toggle Greeks columns. Symbols without listed options show **No options available**.
 
 **Chord grammar** (ASCII, case-insensitive except `char:` payload):
 
@@ -157,6 +157,7 @@ These environment variables are supported for local diagnosis. Any other `STOCKT
 | `STOCKTERM_DEBUG_YAHOO_QUOTE` | Any build | Set to exactly `1` (no trimming; no other value enables it). When Yahoo **`yahoo_latest_quote`** falls back from **`v7/finance/quote`** to **`v8/finance/chart`**, one line is written to **stderr** with the symbol and reason (`empty_v7` or `v7_error`). See `docs/SPEC.md` §34. |
 | `STOCKTERM_DEBUG_YAHOO_NEWS` | Any build | Set to exactly `1` (no trimming; no other value enables it). When Yahoo news is fetched, one **stderr** line per attempt (`search`, `rss`, `query2`) with outcome tokens such as `ok_items(n)`, `ok_empty`, `parse_mismatch`, or `err(…)`. See `docs/SPEC.md` §36. |
 | `STOCKTERM_DEBUG_YAHOO_OPTIONS` | Any build | Set to exactly `1`. Logs parsed options chain summary (expiration count, strikes) via **`tracing`** at **info** level — not stderr. See `docs/SPEC.md` §48. |
+| `STOCKTERM_DEBUG_POLYGON_OPTIONS` | Any build | Set to exactly `1`. Logs Polygon options fetch summary (expiration count, selected date, row counts) via **`tracing`** at **info** level — not stderr. See `docs/SPEC.md` §50. |
 
 Run from the repo root, for example:
 

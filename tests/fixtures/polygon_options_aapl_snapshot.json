@@ -1,0 +1,82 @@
+{
+  "status": "OK",
+  "request_id": "test-fixture",
+  "results": [
+    {
+      "details": {
+        "contract_type": "call",
+        "expiration_date": "2026-06-20",
+        "strike_price": 150,
+        "ticker": "O:AAPL260620C00150000"
+      },
+      "greeks": {
+        "delta": 0.55,
+        "gamma": 0.02,
+        "theta": -0.08,
+        "vega": 0.15
+      },
+      "implied_volatility": 0.28,
+      "open_interest": 1543,
+      "last_quote": {
+        "bid": 5.1,
+        "ask": 5.3
+      },
+      "day": {
+        "close": 5.2,
+        "volume": 868
+      }
+    },
+    {
+      "details": {
+        "contract_type": "call",
+        "expiration_date": "2026-06-20",
+        "strike_price": 155,
+        "ticker": "O:AAPL260620C00155000"
+      },
+      "implied_volatility": 0.26,
+      "open_interest": 900,
+      "last_quote": {
+        "bid": 3.0,
+        "ask": 3.2
+      },
+      "last_trade": {
+        "price": 3.1
+      }
+    },
+    {
+      "details": {
+        "contract_type": "put",
+        "expiration_date": "2026-06-20",
+        "strike_price": 150,
+        "ticker": "O:AAPL260620P00150000"
+      },
+      "implied_volatility": 0.3,
+      "open_interest": 800,
+      "last_quote": {
+        "bid": 4.0,
+        "ask": 4.2
+      },
+      "day": {
+        "close": 4.1,
+        "volume": 400
+      }
+    },
+    {
+      "details": {
+        "contract_type": "put",
+        "expiration_date": "2026-06-20",
+        "strike_price": 155,
+        "ticker": "O:AAPL260620P00155000"
+      },
+      "open_interest": 600,
+      "last_quote": {
+        "bid": 6.0,
+        "ask": 6.2
+      },
+      "day": {
+        "close": 6.1,
+        "volume": 200
+      }
+    }
+  ]
+}
