@@ -9509,7 +9509,7 @@ After maintainer approval of §53, the **engineer** may implement per [`.cursor/
 
 ### 53.7 Status
 
-- **Status:** Implemented (engineer build **2026-05-22**; audit passed; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#176**, **#177** pending sign-off).
+- **Status:** Implemented (engineer build **2026-05-22**; audit passed; **PR:** [#179](https://github.com/FelipeMorandini/stockterm/pull/179); manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#176**, **#177** pending sign-off).
 - **Tracking:** [Issue #176](https://github.com/FelipeMorandini/stockterm/issues/176), [Issue #177](https://github.com/FelipeMorandini/stockterm/issues/177).
 - **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#176**, **#177**.
 - **Depends on:** **§52** (shipped **#65** / PR **#178**).
