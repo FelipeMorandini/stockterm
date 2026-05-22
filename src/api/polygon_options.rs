@@ -1,4 +1,4 @@
-//! Polygon.io options chain adapter (Issue #167 / SPEC §50).
+//! Polygon.io options chain adapter (Issue #167 / SPEC §50; expiration list cache Issue #171 / §51).
 
 use std::collections::HashMap;
 
@@ -29,19 +29,58 @@ pub struct PolygonOptionsParseResult {
 }
 
 /// Fetches and parses a Polygon options chain for `symbol` (optional `expiration_ts` unix seconds).
+///
+/// When `cached_expirations` is non-empty, skips `v3/reference/options/contracts` (Issue #171 / §51).
 pub async fn polygon_options_chain_with_slices(
     symbol: &str,
     expiration_ts: Option<u64>,
     config: &Config,
+    cached_expirations: Option<&[Expiration]>,
 ) -> ProviderResult<PolygonOptionsParseResult> {
     let key = polygon_key(config)?;
     let wire = resolve_provider_symbol(MarketProviderKind::Polygon, symbol);
 
-    let expirations = fetch_contract_expirations(&wire, &key).await?;
+    let (expirations, contracts_fetch) = if let Some(cached) = cached_expirations.filter(|e| !e.is_empty())
+    {
+        (cached.to_vec(), false)
+    } else {
+        (fetch_contract_expirations(&wire, &key).await?, true)
+    };
     if expirations.is_empty() {
         return Err(ProviderError::ApiMessage("No options available".into()));
     }
 
+    let wire_owned = wire.clone();
+    let key_owned = key.clone();
+    build_polygon_options_result(
+        symbol,
+        &wire,
+        expirations,
+        expiration_ts,
+        contracts_fetch,
+        move |date_label| {
+            let w = wire_owned.clone();
+            let k = key_owned.clone();
+            let d = date_label.to_string();
+            async move { fetch_chain_snapshot(&w, &d, &k).await }
+        },
+    )
+    .await
+}
+
+/// Builds a chain from a known expiration list + snapshot fetch (shared by live path and unit tests).
+async fn build_polygon_options_result<F, Fut>(
+    symbol: &str,
+    wire: &str,
+    expirations: Vec<Expiration>,
+    expiration_ts: Option<u64>,
+    contracts_fetch: bool,
+    snapshot_fetch: F,
+) -> ProviderResult<PolygonOptionsParseResult>
+where
+    F: FnOnce(&str) -> Fut,
+    Fut: std::future::Future<Output = ProviderResult<Vec<OptionContract>>>,
+{
     let selected_ts = match expiration_ts {
         Some(ts) => {
             if !expirations.iter().any(|e| e.ts == ts) {
@@ -61,7 +100,7 @@ pub async fn polygon_options_chain_with_slices(
         .map(|e| e.label.as_str())
         .ok_or_else(|| ProviderError::ApiMessage(format!("No options for expiration {selected_ts}")))?;
 
-    let contracts = fetch_chain_snapshot(&wire, date_label, &key).await?;
+    let contracts = snapshot_fetch(date_label).await?;
     let slice = build_slice_from_contracts(symbol, &expirations, selected_ts, contracts);
     if slice.calls.is_empty() && slice.puts.is_empty() {
         return Err(ProviderError::ApiMessage("No options available".into()));
@@ -82,11 +121,12 @@ pub async fn polygon_options_chain_with_slices(
             target: "stockterm::polygon_options",
             symbol = %chain.underlying,
             wire = %wire,
+            contracts_fetch,
             expirations = chain.expirations.len(),
             selected = %date_label,
             calls = chain.slice.calls.len(),
             puts = chain.slice.puts.len(),
-            "parsed polygon options chain"
+            "polygon options fetch"
         );
     }
 
@@ -547,5 +587,36 @@ mod tests {
         let future_ts = future.ts;
         let ts = select_default_expiration_ts(&[past, future]).unwrap();
         assert_eq!(ts, future_ts);
+    }
+
+    /// Issue #171 / §51 — warm expiration list uses snapshot path only (no contracts HTTP in this helper).
+    #[tokio::test]
+    async fn build_polygon_options_with_cached_expirations() {
+        let exp1 = expiration_from_date("2026-06-20").unwrap();
+        let exp2 = expiration_from_date("2026-06-27").unwrap();
+        let expirations = vec![exp1.clone(), exp2];
+        let slice =
+            parse_snapshot_page(&snapshot_fixture_text(), "AAPL", "2026-06-20").unwrap();
+        let contracts: Vec<OptionContract> = slice
+            .calls
+            .into_iter()
+            .chain(slice.puts.into_iter())
+            .collect();
+
+        let result = build_polygon_options_result(
+            "AAPL",
+            "AAPL",
+            expirations.clone(),
+            Some(exp1.ts),
+            false,
+            |_date| async { Ok(contracts.clone()) },
+        )
+        .await
+        .expect("build from cached expirations");
+
+        assert_eq!(result.chain.expirations.len(), 2);
+        assert_eq!(result.chain.selected_expiration_ts, exp1.ts);
+        assert_eq!(result.chain.slice.calls.len(), 2);
+        assert!(result.slices_by_ts.contains_key(&exp1.ts));
     }
 }

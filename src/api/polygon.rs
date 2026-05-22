@@ -119,7 +119,10 @@ impl MarketDataProvider for PolygonProvider {
     ) -> ProviderResult<crate::models::options::OptionsChain> {
         Ok(
             crate::api::polygon_options::polygon_options_chain_with_slices(
-                symbol, expiration_ts, config,
+                symbol,
+                expiration_ts,
+                config,
+                None,
             )
             .await?
             .chain,
