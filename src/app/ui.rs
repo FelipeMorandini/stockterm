@@ -70,6 +70,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
                 "Charts",
                 "Settings",
                 "Backtest",
+                "Options",
             ];
 
             let tabs = Tabs::new(titles.iter().map(|t| Line::from(*t)).collect())
@@ -89,6 +90,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
                     Tab::Charts => 5,
                     Tab::Settings => 6,
                     Tab::Backtest => 7,
+                    Tab::Options => 8,
                 })
                 .style(Style::default())
                 .highlight_style(Style::default().add_modifier(Modifier::BOLD));
@@ -112,6 +114,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
             Tab::Charts => draw_charts(f, app, body, rt, layout),
             Tab::Settings => draw_settings(f, app, body, rt),
             Tab::Backtest => crate::app::backtest_ui::draw_backtest(f, app, body, rt),
+            Tab::Options => crate::app::options::draw_options(f, app, body, &rt),
         }
 
         if layout.show_status_bar {
@@ -149,6 +152,7 @@ fn error_log_tab_label(tab: Tab) -> &'static str {
         Tab::Charts => "Charts",
         Tab::Settings => "Sets",
         Tab::Backtest => "BT",
+        Tab::Options => "OPT",
     }
 }
 
@@ -1005,6 +1009,20 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
             "Refreshing quotes…",
             rt.fg_accent(),
         )])]
+    } else if app.active_tab == Tab::Options {
+        if let Some(s) = app.options_status_suffix() {
+            vec![Line::from(vec![Span::styled(s, rt.fg_accent())])]
+        } else if app.options_no_listed {
+            vec![Line::from(vec![Span::styled(
+                "No options available",
+                rt.canvas(),
+            )])]
+        } else {
+            vec![Line::from(vec![Span::styled(
+                "Options: r refresh · [ ] h/l exp · j/k strike · g Greeks",
+                rt.canvas(),
+            )])]
+        }
     } else if app.active_tab == Tab::Backtest {
         if let Some(hint) = app.backtest_status_hint() {
             vec![Line::from(vec![Span::styled(hint, rt.fg_accent())])]

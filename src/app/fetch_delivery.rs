@@ -26,6 +26,7 @@ fn fetch_done_context(done: &FetchDone) -> &'static str {
         FetchDone::News { .. } => "news fetch result",
         FetchDone::Search { .. } => "search fetch result",
         FetchDone::Backtest { .. } => "backtest result",
+        FetchDone::Options { .. } => "options chain result",
     }
 }
 
@@ -37,6 +38,7 @@ fn recovery_kind(recovery: InflightRecovery) -> &'static str {
         InflightRecovery::Stock => "stock",
         InflightRecovery::NewsUrlOp => "news_url_op",
         InflightRecovery::Backtest => "backtest",
+        InflightRecovery::Options => "options",
     }
 }
 

@@ -17,7 +17,7 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 | `theme` | object or null | `null` | Theme preset and hex overrides (see [`docs/SPEC.md`](docs/SPEC.md) §21). |
 | `provider` | string | `"yahoo"` | `"yahoo"` or `"polygon"`. |
 | `notifications_enabled` | boolean | `true` | Desktop toasts for alert fires (bell always rings). |
-| `last_tab` | string or omitted | omitted | Last tab: `stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `settings`, `backtest` (Issue #19 / §22). |
+| `last_tab` | string or omitted | omitted | Last tab: `stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `settings`, `backtest`, `options` (Issue #19 / §22). |
 | `backtest` | object | see below | Simulation capital, commission, slippage (Issue #25 / §47). |
 | `backtest_strategy` | object | SMA 50/200 | Strategy kind and periods (Issue #25 / §47). |
 | `last_symbol` | string or omitted | omitted | Last active ticker when `watchlist` was empty at launch (normalized). |
@@ -99,6 +99,8 @@ Optional JSON object: each key is a **chord** string, each value is an **`Action
 
 **Backtest tab (Issue #25 / §47):** Load historical bars on **Charts** first ( **`4`** = Y1 recommended). **Backtest** tab: **`Enter`** or **`r`** run, **`n`** cycle strategy (SMA crossover ↔ RSI mean-reversion), **`x`** export `~/.stockterm/backtest_<symbol>_<ts>.{csv,json}`, **`j`**/**`k`** scroll trades. Long-only, fills at bar **close**, force-flat on the last bar.
 
+**Options tab (Issue #22 / §48):** **Yahoo provider only** (`provider: "yahoo"`). Set a symbol on **Stock View** (e.g. **`AAPL`**), open **Options**: **`r`** refresh chain, **`[`** / **`]`** or **`h`** / **`l`** cycle expirations, **`j`** / **`k`** move strike highlight (calls + puts), **`g`** toggle Greeks columns. Symbols without listed options show **No options available**. Polygon mode returns an explicit error (switch provider in Settings).
+
 **Chord grammar** (ASCII, case-insensitive except `char:` payload):
 
 - Combine with **`+`**: `shift`, `ctrl` (or `control`), `alt` — e.g. `ctrl+e`, `shift+d`.
@@ -154,6 +156,7 @@ These environment variables are supported for local diagnosis. Any other `STOCKT
 | `STOCKTERM_DEBUG_HTTP_DELAY_MS` | Any build | Non-negative integer: milliseconds to sleep **once per stock quote batch** before HTTP fan-out (`src/api/http.rs`). `0`, unset, or invalid → no delay. Capped at **120000** ms. See `docs/SPEC.md` §16 / §38. |
 | `STOCKTERM_DEBUG_YAHOO_QUOTE` | Any build | Set to exactly `1` (no trimming; no other value enables it). When Yahoo **`yahoo_latest_quote`** falls back from **`v7/finance/quote`** to **`v8/finance/chart`**, one line is written to **stderr** with the symbol and reason (`empty_v7` or `v7_error`). See `docs/SPEC.md` §34. |
 | `STOCKTERM_DEBUG_YAHOO_NEWS` | Any build | Set to exactly `1` (no trimming; no other value enables it). When Yahoo news is fetched, one **stderr** line per attempt (`search`, `rss`, `query2`) with outcome tokens such as `ok_items(n)`, `ok_empty`, `parse_mismatch`, or `err(…)`. See `docs/SPEC.md` §36. |
+| `STOCKTERM_DEBUG_YAHOO_OPTIONS` | Any build | Set to exactly `1`. Logs parsed options chain summary (expiration count, strikes) via **`tracing`** at **info** level — not stderr. See `docs/SPEC.md` §48. |
 
 Run from the repo root, for example:
 

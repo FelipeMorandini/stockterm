@@ -109,4 +109,15 @@ impl MarketDataProvider for PolygonProvider {
         );
         fetch_json(&url).await
     }
+
+    async fn get_options_chain(
+        &self,
+        _symbol: &str,
+        _expiration_ts: Option<u64>,
+        _config: &Config,
+    ) -> ProviderResult<crate::models::options::OptionsChain> {
+        Err(ProviderError::ApiMessage(
+            "Options require Yahoo provider".into(),
+        ))
+    }
 }

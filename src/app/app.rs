@@ -53,6 +53,7 @@ pub enum Tab {
     Charts,
     Settings,
     Backtest,
+    Options,
 }
 
 impl Tab {
@@ -67,6 +68,7 @@ impl Tab {
             Tab::Charts => "charts",
             Tab::Settings => "settings",
             Tab::Backtest => "backtest",
+            Tab::Options => "options",
         }
     }
 
@@ -80,6 +82,7 @@ impl Tab {
             "charts" | "Charts" => Tab::Charts,
             "settings" | "Settings" => Tab::Settings,
             "backtest" | "Backtest" => Tab::Backtest,
+            "options" | "Options" => Tab::Options,
             _ => return None,
         })
     }
@@ -161,6 +164,8 @@ pub enum InflightRecovery {
     NewsUrlOp,
     /// Backtest tab when [`FetchDone::Backtest`] could not be delivered (§47 / audit).
     Backtest,
+    /// Options tab when [`FetchDone::Options`] could not be delivered (§48).
+    Options,
 }
 
 /// Outcomes from background HTTP tasks (never awaited on the draw/input hot path).
@@ -188,6 +193,11 @@ pub enum FetchDone {
     },
     Backtest {
         result: Result<crate::models::backtest::BacktestReport, crate::backtest::BacktestError>,
+    },
+    Options {
+        symbol: String,
+        expiration_ts: Option<u64>,
+        result: crate::api::error::ProviderResult<crate::models::options::OptionsChain>,
     },
 }
 
@@ -318,6 +328,8 @@ pub struct App {
     last_stock_network_poll: Option<Instant>,
     last_charts_network_poll: Option<Instant>,
     last_news_network_poll: Option<Instant>,
+    /// Throttle Options-tab chain fetches (Issue #22 / §48.3).
+    last_options_network_poll: Option<Instant>,
     /// True while a watchlist / quote batch is in flight.
     pub stock_refresh_inflight: bool,
     stock_inflight_since: Option<Instant>,
@@ -353,6 +365,16 @@ pub struct App {
     pub(crate) backtest_draw_cache: Option<crate::app::backtest_ui::BacktestDrawCache>,
     /// Precomputed Backtest left-pane parameter lines (Issue #25 — not built in `draw`).
     pub(crate) backtest_params_cache: Option<crate::app::backtest_ui::BacktestParamsCache>,
+    /// Options chain for active symbol (Issue #22 / §48.3).
+    pub options_chain: Option<crate::models::options::OptionsChain>,
+    pub options_inflight: bool,
+    options_inflight_since: Option<Instant>,
+    /// Highlighted strike shared across calls/puts tables (Issue #22).
+    pub options_selected_strike: Option<f64>,
+    pub options_show_greeks: bool,
+    /// True after provider reports no listed options for symbol.
+    pub options_no_listed: bool,
+    pub options_display: crate::app::options::OptionsDisplayCache,
     /// Issue #6 — add holding (shares / price) modal.
     pub portfolio_dialog: Option<PortfolioAddDialog>,
     /// Issue #6 — first `d` arms; second `d` or `y` confirms remove.
@@ -596,6 +618,7 @@ impl App {
             last_stock_network_poll: None,
             last_charts_network_poll: None,
             last_news_network_poll: None,
+            last_options_network_poll: None,
             stock_refresh_inflight: false,
             stock_inflight_since: None,
             fetch_done_tx: None,
@@ -622,6 +645,13 @@ impl App {
             backtest_flash: None,
             backtest_draw_cache: None,
             backtest_params_cache: None,
+            options_chain: None,
+            options_inflight: false,
+            options_inflight_since: None,
+            options_selected_strike: None,
+            options_show_greeks: false,
+            options_no_listed: false,
+            options_display: crate::app::options::OptionsDisplayCache::default(),
             portfolio_dialog: None,
             portfolio_remove_armed: false,
             alert_add_dialog: None,
@@ -640,6 +670,7 @@ impl App {
         }
 
         crate::app::backtest_ui::rebuild_backtest_params_cache(&mut app);
+        crate::app::options::sync_options_chrome(&mut app);
         app
     }
 
@@ -1291,6 +1322,7 @@ impl App {
             Tab::Charts => self.try_spawn_historical_fetch(),
             Tab::News => self.try_spawn_news_fetch(),
             Tab::Search => self.try_spawn_search_tick(),
+            Tab::Options => self.try_spawn_options_fetch(),
             _ => {}
         }
         self.tick_runtime_error_ttl();
@@ -1355,6 +1387,17 @@ impl App {
                 "cleared stale inflight after channel delivery failure"
             );
             self.apply_inflight_recovery(InflightRecovery::Backtest);
+        }
+
+        if self.options_inflight
+            && Self::inflight_is_stale(self.options_inflight_since, stale_after)
+        {
+            tracing::warn!(
+                target: "stockterm::fetch",
+                domain = "options",
+                "cleared stale inflight after channel delivery failure"
+            );
+            self.apply_inflight_recovery(InflightRecovery::Options);
         }
     }
 
@@ -1459,6 +1502,8 @@ impl App {
         self.last_charts_network_poll = None;
         crate::app::backtest_ui::clear_backtest_session(self);
         crate::app::backtest_ui::rebuild_backtest_params_cache(self);
+        crate::app::options::clear_options_session(self);
+        self.last_options_network_poll = None;
     }
 
     /// Rebuild indicator cache from the current historical close series (Issue #21 / §46.2).
@@ -1975,6 +2020,8 @@ impl App {
     /// Clears session symbol-kind metadata after provider change (Issue #160 / §45.1).
     fn clear_symbol_kind_cache(&mut self) {
         self.symbol_kind_cache.clear();
+        crate::app::options::clear_options_session(self);
+        self.last_options_network_poll = None;
     }
 
     /// Toggle `yahoo` ↔ `polygon`, clear Kind cache, persist, and refresh quotes (§45.1).
@@ -2062,6 +2109,10 @@ impl App {
                 self.backtest_inflight = false;
                 self.backtest_inflight_since = None;
                 self.backtest_draw_cache = None;
+            }
+            InflightRecovery::Options => {
+                self.options_inflight = false;
+                self.options_inflight_since = None;
             }
         }
     }
@@ -2230,6 +2281,66 @@ impl App {
                         );
                         self.search_results = None;
                         self.search_table_state.select(None);
+                    }
+                }
+            }
+            FetchDone::Options {
+                symbol,
+                expiration_ts,
+                result,
+            } => {
+                self.options_inflight = false;
+                self.options_inflight_since = None;
+                if symbol != self.symbol {
+                    return;
+                }
+                self.last_options_network_poll = Some(Instant::now());
+                match result {
+                    Ok(chain) => {
+                        if chain.expirations.is_empty() {
+                            crate::app::options::clear_options_session(self);
+                            self.options_no_listed = true;
+                        } else {
+                            self.options_no_listed = false;
+                            let spot = self.get_current_price(&self.symbol);
+                            self.options_selected_strike = Some(
+                                crate::app::options::default_selected_strike(&chain, spot),
+                            );
+                            self.options_chain = Some(chain);
+                            crate::app::options::rebuild_options_display_cache(self);
+                            if self.active_runtime_error.as_ref().is_some_and(|a| {
+                                a.source_domain == ErrorSourceDomain::Options
+                            }) {
+                                self.clear_active_runtime_unless_alerts_save();
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        let preserve_chain = expiration_ts.is_some()
+                            && self.options_chain_matches_symbol();
+                        if preserve_chain {
+                            self.surface_runtime_error(
+                                Tab::Options,
+                                ErrorSourceDomain::Options,
+                                AppError::Provider(err),
+                                true,
+                            );
+                        } else {
+                            let no_opts =
+                                crate::api::error::provider_error_is_no_options(&err);
+                            crate::app::options::clear_options_session(self);
+                            if no_opts {
+                                self.options_no_listed = true;
+                            } else {
+                                self.options_no_listed = false;
+                                self.surface_runtime_error(
+                                    Tab::Options,
+                                    ErrorSourceDomain::Options,
+                                    AppError::Provider(err),
+                                    true,
+                                );
+                            }
+                        }
                     }
                 }
             }
@@ -2730,6 +2841,153 @@ impl App {
         });
     }
 
+    fn options_chain_matches_symbol(&self) -> bool {
+        self.options_chain.as_ref().is_some_and(|c| {
+            c.slice
+                .underlying
+                .eq_ignore_ascii_case(self.symbol.as_str())
+        })
+    }
+
+    /// Fetches options chain off the UI thread (Issue #22 / §48.3).
+    pub fn request_options_fetch(&mut self, expiration_ts: Option<u64>) {
+        if self.options_inflight || self.symbol.is_empty() {
+            return;
+        }
+        let Some(fetch_tx) = self.fetch_done_tx.clone() else {
+            return;
+        };
+        let sym = self.symbol.clone();
+        let cfg = self.config.clone();
+        let recovery_tx = self.inflight_recovery_tx.clone();
+        self.options_inflight = true;
+        self.options_inflight_since = Some(Instant::now());
+        self.options_no_listed = false;
+        tokio::spawn(async move {
+            let provider = crate::api::market_provider_for(cfg.provider);
+            let result = provider.get_options_chain(&sym, expiration_ts, &cfg).await;
+            crate::app::fetch_delivery::deliver_fetch_done(
+                &fetch_tx,
+                recovery_tx.as_ref(),
+                FetchDone::Options {
+                    symbol: sym,
+                    expiration_ts,
+                    result,
+                },
+                InflightRecovery::Options,
+            );
+        });
+    }
+
+    /// Auto-fetch when Options tab is active and chain is missing/stale (§48.3).
+    pub fn try_spawn_options_fetch(&mut self) {
+        if self.options_inflight || self.symbol.is_empty() {
+            return;
+        }
+        if self.config.provider != MarketProviderKind::Yahoo {
+            return;
+        }
+        if self.options_no_listed {
+            return;
+        }
+        if self.options_chain_matches_symbol() {
+            return;
+        }
+        let due = self
+            .last_options_network_poll
+            .map(|t| t.elapsed() >= self.data_poll_interval())
+            .unwrap_or(true);
+        if !due {
+            return;
+        }
+        let expiration_ts = self
+            .options_chain
+            .as_ref()
+            .map(|c| c.selected_expiration_ts);
+        self.request_options_fetch(expiration_ts);
+    }
+
+    /// Cycle to previous expiration and refetch (Issue #22).
+    pub fn options_expiration_prev(&mut self) {
+        let Some(chain) = self.options_chain.clone() else {
+            self.request_options_fetch(None);
+            return;
+        };
+        let idx = chain
+            .expirations
+            .iter()
+            .position(|e| e.ts == chain.selected_expiration_ts)
+            .unwrap_or(0);
+        let new_idx = idx.saturating_sub(1);
+        if new_idx == idx {
+            return;
+        }
+        let ts = chain.expirations[new_idx].ts;
+        self.request_options_fetch(Some(ts));
+    }
+
+    /// Cycle to next expiration and refetch (Issue #22).
+    pub fn options_expiration_next(&mut self) {
+        let Some(chain) = self.options_chain.clone() else {
+            self.request_options_fetch(None);
+            return;
+        };
+        let idx = chain
+            .expirations
+            .iter()
+            .position(|e| e.ts == chain.selected_expiration_ts)
+            .unwrap_or(0);
+        let new_idx = (idx + 1).min(chain.expirations.len().saturating_sub(1));
+        if new_idx == idx {
+            return;
+        }
+        let ts = chain.expirations[new_idx].ts;
+        self.request_options_fetch(Some(ts));
+    }
+
+    /// Move shared strike highlight (j/k) along the canonical strike list (calls + puts).
+    pub fn options_strike_scroll(&mut self, down: bool) {
+        let Some(chain) = self.options_chain.as_ref() else {
+            return;
+        };
+        let strikes = crate::app::options::canonical_strikes(chain);
+        if strikes.is_empty() {
+            return;
+        }
+        let cur = self.options_selected_strike.unwrap_or(strikes[0]);
+        let idx = strikes
+            .iter()
+            .position(|&s| (s - cur).abs() < 1e-6)
+            .unwrap_or(0);
+        let next_idx = if down {
+            (idx + 1).min(strikes.len() - 1)
+        } else {
+            idx.saturating_sub(1)
+        };
+        self.options_selected_strike = Some(strikes[next_idx]);
+        crate::app::options::refresh_options_row_highlights(self);
+    }
+
+    /// Toggle optional Greeks columns (session-only).
+    pub fn options_toggle_greeks(&mut self) {
+        self.options_show_greeks = !self.options_show_greeks;
+        crate::app::options::rebuild_options_display_cache(self);
+    }
+
+    /// Compact status suffix for Options tab (§48.4).
+    pub fn options_status_suffix(&self) -> Option<String> {
+        if self.options_inflight {
+            return Some("Loading options…".into());
+        }
+        let chain = self.options_chain.as_ref()?;
+        let strikes = chain.slice.calls.len().max(chain.slice.puts.len());
+        let g = if self.options_show_greeks { "on" } else { "off" };
+        Some(format!(
+            "OPT: {} │ {strikes} strikes │ g {g}",
+            chain.slice.expiration.label
+        ))
+    }
+
     /// Cycles SMA ↔ RSI strategy and persists config (Issue #25).
     ///
     /// Does not auto-rerun; operator presses **Enter** / **`r`** on the Backtest tab.
@@ -2859,7 +3117,8 @@ impl App {
             Tab::News => Tab::Charts,
             Tab::Charts => Tab::Settings,
             Tab::Settings => Tab::Backtest,
-            Tab::Backtest => Tab::StockView,
+            Tab::Backtest => Tab::Options,
+            Tab::Options => Tab::StockView,
         };
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
@@ -2871,7 +3130,7 @@ impl App {
     pub fn prev_tab(&mut self) {
         let from = self.active_tab;
         self.active_tab = match self.active_tab {
-            Tab::StockView => Tab::Backtest,
+            Tab::StockView => Tab::Options,
             Tab::Portfolio => Tab::StockView,
             Tab::Alerts => Tab::Portfolio,
             Tab::Search => Tab::Alerts,
@@ -2879,6 +3138,7 @@ impl App {
             Tab::Charts => Tab::News,
             Tab::Settings => Tab::Charts,
             Tab::Backtest => Tab::Settings,
+            Tab::Options => Tab::Backtest,
         };
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
@@ -3268,6 +3528,8 @@ mod tests {
         assert_eq!(Tab::from_config_str("charts"), Some(Tab::Charts));
         assert_eq!(Tab::from_config_str("Charts"), Some(Tab::Charts));
         assert_eq!(Tab::from_config_str("backtest"), Some(Tab::Backtest));
+        assert_eq!(Tab::from_config_str("options"), Some(Tab::Options));
+        assert_eq!(Tab::Options.as_config_str(), "options");
         assert!(Tab::from_config_str("nope").is_none());
     }
 

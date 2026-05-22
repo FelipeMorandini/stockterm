@@ -37,6 +37,8 @@ pub enum BindingLayer {
     FilterInput,
     /// Backtest tab (Issue #25 / SPEC §47.5).
     Backtest,
+    /// Options tab (Issue #22 / SPEC §48.5).
+    Options,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -162,6 +164,13 @@ pub enum Action {
     BacktestStrategyNext,
     BacktestScrollUp,
     BacktestScrollDown,
+    /// Refresh options chain (Issue #22).
+    OptionsRefresh,
+    OptionsExpirationPrev,
+    OptionsExpirationNext,
+    OptionsStrikeUp,
+    OptionsStrikeDown,
+    OptionsToggleGreeks,
 }
 
 #[inline]
@@ -204,6 +213,8 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         }
         BacktestRun | BacktestExport | BacktestStrategyNext | BacktestScrollUp
         | BacktestScrollDown => BindingLayer::Backtest,
+        OptionsRefresh | OptionsExpirationPrev | OptionsExpirationNext | OptionsStrikeUp
+        | OptionsStrikeDown | OptionsToggleGreeks => BindingLayer::Options,
     }
 }
 
@@ -697,6 +708,18 @@ const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = {
         (Backtest, "down", BacktestScrollDown),
         (Backtest, "char:k", BacktestScrollUp),
         (Backtest, "up", BacktestScrollUp),
+        (Options, "char:r", OptionsRefresh),
+        (Options, "[", OptionsExpirationPrev),
+        (Options, "char:h", OptionsExpirationPrev),
+        (Options, "left", OptionsExpirationPrev),
+        (Options, "]", OptionsExpirationNext),
+        (Options, "char:l", OptionsExpirationNext),
+        (Options, "right", OptionsExpirationNext),
+        (Options, "char:j", OptionsStrikeDown),
+        (Options, "down", OptionsStrikeDown),
+        (Options, "char:k", OptionsStrikeUp),
+        (Options, "up", OptionsStrikeUp),
+        (Options, "char:g", OptionsToggleGreeks),
     ]
 };
 
@@ -1092,7 +1115,7 @@ mod tests {
 
     #[test]
     fn default_bindings_total_row_count() {
-        assert_eq!(default_bindings().len(), 232);
+        assert_eq!(default_bindings().len(), 244);
     }
 
     #[test]

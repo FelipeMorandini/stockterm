@@ -8,6 +8,7 @@ use crate::config::MarketProviderKind;
 use crate::config::Config;
 use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
+use crate::models::options::OptionsChain;
 use crate::models::search::SymbolSearchResponse;
 use crate::models::ticker::TickerResponse;
 
@@ -30,6 +31,14 @@ pub trait MarketDataProvider: Send + Sync {
     async fn search_symbols(&self, query: &str, config: &Config) -> ProviderResult<SymbolSearchResponse>;
 
     async fn get_news(&self, symbol: &str, config: &Config) -> ProviderResult<NewsResponse>;
+
+    /// Listed options chain for an underlying (Issue #22 / §48.2).
+    async fn get_options_chain(
+        &self,
+        symbol: &str,
+        expiration_ts: Option<u64>,
+        config: &Config,
+    ) -> ProviderResult<OptionsChain>;
 }
 
 /// Shared handle for spawned quote tasks (cheap `Arc` clone).

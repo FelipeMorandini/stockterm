@@ -82,6 +82,18 @@ impl Clone for ProviderError {
 
 pub type ProviderResult<T> = Result<T, ProviderError>;
 
+/// Whether a provider failure means the underlying has no listed options (Issue #22 / §48.3).
+///
+/// Per-expiration failures (`"No options for expiration …"`) are excluded so expiration
+/// refetch errors do not trigger the symbol-level empty state.
+pub fn provider_error_is_no_options(err: &ProviderError) -> bool {
+    match err {
+        ProviderError::ApiMessage(msg) => msg == "No options available",
+        ProviderError::Http { status: 404, .. } => true,
+        _ => false,
+    }
+}
+
 /// Omit query string so Polygon `apiKey=…` (and other secrets) never appear in UI/error strings.
 fn url_without_query(url: &str) -> &str {
     url.split('?').next().unwrap_or(url)
@@ -153,6 +165,26 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+
+    #[test]
+    fn provider_error_is_no_options_detects_404_and_message() {
+        assert!(provider_error_is_no_options(&ProviderError::Http {
+            status: 404,
+            url: "https://example.com".into(),
+            body_snippet: None,
+        }));
+        assert!(provider_error_is_no_options(&ProviderError::ApiMessage(
+            "No options available".into()
+        )));
+        assert!(!provider_error_is_no_options(&ProviderError::ApiMessage(
+            "No options for expiration 1718841600".into()
+        )));
+        assert!(!provider_error_is_no_options(&ProviderError::Http {
+            status: 500,
+            url: "https://example.com".into(),
+            body_snippet: None,
+        }));
+    }
 
     #[test]
     fn http_display_strips_query_for_secret_redaction() {

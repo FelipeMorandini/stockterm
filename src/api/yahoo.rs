@@ -30,7 +30,11 @@ fn yahoo_wire_symbol(symbol: &str) -> String {
 }
 
 /// On **404**, retry the same path on `query2` (mirrors §34 quote fallback resilience).
-async fn fetch_text_query1_or_query2_on_404(q1_url: &str, q2_url: &str) -> ProviderResult<String> {
+/// Shared query1→query2 fallback for Yahoo GET endpoints (quotes, options, etc.).
+pub(crate) async fn fetch_text_query1_or_query2_on_404(
+    q1_url: &str,
+    q2_url: &str,
+) -> ProviderResult<String> {
     match fetch_text(q1_url).await {
         Err(ProviderError::Http { status: 404, .. }) => fetch_text(q2_url).await,
         other => other,
@@ -90,6 +94,16 @@ impl MarketDataProvider for YahooProvider {
     async fn get_news(&self, symbol: &str, config: &Config) -> ProviderResult<NewsResponse> {
         let _ = config;
         yahoo_news(symbol).await
+    }
+
+    async fn get_options_chain(
+        &self,
+        symbol: &str,
+        expiration_ts: Option<u64>,
+        config: &Config,
+    ) -> ProviderResult<crate::models::options::OptionsChain> {
+        let _ = config;
+        crate::api::yahoo_options::yahoo_options_chain(symbol, expiration_ts).await
     }
 }
 
