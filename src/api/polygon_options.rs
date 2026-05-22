@@ -8,6 +8,7 @@ use urlencoding::encode;
 
 use crate::api::error::{ProviderError, ProviderResult};
 use crate::api::polygon::polygon_key;
+use crate::api::polygon_pagination::validate_polygon_next_url;
 use crate::api::retry::execute_get_text_with_retry;
 use crate::api::symbol::resolve_provider_symbol;
 use crate::config::{Config, MarketProviderKind};
@@ -159,16 +160,6 @@ fn check_polygon_status(status: Option<&str>, url: &str) -> ProviderResult<()> {
             )))
         }
     }
-}
-
-/// Only follow Polygon pagination links (avoid acting on unexpected `next_url` hosts).
-fn validate_polygon_next_url(next: &str) -> ProviderResult<String> {
-    if !next.starts_with("https://api.polygon.io/") {
-        return Err(ProviderError::ApiMessage(
-            "Polygon options pagination URL rejected".into(),
-        ));
-    }
-    Ok(next.to_string())
 }
 
 async fn fetch_contract_expirations(wire: &str, key: &str) -> ProviderResult<Vec<Expiration>> {
@@ -565,19 +556,6 @@ mod tests {
         assert_eq!(exps.len(), 2);
         assert_eq!(exps[0].label, "2026-06-20");
         assert_eq!(exps[1].label, "2026-06-27");
-    }
-
-    #[test]
-    fn validate_polygon_next_url_rejects_foreign_host() {
-        let err = validate_polygon_next_url("https://evil.example/next").unwrap_err();
-        assert!(matches!(err, ProviderError::ApiMessage(_)));
-    }
-
-    #[test]
-    fn validate_polygon_next_url_accepts_polygon_host() {
-        let url = validate_polygon_next_url("https://api.polygon.io/v3/snapshot/options/AAPL?cursor=abc")
-            .unwrap();
-        assert!(url.contains("api.polygon.io"));
     }
 
     #[test]

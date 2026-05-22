@@ -382,6 +382,10 @@ pub struct App {
     /// True after provider reports no listed options for symbol.
     pub options_no_listed: bool,
     pub options_display: crate::app::options::OptionsDisplayCache,
+    /// Options CALLS table scroll/selection (Issue #177 / §53.2).
+    pub options_calls_table_state: TableState,
+    /// Options PUTS table scroll/selection (Issue #177 / §53.2).
+    pub options_puts_table_state: TableState,
     /// Per-expiration chain slices for the active symbol (session-only, Issue #168).
     pub options_slices_by_ts: std::collections::HashMap<
         u64,
@@ -669,6 +673,8 @@ impl App {
             options_show_greeks: false,
             options_no_listed: false,
             options_display: crate::app::options::OptionsDisplayCache::default(),
+            options_calls_table_state: TableState::default(),
+            options_puts_table_state: TableState::default(),
             options_slices_by_ts: std::collections::HashMap::new(),
             options_polygon_expirations_cache: None,
             portfolio_dialog: None,
@@ -3140,7 +3146,7 @@ impl App {
             idx.saturating_sub(1)
         };
         self.options_selected_strike = Some(strikes[next_idx]);
-        crate::app::options::refresh_options_row_highlights(self);
+        crate::app::options::sync_options_table_states(self);
     }
 
     /// Toggle optional Greeks columns (session-only).

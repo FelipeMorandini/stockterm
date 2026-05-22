@@ -9,7 +9,7 @@ use crate::models::options::{OptionContract, OptionsChain, OptionsChainSlice};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Cell, Paragraph, Row, Table};
+use ratatui::widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState};
 use ratatui::Frame;
 use std::cmp::Ordering;
 
@@ -43,16 +43,12 @@ pub struct OptionsDisplayCache {
     pub header_primary: String,
     pub header_muted: String,
     pub key_hints: String,
-    pub calls_table_scroll: u16,
-    pub puts_table_scroll: u16,
     pub calls: Vec<OptionsRowDisplay>,
     pub puts: Vec<OptionsRowDisplay>,
-    pub call_table_rows: Vec<Row<'static>>,
-    pub put_table_rows: Vec<Row<'static>>,
-    /// Visible window (~24 rows) into [`call_table_rows`] / [`put_table_rows`]; rebuilt on scroll/strike change; draw clones for `Table::new` (§52.2.3).
-    pub call_table_visible: Vec<Row<'static>>,
-    pub put_table_visible: Vec<Row<'static>>,
-    pub table_header: Row<'static>,
+    /// Pre-built CALLS table (Update only — draw uses `render_stateful_widget`, §53.2).
+    pub calls_table: Table<'static>,
+    /// Pre-built PUTS table (Update only).
+    pub puts_table: Table<'static>,
     pub table_col_widths: Vec<Constraint>,
 }
 
@@ -85,15 +81,13 @@ pub fn clear_options_session(app: &mut App) {
     app.options_selected_strike = None;
     app.options_display.calls.clear();
     app.options_display.puts.clear();
-    app.options_display.call_table_rows.clear();
-    app.options_display.put_table_rows.clear();
-    app.options_display.call_table_visible.clear();
-    app.options_display.put_table_visible.clear();
+    app.options_display.calls_table = Table::default();
+    app.options_display.puts_table = Table::default();
     app.options_display.table_col_widths.clear();
     app.options_display.header_primary.clear();
     app.options_display.header_muted.clear();
-    app.options_display.calls_table_scroll = 0;
-    app.options_display.puts_table_scroll = 0;
+    app.options_calls_table_state = TableState::default();
+    app.options_puts_table_state = TableState::default();
     sync_options_chrome(app);
 }
 
@@ -166,31 +160,26 @@ fn selected_row_index(rows: &[OptionsRowDisplay], selected_strike: Option<f64>) 
         .unwrap_or(0)
 }
 
-fn slice_visible_rows(rows: &[Row<'static>], scroll: u16) -> Vec<Row<'static>> {
-    let start = scroll as usize;
-    rows.iter()
-        .skip(start)
-        .take(OPTIONS_TABLE_VIEWPORT_ROWS)
-        .cloned()
-        .collect()
-}
-
-fn rebuild_options_table_scroll(cache: &mut OptionsDisplayCache, selected_strike: Option<f64>) {
-    let calls_idx = selected_row_index(&cache.calls, selected_strike);
-    let puts_idx = selected_row_index(&cache.puts, selected_strike);
-    cache.calls_table_scroll = table_scroll_offset(
+/// Syncs ratatui [`TableState`] offset/selection for strike-centered scroll (§53.2).
+pub fn sync_options_table_states(app: &mut App) {
+    let cache = &app.options_display;
+    let selected = app.options_selected_strike;
+    let calls_idx = selected_row_index(&cache.calls, selected);
+    let puts_idx = selected_row_index(&cache.puts, selected);
+    let calls_scroll = table_scroll_offset(
         calls_idx,
         cache.calls.len(),
         OPTIONS_TABLE_VIEWPORT_ROWS,
     );
-    cache.puts_table_scroll = table_scroll_offset(
+    let puts_scroll = table_scroll_offset(
         puts_idx,
         cache.puts.len(),
         OPTIONS_TABLE_VIEWPORT_ROWS,
     );
-    cache.call_table_visible =
-        slice_visible_rows(&cache.call_table_rows, cache.calls_table_scroll);
-    cache.put_table_visible = slice_visible_rows(&cache.put_table_rows, cache.puts_table_scroll);
+    app.options_calls_table_state.select(Some(calls_idx));
+    *app.options_calls_table_state.offset_mut() = calls_scroll as usize;
+    app.options_puts_table_state.select(Some(puts_idx));
+    *app.options_puts_table_state.offset_mut() = puts_scroll as usize;
 }
 
 fn row_from_contract(c: &OptionContract, show_greeks: bool) -> OptionsRowDisplay {
@@ -224,21 +213,9 @@ fn strikes_match(a: f64, b: f64) -> bool {
     (a - b).abs() < STRIKE_MATCH_EPS
 }
 
-fn row_style(highlighted: bool, rt: &ResolvedTheme) -> Style {
-    if highlighted {
-        Style::default()
-            .fg(rt.foreground)
-            .bg(rt.selection)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default().fg(rt.foreground).bg(rt.background)
-    }
-}
-
 fn table_row_from_display(
     r: &OptionsRowDisplay,
     show_greeks: bool,
-    selected_strike: Option<f64>,
     rt: &ResolvedTheme,
 ) -> Row<'static> {
     let mut cells = vec![
@@ -261,8 +238,7 @@ fn table_row_from_display(
             }
         }
     }
-    let highlighted = selected_strike.is_some_and(|s| strikes_match(r.strike, s));
-    Row::new(cells).style(row_style(highlighted, rt))
+    Row::new(cells).style(Style::default().fg(rt.foreground).bg(rt.background))
 }
 
 fn header_row(show_greeks: bool) -> Row<'static> {
@@ -304,30 +280,49 @@ fn col_widths(show_greeks: bool) -> Vec<Constraint> {
 
 fn rebuild_options_table_rows(app: &mut App, rt: &ResolvedTheme) {
     let show_greeks = app.options_show_greeks;
-    let selected = app.options_selected_strike;
     let cache = &mut app.options_display;
-    cache.call_table_rows = cache
+    let highlight_style = Style::default()
+        .fg(rt.foreground)
+        .bg(rt.selection)
+        .add_modifier(Modifier::BOLD);
+
+    let call_rows: Vec<Row<'static>> = cache
         .calls
         .iter()
-        .map(|d| table_row_from_display(d, show_greeks, selected, rt))
+        .map(|d| table_row_from_display(d, show_greeks, rt))
         .collect();
-    cache.put_table_rows = cache
+    let put_rows: Vec<Row<'static>> = cache
         .puts
         .iter()
-        .map(|d| table_row_from_display(d, show_greeks, selected, rt))
+        .map(|d| table_row_from_display(d, show_greeks, rt))
         .collect();
-    cache.table_header = header_row(show_greeks);
-    cache.table_col_widths = col_widths(show_greeks);
-    rebuild_options_table_scroll(cache, selected);
-}
 
-/// Rebuilds cached table rows after strike highlight changes (j/k only).
-pub fn refresh_options_row_highlights(app: &mut App) {
-    if app.options_display.calls.is_empty() && app.options_display.puts.is_empty() {
-        return;
-    }
-    let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
-    rebuild_options_table_rows(app, &rt);
+    cache.table_col_widths = col_widths(show_greeks);
+    let widths = cache.table_col_widths.clone();
+    let header = header_row(show_greeks);
+
+    cache.calls_table = Table::new(call_rows, widths.clone())
+        .header(header.clone())
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" CALLS ")
+                .style(rt.canvas()),
+        )
+        .highlight_style(highlight_style)
+        .highlight_symbol("> ");
+    cache.puts_table = Table::new(put_rows, widths)
+        .header(header)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" PUTS ")
+                .style(rt.canvas()),
+        )
+        .highlight_style(highlight_style)
+        .highlight_symbol("> ");
+
+    sync_options_table_states(app);
 }
 
 /// Rebuilds [`App::options_display`] from [`App::options_chain`].
@@ -338,11 +333,11 @@ pub fn rebuild_options_display_cache(app: &mut App) {
         app.options_display.header_muted.clear();
         app.options_display.calls.clear();
         app.options_display.puts.clear();
-        app.options_display.call_table_rows.clear();
-        app.options_display.put_table_rows.clear();
-        app.options_display.call_table_visible.clear();
-        app.options_display.put_table_visible.clear();
+        app.options_display.calls_table = Table::default();
+        app.options_display.puts_table = Table::default();
         app.options_display.table_col_widths.clear();
+        app.options_calls_table_state = TableState::default();
+        app.options_puts_table_state = TableState::default();
         return;
     };
     let show_greeks = app.options_show_greeks;
@@ -429,8 +424,8 @@ pub fn canonical_strikes(chain: &OptionsChain) -> Vec<f64> {
     strikes
 }
 
-/// Draws the Options tab (pure render; table rows from [`OptionsDisplayCache`]).
-pub fn draw_options(f: &mut Frame, app: &App, area: Rect, rt: &ResolvedTheme) {
+/// Draws the Options tab (pure render; tables from [`OptionsDisplayCache`] — no row clones, §53.2).
+pub fn draw_options(f: &mut Frame, app: &mut App, area: Rect, rt: &ResolvedTheme) {
     let cache = &app.options_display;
     let block = Block::default()
         .borders(Borders::ALL)
@@ -481,26 +476,8 @@ pub fn draw_options(f: &mut Frame, app: &App, area: Rect, rt: &ResolvedTheme) {
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(body);
 
-    let calls_block = Block::default()
-        .borders(Borders::ALL)
-        .title(" CALLS ")
-        .style(rt.canvas());
-    let puts_block = Block::default()
-        .borders(Borders::ALL)
-        .title(" PUTS ")
-        .style(rt.canvas());
-
-    // `Table::new` owns rows — clone bounded visible window (~24) per table; full rows rebuilt on scroll only (§52.2.3).
-    let widths = cache.table_col_widths.as_slice();
-    let calls_table = Table::new(cache.call_table_visible.clone(), widths)
-        .header(cache.table_header.clone())
-        .block(calls_block);
-    let puts_table = Table::new(cache.put_table_visible.clone(), widths)
-        .header(cache.table_header.clone())
-        .block(puts_block);
-
-    f.render_widget(calls_table, cols[0]);
-    f.render_widget(puts_table, cols[1]);
+    f.render_stateful_widget(&cache.calls_table, cols[0], &mut app.options_calls_table_state);
+    f.render_stateful_widget(&cache.puts_table, cols[1], &mut app.options_puts_table_state);
 }
 
 #[cfg(test)]

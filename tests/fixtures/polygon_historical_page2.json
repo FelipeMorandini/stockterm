@@ -1,0 +1,20 @@
+{
+  "ticker": "AAPL",
+  "queryCount": 3,
+  "resultsCount": 3,
+  "adjusted": true,
+  "count": 1,
+  "status": "OK",
+  "results": [
+    {
+      "v": 120.0,
+      "vw": 152.0,
+      "o": 151.0,
+      "c": 152.0,
+      "h": 153.0,
+      "l": 150.0,
+      "t": 1704067320000,
+      "n": 12
+    }
+  ]
+}

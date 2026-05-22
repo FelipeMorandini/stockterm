@@ -158,6 +158,7 @@ These environment variables are supported for local diagnosis. Any other `STOCKT
 | `STOCKTERM_DEBUG_YAHOO_NEWS` | Any build | Set to exactly `1` (no trimming; no other value enables it). When Yahoo news is fetched, one **stderr** line per attempt (`search`, `rss`, `query2`) with outcome tokens such as `ok_items(n)`, `ok_empty`, `parse_mismatch`, or `err(…)`. See `docs/SPEC.md` §36. |
 | `STOCKTERM_DEBUG_YAHOO_OPTIONS` | Any build | Set to exactly `1`. Logs parsed options chain summary (expiration count, strikes) via **`tracing`** at **info** level — not stderr. See `docs/SPEC.md` §48. |
 | `STOCKTERM_DEBUG_POLYGON_OPTIONS` | Any build | Set to exactly `1`. Logs Polygon options fetch summary (expiration count, selected date, row counts) via **`tracing`** at **info** level — not stderr. See `docs/SPEC.md` §50. |
+| `STOCKTERM_DEBUG_POLYGON_HISTORICAL` | Any build | Set to exactly `1`. Logs each Polygon historical aggregates page fetch (path only, no `apiKey`) and pagination summary via **`tracing`** at **info** level — not stderr. See `docs/SPEC.md` §53. |
 
 Run from the repo root, for example:
 
