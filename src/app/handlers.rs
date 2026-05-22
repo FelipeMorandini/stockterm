@@ -110,6 +110,7 @@ fn handle_options_events(app: &mut App, key: KeyEvent) {
             OptionsRefresh if letter_key_plain(key.modifiers)
                 || (key.code == KeyCode::Char('r') && letter_key_plain(key.modifiers)) =>
             {
+                crate::app::options::invalidate_options_refresh_caches(app);
                 let exp = app
                     .options_chain
                     .as_ref()

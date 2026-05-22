@@ -2,6 +2,7 @@ use crate::api::concurrency::acquire_quote_permit;
 use crate::api::error::ProviderError;
 use crate::api::http::maybe_debug_http_delay;
 use crate::api::market_provider_for;
+use crate::api::symbol::resolve_provider_symbol;
 use crate::api::HistoricalQuery;
 use crate::app::alerts::ALERTS_SAVE_ERROR_PREFIX;
 use crate::app::app_error::{
@@ -382,6 +383,9 @@ pub struct App {
         u64,
         crate::models::options::OptionsChainSlice,
     >,
+    /// Polygon wire symbol + deduped expiration list (session-only, Issue #171 / §51).
+    pub options_polygon_expirations_cache:
+        Option<(String, Vec<crate::models::options::Expiration>)>,
     /// Issue #6 — add holding (shares / price) modal.
     pub portfolio_dialog: Option<PortfolioAddDialog>,
     /// Issue #6 — first `d` arms; second `d` or `y` confirms remove.
@@ -660,6 +664,7 @@ impl App {
             options_no_listed: false,
             options_display: crate::app::options::OptionsDisplayCache::default(),
             options_slices_by_ts: std::collections::HashMap::new(),
+            options_polygon_expirations_cache: None,
             portfolio_dialog: None,
             portfolio_remove_armed: false,
             alert_add_dialog: None,
@@ -2319,6 +2324,16 @@ impl App {
                                 &chain,
                                 &extra_slices,
                             );
+                            if self.config.provider == MarketProviderKind::Polygon
+                                && !chain.expirations.is_empty()
+                            {
+                                let wire = resolve_provider_symbol(
+                                    MarketProviderKind::Polygon,
+                                    &self.symbol,
+                                );
+                                self.options_polygon_expirations_cache =
+                                    Some((wire, chain.expirations.clone()));
+                            }
                             let spot = self.get_current_price(&self.symbol);
                             self.options_selected_strike = Some(
                                 crate::app::options::default_selected_strike(&chain, spot),
@@ -2877,6 +2892,20 @@ impl App {
         let sym = self.symbol.clone();
         let cfg = self.config.clone();
         let recovery_tx = self.inflight_recovery_tx.clone();
+        let polygon_cached_expirations = if cfg.provider == MarketProviderKind::Polygon {
+            if expiration_ts.is_none() {
+                self.options_polygon_expirations_cache = None;
+                None
+            } else {
+                let wire = resolve_provider_symbol(MarketProviderKind::Polygon, &sym);
+                self.options_polygon_expirations_cache
+                    .as_ref()
+                    .filter(|(w, ex)| w == &wire && !ex.is_empty())
+                    .map(|(_, ex)| ex.clone())
+            }
+        } else {
+            None
+        };
         self.options_inflight = true;
         self.options_inflight_since = Some(Instant::now());
         self.options_no_listed = false;
@@ -2894,10 +2923,12 @@ impl App {
                     }
                 }
                 MarketProviderKind::Polygon => {
+                    let cached = polygon_cached_expirations.as_deref();
                     match crate::api::polygon_options::polygon_options_chain_with_slices(
                         &sym,
                         expiration_ts,
                         &cfg,
+                        cached,
                     )
                     .await
                     {
@@ -2941,6 +2972,14 @@ impl App {
                     "options expiration cache hit"
                 );
             }
+            if std::env::var("STOCKTERM_DEBUG_POLYGON_OPTIONS").as_deref() == Ok("1") {
+                tracing::info!(
+                    target: "stockterm::polygon_options",
+                    ts,
+                    slices = self.options_slices_by_ts.len(),
+                    "options expiration slice cache hit"
+                );
+            }
             if let Some(c) = self.options_chain.as_mut() {
                 c.selected_expiration_ts = ts;
                 c.slice = slice;
@@ -2958,6 +2997,14 @@ impl App {
                 target: "stockterm::yahoo_options",
                 ts,
                 "options expiration cache miss spawning fetch"
+            );
+        }
+        if std::env::var("STOCKTERM_DEBUG_POLYGON_OPTIONS").as_deref() == Ok("1") {
+            tracing::info!(
+                target: "stockterm::polygon_options",
+                ts,
+                polygon_expirations_cached = self.options_polygon_expirations_cache.is_some(),
+                "options expiration slice cache miss spawning fetch"
             );
         }
         self.request_options_fetch(Some(ts));

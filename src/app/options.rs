@@ -4,6 +4,7 @@ use crate::app::format::format_usd_price;
 use crate::app::layout::centered_rect;
 use crate::app::styles::ResolvedTheme;
 use crate::app::App;
+use crate::config::MarketProviderKind;
 use crate::models::options::{OptionContract, OptionsChain, OptionsChainSlice};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
@@ -54,10 +55,19 @@ pub fn merge_options_inline_slices(
     cache.insert(chain.selected_expiration_ts, chain.slice.clone());
 }
 
+/// Clears per-expiration slice cache and Polygon expiration list before **`r`** refresh (Issue #171 / §51).
+pub fn invalidate_options_refresh_caches(app: &mut App) {
+    app.options_slices_by_ts.clear();
+    if app.config.provider == MarketProviderKind::Polygon {
+        app.options_polygon_expirations_cache = None;
+    }
+}
+
 /// Clears session options data (symbol change, provider switch).
 pub fn clear_options_session(app: &mut App) {
     app.options_chain = None;
     app.options_slices_by_ts.clear();
+    app.options_polygon_expirations_cache = None;
     app.options_no_listed = false;
     app.options_selected_strike = None;
     app.options_display.calls.clear();
@@ -497,6 +507,53 @@ mod tests {
         merge_options_inline_slices(&mut cache, &chain, &extra);
         assert!(cache.contains_key(&1));
         assert!(cache.contains_key(&2));
+    }
+
+    #[test]
+    fn clear_options_session_clears_polygon_expiration_cache() {
+        use crate::models::options::Expiration;
+
+        let mut app = App::new();
+        app.options_polygon_expirations_cache = Some((
+            "AAPL".into(),
+            vec![Expiration {
+                ts: 1,
+                label: "2026-06-20".into(),
+            }],
+        ));
+        clear_options_session(&mut app);
+        assert!(app.options_polygon_expirations_cache.is_none());
+    }
+
+    #[test]
+    fn invalidate_options_refresh_caches_clears_slices_and_polygon_list() {
+        use crate::config::MarketProviderKind;
+        use crate::models::options::{Expiration, OptionsChainSlice};
+
+        let mut app = App::new();
+        app.config.provider = MarketProviderKind::Polygon;
+        app.options_slices_by_ts.insert(
+            1,
+            OptionsChainSlice {
+                underlying: "AAPL".into(),
+                expiration: Expiration {
+                    ts: 1,
+                    label: "2026-06-20".into(),
+                },
+                calls: vec![],
+                puts: vec![],
+            },
+        );
+        app.options_polygon_expirations_cache = Some((
+            "AAPL".into(),
+            vec![Expiration {
+                ts: 1,
+                label: "2026-06-20".into(),
+            }],
+        ));
+        invalidate_options_refresh_caches(&mut app);
+        assert!(app.options_slices_by_ts.is_empty());
+        assert!(app.options_polygon_expirations_cache.is_none());
     }
 
     #[test]
