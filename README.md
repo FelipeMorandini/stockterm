@@ -21,6 +21,8 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 | `backtest` | object | see below | Simulation capital, commission, slippage (Issue #25 / §47). |
 | `backtest_strategy` | object | SMA 50/200 | Strategy kind and periods (Issue #25 / §47). |
 | `last_symbol` | string or omitted | omitted | Last active ticker when `watchlist` was empty at launch (normalized). |
+| `last_time_range` | string or omitted | omitted | Last Charts time window: `d1`, `w1`, `m1`, `y1` (Issue #180 / [`docs/SPEC.md`](docs/SPEC.md) §54). |
+| `last_chart_mode` | string or omitted | omitted | Last Charts display mode: `line` or `candles` (Issue #180 / §54). |
 | `keymap` | object or omitted | omitted | Optional chord → action overrides (see **Keymap** below; Issue #13 / [`docs/SPEC.md`](docs/SPEC.md) §24). |
 | `layout` | object | omitted → built-in defaults | Shell chrome and pane sizing (Issue #15 / [`docs/SPEC.md`](docs/SPEC.md) §31). |
 

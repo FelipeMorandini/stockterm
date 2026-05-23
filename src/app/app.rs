@@ -583,6 +583,17 @@ impl App {
             .and_then(Tab::from_config_str)
             .unwrap_or(Tab::StockView);
 
+        let time_range = config
+            .last_time_range
+            .as_deref()
+            .and_then(TimeRange::from_config_str)
+            .unwrap_or_default();
+        let chart_mode = config
+            .last_chart_mode
+            .as_deref()
+            .and_then(ChartDisplayMode::from_config_str)
+            .unwrap_or_default();
+
         let mut watchlist_state = TableState::default();
         if !watchlist.is_empty() {
             watchlist_state.select(Some(0));
@@ -652,11 +663,11 @@ impl App {
             url_op_tx: None,
             news_url_op_inflight: false,
             news_url_flash: None,
-            time_range: TimeRange::default(),
+            time_range,
             chart_viewport: ChartViewport::default(),
             charts_polygon_truncated: false,
             charts_polygon_notice: String::new(),
-            chart_mode: ChartDisplayMode::default(),
+            chart_mode,
             chart_indicators: ChartIndicatorToggles::default(),
             chart_indicator_cache: None,
             backtest_report: None,
@@ -771,20 +782,25 @@ impl App {
         ));
     }
 
-    /// Copy `active_tab` / `symbol` into `config` before any disk write (Issue #19 / §22).
+    /// Copy session UI fields into `config` before any disk write (Issue #19 / §22, #180 / §54).
     pub(crate) fn sync_session_fields_into_config(&mut self) {
         self.config.last_tab = Some(self.active_tab.as_config_str().to_string());
         self.config.last_symbol = normalize_symbol(&self.symbol);
+        self.config.last_time_range = Some(self.time_range.as_config_str().to_string());
+        self.config.last_chart_mode = Some(self.chart_mode.as_config_str().to_string());
     }
 
-    /// [`Config::try_save`] after refreshing `last_tab` / `last_symbol` from UI state.
+    /// [`Config::try_save`] after refreshing session fields (`last_tab`, `last_symbol`,
+    /// `last_time_range`, `last_chart_mode`) from UI state (Issues #19 / #129 / #180).
     pub(crate) fn try_save_config_with_session(&mut self) -> Result<(), ConfigError> {
         self.sync_session_fields_into_config();
         self.config.try_save()
     }
 
-    /// Schedule a debounced flush of `last_tab` / `last_symbol` to `~/.stockterm.json` (Issue #129).
-    /// High-frequency callers (`j`/`k`, tab keys, Stock View **Enter** after fetch) coalesce into one write.
+    /// Schedule a debounced flush of session fields to `~/.stockterm.json` (Issue #129 / §54).
+    ///
+    /// Coalesces `last_tab`, `last_symbol`, `last_time_range`, and `last_chart_mode`.
+    /// High-frequency callers (`j`/`k`, tab keys, chart range/mode, Stock View **Enter**) share one write.
     fn persist_session_to_disk(&mut self) {
         self.session_persist_deadline = Some(Instant::now() + SESSION_PERSIST_DEBOUNCE);
     }
@@ -2779,6 +2795,7 @@ impl App {
         if !changed {
             self.charts_reset_viewport();
         }
+        self.persist_session_to_disk();
     }
 
     /// Bypass charts throttle (e.g. after changing `time_range`).
@@ -2823,6 +2840,7 @@ impl App {
 
     pub fn charts_toggle_mode(&mut self) {
         self.chart_mode = self.chart_mode.toggle();
+        self.persist_session_to_disk();
     }
 
     /// Toggle SMA(20) overlay on the Charts line chart (Issue #21).
@@ -3444,10 +3462,12 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{
-        data_poll_interval_secs, search_result_matches_current, App,
+        data_poll_interval_secs, search_result_matches_current, App, ChartDisplayMode,
     };
     use crate::app::app_error::{push_error_log, ErrorLogEntry, UiErrorCategory, ERROR_LOG_CAP};
     use crate::app::Tab;
+    use crate::config::Config;
+    use crate::models::time_range::TimeRange;
     use std::collections::VecDeque;
     use std::time::{Duration, Instant};
 
@@ -3712,6 +3732,54 @@ mod tests {
         assert_eq!(Tab::from_config_str("options"), Some(Tab::Options));
         assert_eq!(Tab::Options.as_config_str(), "options");
         assert!(Tab::from_config_str("nope").is_none());
+    }
+
+    #[test]
+    fn sync_session_fields_writes_chart_prefs_issue_180() {
+        let mut app = App::new();
+        app.time_range = TimeRange::D1;
+        app.chart_mode = ChartDisplayMode::Candlestick;
+        app.sync_session_fields_into_config();
+        assert_eq!(app.config.last_time_range.as_deref(), Some("d1"));
+        assert_eq!(app.config.last_chart_mode.as_deref(), Some("candles"));
+    }
+
+    #[test]
+    fn restore_chart_prefs_from_config_strings_issue_180() {
+        let mut config = Config::default();
+        config.last_time_range = Some("y1".into());
+        config.last_chart_mode = Some("candles".into());
+        let tr = config
+            .last_time_range
+            .as_deref()
+            .and_then(TimeRange::from_config_str)
+            .unwrap_or_default();
+        let mode = config
+            .last_chart_mode
+            .as_deref()
+            .and_then(ChartDisplayMode::from_config_str)
+            .unwrap_or_default();
+        assert_eq!(tr, TimeRange::Y1);
+        assert_eq!(mode, ChartDisplayMode::Candlestick);
+
+        config.last_time_range = Some("bogus".into());
+        config.last_chart_mode = Some("invalid".into());
+        assert_eq!(
+            config
+                .last_time_range
+                .as_deref()
+                .and_then(TimeRange::from_config_str)
+                .unwrap_or_default(),
+            TimeRange::M1
+        );
+        assert_eq!(
+            config
+                .last_chart_mode
+                .as_deref()
+                .and_then(ChartDisplayMode::from_config_str)
+                .unwrap_or_default(),
+            ChartDisplayMode::Line
+        );
     }
 
     #[test]

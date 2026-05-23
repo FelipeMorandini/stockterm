@@ -24,6 +24,27 @@ impl TimeRange {
         }
     }
 
+    /// Stable id in `~/.stockterm.json` (`last_time_range`) — Issue #180 / SPEC §54.
+    pub const fn as_config_str(self) -> &'static str {
+        match self {
+            TimeRange::D1 => "d1",
+            TimeRange::W1 => "w1",
+            TimeRange::M1 => "m1",
+            TimeRange::Y1 => "y1",
+        }
+    }
+
+    /// Parse persisted chart time range; unknown strings return `None`.
+    pub fn from_config_str(s: &str) -> Option<Self> {
+        Some(match s.trim() {
+            "d1" | "D1" => TimeRange::D1,
+            "w1" | "W1" => TimeRange::W1,
+            "m1" | "M1" => TimeRange::M1,
+            "y1" | "Y1" => TimeRange::Y1,
+            _ => return None,
+        })
+    }
+
     /// Maps to Yahoo v8 `range=` + `interval=` (see `HistoricalQueryParams::yahoo_range`).
     ///
     /// | Range | Yahoo `range` | `interval` | Polygon window | Polygon bars |
@@ -116,6 +137,18 @@ mod tests {
     #[test]
     fn default_time_range_is_m1() {
         assert_eq!(TimeRange::default(), TimeRange::M1);
+    }
+
+    #[test]
+    fn time_range_config_str_roundtrip() {
+        for tr in [TimeRange::D1, TimeRange::W1, TimeRange::M1, TimeRange::Y1] {
+            assert_eq!(
+                TimeRange::from_config_str(tr.as_config_str()),
+                Some(tr)
+            );
+        }
+        assert_eq!(TimeRange::from_config_str("D1"), Some(TimeRange::D1));
+        assert!(TimeRange::from_config_str("bogus").is_none());
     }
 
     #[test]
