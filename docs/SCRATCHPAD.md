@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Cleared 2026-05-22 — §53 ship (#176, #177). No deferred bullets; audit strategic debt left as out-of-scope in §53. -->
+<!-- Cleared 2026-05-23 — §54 ship (#180). No deferred bullets; audit passed. -->

@@ -36,6 +36,8 @@ pub enum MarketProviderKind {
 /// | `notifications_enabled` | Desktop toasts for alerts. Default: `true`. |
 /// | `last_tab` | Last focused tab id (`stock_view`, `portfolio`, …). Default: omitted. |
 /// | `last_symbol` | Last active ticker (uppercase) when `watchlist` was empty at launch. Default: omitted. |
+/// | `last_time_range` | Last Charts time window (`d1`, `w1`, `m1`, `y1`). Default: omitted. |
+/// | `last_chart_mode` | Last Charts display mode (`line`, `candles`). Default: omitted. |
 /// | `keymap` | Optional chord → action overrides (see **README** “Keymap” and [`keymap`](crate::config::keymap)). Default: omitted → built-in defaults. |
 /// | `layout` | Shell chrome + pane splits (see §31 / [`layout`](crate::config::layout)). Default: omitted → built-in defaults. |
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -67,6 +69,12 @@ pub struct Config {
     /// Last active symbol (normalized) when restoring session; used when `watchlist` is empty (Issue #19 / §22).
     #[serde(default)]
     pub last_symbol: Option<String>,
+    /// Last Charts tab time window (`d1` / `w1` / `m1` / `y1`). Invalid or omitted → app default (Issue #180 / §54).
+    #[serde(default)]
+    pub last_time_range: Option<String>,
+    /// Last Charts display mode (`line` / `candles`). Invalid or omitted → app default (Issue #180 / §54).
+    #[serde(default)]
+    pub last_chart_mode: Option<String>,
     /// Optional keyboard overrides: JSON object mapping **chord** string → **action** name (PascalCase).
     #[serde(default)]
     pub keymap: Option<HashMap<String, String>>,
@@ -99,6 +107,8 @@ impl Default for Config {
             notifications_enabled: default_notifications_enabled(),
             last_tab: None,
             last_symbol: None,
+            last_time_range: None,
+            last_chart_mode: None,
             keymap: None,
             layout: Layout::default(),
             backtest: BacktestConfig::default(),
@@ -269,6 +279,24 @@ mod tests {
         let c: Config = serde_json::from_str(j).expect("parse");
         assert!(c.last_tab.is_none());
         assert!(c.last_symbol.is_none());
+        assert!(c.last_time_range.is_none());
+        assert!(c.last_chart_mode.is_none());
+    }
+
+    #[test]
+    fn serde_last_time_range_last_chart_mode_roundtrip() {
+        let j = r#"{"portfolio":[],"watchlist":[],"refresh_rate":0,"api_key":"","alerts":[],"default_symbol":"","provider":"yahoo","last_time_range":"d1","last_chart_mode":"candles"}"#;
+        let c: Config = serde_json::from_str(j).expect("parse");
+        assert_eq!(c.last_time_range.as_deref(), Some("d1"));
+        assert_eq!(c.last_chart_mode.as_deref(), Some("candles"));
+    }
+
+    #[test]
+    fn serde_unknown_chart_session_strings_still_load() {
+        let j = r#"{"portfolio":[],"watchlist":[],"refresh_rate":0,"api_key":"","alerts":[],"default_symbol":"","provider":"yahoo","last_time_range":"bogus","last_chart_mode":"invalid"}"#;
+        let c: Config = serde_json::from_str(j).expect("parse");
+        assert_eq!(c.last_time_range.as_deref(), Some("bogus"));
+        assert_eq!(c.last_chart_mode.as_deref(), Some("invalid"));
     }
 
     #[test]

@@ -67,11 +67,25 @@ impl ChartDisplayMode {
         }
     }
 
-    fn label(self) -> &'static str {
+    /// Stable id in `~/.stockterm.json` (`last_chart_mode`) — Issue #180 / SPEC §54.
+    pub const fn as_config_str(self) -> &'static str {
         match self {
             ChartDisplayMode::Line => "line",
             ChartDisplayMode::Candlestick => "candles",
         }
+    }
+
+    /// Parse persisted chart display mode; unknown strings return `None`.
+    pub fn from_config_str(s: &str) -> Option<Self> {
+        Some(match s.trim() {
+            "line" | "Line" => ChartDisplayMode::Line,
+            "candles" | "Candles" | "candlestick" | "Candlestick" => ChartDisplayMode::Candlestick,
+            _ => return None,
+        })
+    }
+
+    fn label(self) -> &'static str {
+        self.as_config_str()
     }
 }
 
@@ -931,6 +945,27 @@ mod tests {
             vw: c,
             n: None,
         }
+    }
+
+    #[test]
+    fn chart_display_mode_from_config_str() {
+        assert_eq!(
+            ChartDisplayMode::from_config_str("line"),
+            Some(ChartDisplayMode::Line)
+        );
+        assert_eq!(
+            ChartDisplayMode::from_config_str("candles"),
+            Some(ChartDisplayMode::Candlestick)
+        );
+        assert_eq!(
+            ChartDisplayMode::from_config_str("candlestick"),
+            Some(ChartDisplayMode::Candlestick)
+        );
+        assert!(ChartDisplayMode::from_config_str("invalid").is_none());
+        assert_eq!(
+            ChartDisplayMode::Line.as_config_str(),
+            "line"
+        );
     }
 
     #[test]
