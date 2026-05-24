@@ -1122,3 +1122,136 @@ mod status_bar_tests {
         assert_eq!(status_bar_row_count(&app, 80), 1);
     }
 }
+
+/// Issue #184 / SPEC §58 — `TestBackend` snapshots for `draw_error_log_overlay`.
+#[cfg(test)]
+mod snapshot_tests {
+    use super::*;
+    use crate::app::app_error::{ErrorLogEntry, UiErrorCategory};
+    use chrono::{DateTime, Local, TimeZone};
+    use ratatui::backend::TestBackend;
+    use ratatui::buffer::Buffer;
+    use ratatui::Terminal;
+    use std::collections::VecDeque;
+
+    const SNAPSHOT_WIDTH: u16 = 80;
+    const SNAPSHOT_HEIGHT: u16 = 24;
+    /// List rows inside the overlay on an 80×24 terminal (inner height − footer).
+    const SNAPSHOT_VISIBLE_ROWS: usize = 12;
+
+    fn fixed_when(h: u32, m: u32, s: u32) -> DateTime<Local> {
+        Local
+            .with_ymd_and_hms(2026, 5, 23, h, m, s)
+            .single()
+            .expect("valid local datetime")
+    }
+
+    fn buffer_snapshot_string(buf: &Buffer) -> String {
+        let mut out = String::new();
+        for y in buf.area.y..buf.area.y + buf.area.height {
+            for x in buf.area.x..buf.area.x + buf.area.width {
+                let ch = buf.get(x, y).symbol().chars().next().unwrap_or('·');
+                let ch = if ch.is_control() || (ch != ' ' && !ch.is_ascii_graphic()) {
+                    '·'
+                } else {
+                    ch
+                };
+                out.push(ch);
+            }
+            out.push('\n');
+        }
+        out
+    }
+
+    fn render_error_log_overlay_buf(app: &mut App, width: u16, height: u16) -> Buffer {
+        let backend = TestBackend::new(width, height);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+        terminal
+            .draw(|f| {
+                let area = Rect::new(0, 0, width, height);
+                let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+                draw_error_log_overlay(f, app, area, rt);
+            })
+            .expect("draw error log overlay");
+        terminal.backend().buffer().clone()
+    }
+
+    fn snapshot_overlay(app: &mut App, name: &str) {
+        let scroll_before = app.error_log_scroll;
+        let buf = render_error_log_overlay_buf(app, SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT);
+        assert_eq!(
+            app.error_log_scroll, scroll_before,
+            "draw_error_log_overlay must not mutate scroll (§20.15.2)"
+        );
+        assert_eq!(
+            app.error_log_visible_rows, SNAPSHOT_VISIBLE_ROWS,
+            "expected visible-row count for 80×24 fixture"
+        );
+        insta::assert_snapshot!(name, buffer_snapshot_string(&buf));
+    }
+
+    fn sample_three_error_log_entries() -> VecDeque<ErrorLogEntry> {
+        let mut entries = VecDeque::new();
+        entries.push_back(ErrorLogEntry {
+            when: fixed_when(12, 0, 1),
+            tab: Tab::StockView,
+            category: UiErrorCategory::Net,
+            line: "Connection timed out".into(),
+        });
+        entries.push_back(ErrorLogEntry {
+            when: fixed_when(12, 0, 2),
+            tab: Tab::Portfolio,
+            category: UiErrorCategory::Api,
+            line: "Quote unavailable for XYZ".into(),
+        });
+        entries.push_back(ErrorLogEntry {
+            when: fixed_when(12, 0, 3),
+            tab: Tab::Charts,
+            category: UiErrorCategory::Rate,
+            line: "Rate limited — retry later".into(),
+        });
+        entries
+    }
+
+    fn many_error_log_entries(count: usize) -> VecDeque<ErrorLogEntry> {
+        let mut entries = VecDeque::new();
+        for i in 0..count {
+            entries.push_back(ErrorLogEntry {
+                when: fixed_when(12, 0, (i % 60) as u32),
+                tab: match i % 4 {
+                    0 => Tab::StockView,
+                    1 => Tab::News,
+                    2 => Tab::Alerts,
+                    _ => Tab::Search,
+                },
+                category: UiErrorCategory::Int,
+                line: format!("Synthetic error row {i:02}"),
+            });
+        }
+        entries
+    }
+
+    #[test]
+    fn error_log_overlay_empty() {
+        let mut app = App::new();
+        app.error_log.clear();
+        app.error_log_scroll = 0;
+        snapshot_overlay(&mut app, "error_log_overlay_empty");
+    }
+
+    #[test]
+    fn error_log_overlay_three_entries() {
+        let mut app = App::new();
+        app.error_log = sample_three_error_log_entries();
+        app.error_log_scroll = 0;
+        snapshot_overlay(&mut app, "error_log_overlay_three_entries");
+    }
+
+    #[test]
+    fn error_log_overlay_scrolled() {
+        let mut app = App::new();
+        app.error_log = many_error_log_entries(20);
+        app.error_log_scroll = 5;
+        snapshot_overlay(&mut app, "error_log_overlay_scrolled");
+    }
+}

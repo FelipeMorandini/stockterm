@@ -246,9 +246,11 @@ mod tests {
     #[test]
     fn strategy_from_params_rejects_rsi_period_zero() {
         let closes = vec![100.0; 30];
-        let mut params = BacktestStrategyParams::default();
-        params.kind = BacktestStrategyKind::RsiMeanReversion;
-        params.rsi_period = 0;
+        let params = BacktestStrategyParams {
+            kind: BacktestStrategyKind::RsiMeanReversion,
+            rsi_period: 0,
+            ..Default::default()
+        };
         assert!(matches!(
             strategy_from_params(&params, &closes),
             Err(BacktestError::InvalidRsiPeriod)
@@ -271,9 +273,11 @@ mod tests {
     fn run_backtest_sma_produces_report() {
         let bars = synthetic_bars(120);
         let sim = BacktestConfig::default();
-        let mut params = BacktestStrategyParams::default();
-        params.sma_fast = 10;
-        params.sma_slow = 20;
+        let params = BacktestStrategyParams {
+            sma_fast: 10,
+            sma_slow: 20,
+            ..Default::default()
+        };
         let report = run_backtest("TEST", &bars, &sim, &params).expect("ok");
         assert_eq!(report.summary.bar_count, 120);
         assert_eq!(report.equity_curve.len(), 120);
@@ -325,9 +329,11 @@ mod tests {
             commission_per_trade: fixture.commission_per_trade,
             slippage_bps: fixture.slippage_bps,
         };
-        let mut params = BacktestStrategyParams::default();
-        params.sma_fast = fixture.sma_fast;
-        params.sma_slow = fixture.sma_slow;
+        let params = BacktestStrategyParams {
+            sma_fast: fixture.sma_fast,
+            sma_slow: fixture.sma_slow,
+            ..Default::default()
+        };
 
         let report = run_backtest("FIX", &bars, &sim, &params).expect("ok");
         assert_summary_matches(&report, &fixture.expected);

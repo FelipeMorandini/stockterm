@@ -143,6 +143,37 @@ The crossterm bridge ([`src/app/event.rs`](src/app/event.rs)) stops when `App::r
 
 ## Developer / debug
 
+### Continuous integration
+
+On every pull request and push to `main`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs:
+
+- `cargo clippy --all-targets -- -D warnings` (default features)
+- `cargo test --all-features`
+- A second job with `--no-default-features` for both clippy and test
+
+`cargo fmt --all -- --check` runs in CI but does not fail the workflow yet.
+
+Reproduce locally:
+
+```bash
+cargo clippy --all-targets -- -D warnings
+cargo test --all-features
+cargo clippy --no-default-features --all-targets -- -D warnings
+cargo test --no-default-features
+```
+
+### UI snapshot tests
+
+TUI draw snapshot tests use [`insta`](https://github.com/mitsuhiko/insta) (see [`docs/SPEC.md`](docs/SPEC.md) §58). After changing overlay layout or copy:
+
+```bash
+cargo test error_log_overlay
+cargo insta test
+cargo insta review   # accept updated .snap files when intentional
+```
+
+Install the review helper once: `cargo install cargo-insta`.
+
 These environment variables are supported for local diagnosis. Any other `STOCKTERM_DEBUG_*` name is **not** supported unless it appears here or in `docs/SPEC.md`.
 
 | Variable | When it applies | Behavior |
