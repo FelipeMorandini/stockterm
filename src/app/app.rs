@@ -3528,6 +3528,27 @@ impl App {
     }
 }
 
+/// Effective network poll interval in seconds for [`Config::refresh_rate`] (Issue #4 / SPEC §35.4).
+///
+/// `0` (unset JSON default) → 30 s; values below 5 clamp to 5.
+pub(crate) fn data_poll_interval_secs(refresh_rate: u64) -> u64 {
+    let secs = match refresh_rate {
+        0 => 30,
+        s => s,
+    };
+    secs.max(5)
+}
+
+/// Stale-guard for `FetchDone::Search` (SPEC §10.2).
+pub(crate) fn search_result_matches_current(
+    response_generation: u64,
+    app_generation: u64,
+    response_query: &str,
+    app_query: &str,
+) -> bool {
+    response_generation == app_generation && response_query == app_query
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -3815,9 +3836,11 @@ mod tests {
 
     #[test]
     fn restore_chart_prefs_from_config_strings_issue_180() {
-        let mut config = Config::default();
-        config.last_time_range = Some("y1".into());
-        config.last_chart_mode = Some("candles".into());
+        let mut config = Config {
+            last_time_range: Some("y1".into()),
+            last_chart_mode: Some("candles".into()),
+            ..Default::default()
+        };
         let tr = config
             .last_time_range
             .as_deref()
@@ -4227,25 +4250,4 @@ mod tests {
             Some(200.0)
         );
     }
-}
-
-/// Effective network poll interval in seconds for [`Config::refresh_rate`] (Issue #4 / SPEC §35.4).
-///
-/// `0` (unset JSON default) → 30 s; values below 5 clamp to 5.
-pub(crate) fn data_poll_interval_secs(refresh_rate: u64) -> u64 {
-    let secs = match refresh_rate {
-        0 => 30,
-        s => s,
-    };
-    secs.max(5)
-}
-
-/// Stale-guard for `FetchDone::Search` (SPEC §10.2).
-pub(crate) fn search_result_matches_current(
-    response_generation: u64,
-    app_generation: u64,
-    response_query: &str,
-    app_query: &str,
-) -> bool {
-    response_generation == app_generation && response_query == app_query
 }

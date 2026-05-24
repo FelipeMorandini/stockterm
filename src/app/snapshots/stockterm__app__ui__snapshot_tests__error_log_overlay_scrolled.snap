@@ -1,0 +1,24 @@
+---
+source: src/app/ui.rs
+expression: buffer_snapshot_string(&buf)
+---
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+         ·Recent errors················································         
+         ·12:00:05   News [int] Synthetic error row 05                ·         
+         ·12:00:06 Alerts [int] Synthetic error row 06                ·         
+         ·12:00:07 Search [int] Synthetic error row 07                ·         
+         ·12:00:08  Stock [int] Synthetic error row 08                ·         
+         ·12:00:09   News [int] Synthetic error row 09                ·         
+         ·12:00:10 Alerts [int] Synthetic error row 10                ·         
+         ·12:00:11 Search [int] Synthetic error row 11                ·         
+         ·12:00:12  Stock [int] Synthetic error row 12                ·         
+         ·12:00:13   News [int] Synthetic error row 13                ·         
+         ·12:00:14 Alerts [int] Synthetic error row 14                ·         
+         ·12:00:15 Search [int] Synthetic error row 15                ·         
+         ·12:00:16  Stock [int] Synthetic error row 16                ·         
+         ·Esc close · j/· k/· scroll · PgUp/PgDn                      ·         
+         ·                                                            ·         
+         ······························································

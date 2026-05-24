@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  default-features:
+    name: test + clippy (default features)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: rustfmt (advisory)
+        run: cargo fmt --all --locked -- --check
+        continue-on-error: true
+      - name: clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: test
+        run: cargo test --locked --all-features
+
+  no-default-features:
+    name: test + clippy (no default features)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: clippy
+        run: cargo clippy --locked --no-default-features --all-targets -- -D warnings
+      - name: test
+        run: cargo test --locked --no-default-features
