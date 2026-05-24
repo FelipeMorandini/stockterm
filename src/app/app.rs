@@ -6,7 +6,7 @@ use crate::api::symbol::resolve_provider_symbol;
 use crate::api::HistoricalQuery;
 use crate::app::alerts::ALERTS_SAVE_ERROR_PREFIX;
 use crate::app::app_error::{
-    push_error_log, persistence_for_app_error, ActiveErrorState, AppError, ErrorLogEntry,
+    persistence_for_app_error, push_error_log, ActiveErrorState, AppError, ErrorLogEntry,
     ErrorPersistence, ErrorSourceDomain, LastFailedFetch, ERROR_TRANSIENT_TTL,
 };
 use crate::app::charts::{
@@ -17,8 +17,8 @@ use crate::app::event::{join_event_thread, spawn_event_thread, Event};
 use crate::app::fetch_delivery::deliver_fetch_done;
 use crate::app::handlers::handle_event;
 use crate::app::ui::draw;
-use crate::config::theme::{PaletteRgb, Theme, ThemePreset};
 use crate::config::keymap::{Action, BindingLayer};
+use crate::config::theme::{PaletteRgb, Theme, ThemePreset};
 use crate::config::{
     Config, ConfigError, LayoutPreset, MarketProviderKind, ResolvedKeymap, ResolvedLayout,
 };
@@ -27,15 +27,13 @@ use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
 use crate::models::portfolio::PortfolioItem;
 use crate::models::search::SymbolSearchResponse;
-use crate::models::symbol::{
-    classify_from_instrument_type, classify_symbol_with_hint, SymbolKind,
-};
+use crate::models::symbol::{classify_from_instrument_type, classify_symbol_with_hint, SymbolKind};
 use crate::models::ticker::TickerResponse;
 use crate::models::time_range::TimeRange;
+use futures_util::future::FutureExt;
 use ratatui::backend::Backend;
 use ratatui::widgets::{ListState, TableState};
 use ratatui::Terminal;
-use futures_util::future::FutureExt;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::io;
 use std::panic::AssertUnwindSafe;
@@ -141,7 +139,10 @@ impl Default for PortfolioAddDialog {
 
 impl PortfolioAddDialog {
     /// Prefilled edit dialog for an existing holding (Issue #182 / §55).
-    pub fn for_edit(item: &crate::models::portfolio::PortfolioItem, portfolio_index: usize) -> Self {
+    pub fn for_edit(
+        item: &crate::models::portfolio::PortfolioItem,
+        portfolio_index: usize,
+    ) -> Self {
         use crate::app::portfolio::format_holding_input_value;
         Self {
             kind: PortfolioDialogKind::Edit { portfolio_index },
@@ -416,10 +417,8 @@ pub struct App {
     /// Options PUTS table scroll/selection (Issue #177 / §53.2).
     pub options_puts_table_state: TableState,
     /// Per-expiration chain slices for the active symbol (session-only, Issue #168).
-    pub options_slices_by_ts: std::collections::HashMap<
-        u64,
-        crate::models::options::OptionsChainSlice,
-    >,
+    pub options_slices_by_ts:
+        std::collections::HashMap<u64, crate::models::options::OptionsChainSlice>,
     /// Polygon wire symbol + deduped expiration list (session-only, Issue #171 / §51).
     pub options_polygon_expirations_cache:
         Option<(String, Vec<crate::models::options::Expiration>)>,
@@ -485,16 +484,13 @@ fn alerts_disk_failure_head_for_quote_merge(full: &str) -> &str {
     full.split_once(" · ").map(|(head, _)| head).unwrap_or(full)
 }
 
-async fn run_stock_quote_batch(
-    generation: u64,
-    symbols: Vec<String>,
-    config: Config,
-) -> FetchDone {
+async fn run_stock_quote_batch(generation: u64, symbols: Vec<String>, config: Config) -> FetchDone {
     maybe_debug_http_delay().await;
 
     if config.provider == MarketProviderKind::Yahoo {
         let (quotes_raw, instrument_types, mut errors) =
-            crate::api::yahoo::yahoo_latest_quotes_for_symbols(&symbols, MAX_CONCURRENT_QUOTES).await;
+            crate::api::yahoo::yahoo_latest_quotes_for_symbols(&symbols, MAX_CONCURRENT_QUOTES)
+                .await;
         let mut quotes = HashMap::new();
         for (sym, mut data) in quotes_raw {
             if let Some(msg) = data.api_error_message() {
@@ -568,9 +564,7 @@ impl App {
             Ok(c) => (c, None),
             Err(e) => (
                 Config::default(),
-                Some(AppError::ConfigSave(format!(
-                    "Config load failed: {e}"
-                ))),
+                Some(AppError::ConfigSave(format!("Config load failed: {e}"))),
             ),
         };
 
@@ -741,9 +735,7 @@ impl App {
 
     /// Status-line text for active runtime error (Issue #103 checks this string).
     pub fn error_message(&self) -> Option<String> {
-        self.active_runtime_error
-            .as_ref()
-            .map(|a| a.display_line())
+        self.active_runtime_error.as_ref().map(|a| a.display_line())
     }
 
     /// Issue #14 — palette for this frame (Settings Theme row previews `settings_theme_draft`).
@@ -790,12 +782,7 @@ impl App {
         push_one_log_line: bool,
     ) {
         if push_one_log_line {
-            push_error_log(
-                &mut self.error_log,
-                tab,
-                err.category(),
-                err.status_line(),
-            );
+            push_error_log(&mut self.error_log, tab, err.category(), err.status_line());
             // SPEC §20.15.2 — ring eviction shrinks the log, so re-clamp the
             // overlay scroll. Without this, a user scrolled to the bottom of
             // the overlay sees a "dead `k`" once after each new push (Issue
@@ -869,11 +856,17 @@ impl App {
 
     /// Active runtime error is an alerts `try_save` failure or a §22.2 merged line (`Internal` + same prefix).
     fn active_alerts_save_failure_message(&self) -> Option<&str> {
-        self.active_runtime_error.as_ref().and_then(|a| match &a.error {
-            AppError::ConfigSave(s) if s.starts_with(ALERTS_SAVE_ERROR_PREFIX) => Some(s.as_str()),
-            AppError::Internal(s) if s.starts_with(ALERTS_SAVE_ERROR_PREFIX) => Some(s.as_str()),
-            _ => None,
-        })
+        self.active_runtime_error
+            .as_ref()
+            .and_then(|a| match &a.error {
+                AppError::ConfigSave(s) if s.starts_with(ALERTS_SAVE_ERROR_PREFIX) => {
+                    Some(s.as_str())
+                }
+                AppError::Internal(s) if s.starts_with(ALERTS_SAVE_ERROR_PREFIX) => {
+                    Some(s.as_str())
+                }
+                _ => None,
+            })
     }
 
     /// True when the status line shows an alerts-disk failure (including §22.2 merged `Internal`).
@@ -993,9 +986,11 @@ impl App {
     }
 
     pub(crate) fn portfolio_filter_indices(&self) -> Vec<usize> {
-        crate::app::table_filter::filter_row_indices(self.portfolio.len(), |i| {
-            self.portfolio[i].symbol.as_str()
-        }, &self.filter_query)
+        crate::app::table_filter::filter_row_indices(
+            self.portfolio.len(),
+            |i| self.portfolio[i].symbol.as_str(),
+            &self.filter_query,
+        )
     }
 
     pub(crate) fn clamp_portfolio_filter_selection(&mut self) {
@@ -1043,10 +1038,7 @@ impl App {
             return false;
         }
 
-        let Some(action) = self
-            .resolved_keymap
-            .action(BindingLayer::FilterInput, key)
-        else {
+        let Some(action) = self.resolved_keymap.action(BindingLayer::FilterInput, key) else {
             return true;
         };
 
@@ -1071,8 +1063,7 @@ impl App {
             FilterQueryChar => {
                 if let KeyCode::Char(c) = key.code {
                     if (c.is_ascii_alphanumeric() || c == '-' || c == '.')
-                        && self.filter_query.len()
-                            < crate::app::table_filter::MAX_FILTER_QUERY_LEN
+                        && self.filter_query.len() < crate::app::table_filter::MAX_FILTER_QUERY_LEN
                     {
                         self.filter_query.push(c);
                     }
@@ -1157,12 +1148,7 @@ impl App {
                     }
                 }
             };
-            deliver_fetch_done(
-                &tx,
-                recovery_tx.as_ref(),
-                done,
-                InflightRecovery::Stock,
-            );
+            deliver_fetch_done(&tx, recovery_tx.as_ref(), done, InflightRecovery::Stock);
         });
     }
 
@@ -1248,12 +1234,7 @@ impl App {
                 primary_base
             };
 
-            self.surface_runtime_error(
-                Tab::StockView,
-                ErrorSourceDomain::Stock,
-                primary,
-                false,
-            );
+            self.surface_runtime_error(Tab::StockView, ErrorSourceDomain::Stock, primary, false);
         } else if !self.preserves_alerts_save_banner() {
             self.active_runtime_error = None;
             self.last_failed_fetch = LastFailedFetch::None;
@@ -1381,7 +1362,10 @@ impl App {
             deliver_fetch_done(
                 &tx,
                 recovery_tx.as_ref(),
-                FetchDone::News { symbol: sym, result },
+                FetchDone::News {
+                    symbol: sym,
+                    result,
+                },
                 InflightRecovery::News,
             );
         });
@@ -1405,7 +1389,8 @@ impl App {
     fn recover_stale_inflight_flags(&mut self) {
         let stale_after = inflight_stale_after();
 
-        if self.stock_refresh_inflight && Self::inflight_is_stale(self.stock_inflight_since, stale_after)
+        if self.stock_refresh_inflight
+            && Self::inflight_is_stale(self.stock_inflight_since, stale_after)
         {
             tracing::warn!(
                 target: "stockterm::fetch",
@@ -1415,7 +1400,8 @@ impl App {
             self.apply_inflight_recovery(InflightRecovery::Stock);
         }
 
-        if self.hist_refresh_inflight && Self::inflight_is_stale(self.hist_inflight_since, stale_after)
+        if self.hist_refresh_inflight
+            && Self::inflight_is_stale(self.hist_inflight_since, stale_after)
         {
             tracing::warn!(
                 target: "stockterm::fetch",
@@ -1426,7 +1412,8 @@ impl App {
             self.hist_inflight_since = None;
         }
 
-        if self.news_refresh_inflight && Self::inflight_is_stale(self.news_inflight_since, stale_after)
+        if self.news_refresh_inflight
+            && Self::inflight_is_stale(self.news_inflight_since, stale_after)
         {
             tracing::warn!(
                 target: "stockterm::fetch",
@@ -1578,9 +1565,10 @@ impl App {
             return;
         }
         let limit = crate::models::time_range::polygon_historical_limit(self.time_range);
-        let truncated = self.historical_data.as_ref().is_some_and(|hist| {
-            crate::models::historical::polygon_page_truncated(hist, limit)
-        });
+        let truncated = self
+            .historical_data
+            .as_ref()
+            .is_some_and(|hist| crate::models::historical::polygon_page_truncated(hist, limit));
         if truncated {
             self.charts_polygon_truncated = true;
             self.charts_polygon_notice = "Polygon: partial chart (plan/limit)".into();
@@ -1674,16 +1662,8 @@ impl App {
         if n == 0 {
             return;
         }
-        let i = self
-            .search_table_state
-            .selected()
-            .unwrap_or(0)
-            .min(n - 1);
-        let Some(row) = self
-            .search_results
-            .as_ref()
-            .and_then(|r| r.results.get(i))
-        else {
+        let i = self.search_table_state.selected().unwrap_or(0).min(n - 1);
+        let Some(row) = self.search_results.as_ref().and_then(|r| r.results.get(i)) else {
             return;
         };
         let instrument_type = row.type_.clone();
@@ -1765,9 +1745,10 @@ impl App {
                 UrlOpKind::Open => crate::app::open_url::run_open_with_copy_fallback(&url),
                 UrlOpKind::Copy => {
                     let r = crate::app::open_url::copy_article_url_blocking(&url);
-                    let flash = r.as_ref().ok().map(|_| {
-                        crate::app::open_url::NewsUrlFlashHint::Copied
-                    });
+                    let flash = r
+                        .as_ref()
+                        .ok()
+                        .map(|_| crate::app::open_url::NewsUrlFlashHint::Copied);
                     (r, flash)
                 }
             })
@@ -1811,9 +1792,11 @@ impl App {
         let UrlOpDone { result, flash } = msg;
         match result {
             Ok(()) => {
-                if self.active_runtime_error.as_ref().is_some_and(|a| {
-                    a.source_domain == ErrorSourceDomain::NewsOpenUrl
-                }) {
+                if self
+                    .active_runtime_error
+                    .as_ref()
+                    .is_some_and(|a| a.source_domain == ErrorSourceDomain::NewsOpenUrl)
+                {
                     self.active_runtime_error = None;
                 }
                 if let Some(hint) = flash {
@@ -1913,7 +1896,8 @@ impl App {
             SettingsEdit::RefreshRate => {
                 let trimmed = self.settings_edit_buffer.trim();
                 let Ok(v) = trimmed.parse::<u64>() else {
-                    self.settings_inline_error = Some("Refresh rate must be a positive integer.".into());
+                    self.settings_inline_error =
+                        Some("Refresh rate must be a positive integer.".into());
                     return true;
                 };
                 if v < 1 {
@@ -1929,9 +1913,11 @@ impl App {
                         true,
                     );
                 } else {
-                    if self.active_runtime_error.as_ref().is_some_and(|a| {
-                        a.source_domain == ErrorSourceDomain::Settings
-                    }) {
+                    if self
+                        .active_runtime_error
+                        .as_ref()
+                        .is_some_and(|a| a.source_domain == ErrorSourceDomain::Settings)
+                    {
                         self.active_runtime_error = None;
                     }
                     self.reset_network_poll_clocks();
@@ -1940,8 +1926,7 @@ impl App {
             }
             SettingsEdit::DefaultSymbol => {
                 let Some(sym) = normalize_symbol(&self.settings_edit_buffer) else {
-                    self.settings_inline_error =
-                        Some("Default symbol cannot be empty.".into());
+                    self.settings_inline_error = Some("Default symbol cannot be empty.".into());
                     return true;
                 };
                 self.config.default_symbol = sym;
@@ -1953,9 +1938,11 @@ impl App {
                         true,
                     );
                 } else {
-                    if self.active_runtime_error.as_ref().is_some_and(|a| {
-                        a.source_domain == ErrorSourceDomain::Settings
-                    }) {
+                    if self
+                        .active_runtime_error
+                        .as_ref()
+                        .is_some_and(|a| a.source_domain == ErrorSourceDomain::Settings)
+                    {
                         self.active_runtime_error = None;
                     }
                     self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
@@ -1964,13 +1951,11 @@ impl App {
             SettingsEdit::BacktestCapital => {
                 let trimmed = self.settings_edit_buffer.trim();
                 let Ok(v) = trimmed.parse::<f64>() else {
-                    self.settings_inline_error =
-                        Some("Initial capital must be a number.".into());
+                    self.settings_inline_error = Some("Initial capital must be a number.".into());
                     return true;
                 };
                 if v <= 0.0 {
-                    self.settings_inline_error =
-                        Some("Initial capital must be positive.".into());
+                    self.settings_inline_error = Some("Initial capital must be positive.".into());
                     return true;
                 }
                 self.config.backtest.initial_capital = v;
@@ -1979,13 +1964,11 @@ impl App {
             SettingsEdit::BacktestCommission => {
                 let trimmed = self.settings_edit_buffer.trim();
                 let Ok(v) = trimmed.parse::<f64>() else {
-                    self.settings_inline_error =
-                        Some("Commission must be a number.".into());
+                    self.settings_inline_error = Some("Commission must be a number.".into());
                     return true;
                 };
                 if v < 0.0 {
-                    self.settings_inline_error =
-                        Some("Commission cannot be negative.".into());
+                    self.settings_inline_error = Some("Commission cannot be negative.".into());
                     return true;
                 }
                 self.config.backtest.commission_per_trade = v;
@@ -1994,13 +1977,11 @@ impl App {
             SettingsEdit::BacktestSlippage => {
                 let trimmed = self.settings_edit_buffer.trim();
                 let Ok(v) = trimmed.parse::<f64>() else {
-                    self.settings_inline_error =
-                        Some("Slippage (bps) must be a number.".into());
+                    self.settings_inline_error = Some("Slippage (bps) must be a number.".into());
                     return true;
                 };
                 if v < 0.0 {
-                    self.settings_inline_error =
-                        Some("Slippage cannot be negative.".into());
+                    self.settings_inline_error = Some("Slippage cannot be negative.".into());
                     return true;
                 }
                 self.config.backtest.slippage_bps = v;
@@ -2020,9 +2001,11 @@ impl App {
                 AppError::ConfigSave(format!("Failed to save backtest settings: {e}")),
                 true,
             );
-        } else if self.active_runtime_error.as_ref().is_some_and(|a| {
-            a.source_domain == ErrorSourceDomain::Settings
-        }) {
+        } else if self
+            .active_runtime_error
+            .as_ref()
+            .is_some_and(|a| a.source_domain == ErrorSourceDomain::Settings)
+        {
             self.active_runtime_error = None;
         }
         crate::app::backtest_ui::rebuild_backtest_params_cache(self);
@@ -2058,9 +2041,11 @@ impl App {
                 true,
             );
         } else {
-            if self.active_runtime_error.as_ref().is_some_and(|a| {
-                a.source_domain == ErrorSourceDomain::Settings
-            }) {
+            if self
+                .active_runtime_error
+                .as_ref()
+                .is_some_and(|a| a.source_domain == ErrorSourceDomain::Settings)
+            {
                 self.active_runtime_error = None;
             }
             self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
@@ -2097,9 +2082,11 @@ impl App {
                 true,
             );
         } else {
-            if self.active_runtime_error.as_ref().is_some_and(|a| {
-                a.source_domain == ErrorSourceDomain::Settings
-            }) {
+            if self
+                .active_runtime_error
+                .as_ref()
+                .is_some_and(|a| a.source_domain == ErrorSourceDomain::Settings)
+            {
                 self.active_runtime_error = None;
             }
             self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
@@ -2148,9 +2135,11 @@ impl App {
                 true,
             );
         } else {
-            if self.active_runtime_error.as_ref().is_some_and(|a| {
-                a.source_domain == ErrorSourceDomain::Settings
-            }) {
+            if self
+                .active_runtime_error
+                .as_ref()
+                .is_some_and(|a| a.source_domain == ErrorSourceDomain::Settings)
+            {
                 self.active_runtime_error = None;
             }
             self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
@@ -2171,9 +2160,11 @@ impl App {
                 true,
             );
         } else {
-            if self.active_runtime_error.as_ref().is_some_and(|a| {
-                a.source_domain == ErrorSourceDomain::Settings
-            }) {
+            if self
+                .active_runtime_error
+                .as_ref()
+                .is_some_and(|a| a.source_domain == ErrorSourceDomain::Settings)
+            {
                 self.active_runtime_error = None;
             }
             self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
@@ -2253,9 +2244,11 @@ impl App {
                         if matches!(self.last_failed_fetch, LastFailedFetch::Historical) {
                             self.last_failed_fetch = LastFailedFetch::None;
                         }
-                        if self.active_runtime_error.as_ref().is_some_and(|a| {
-                            a.source_domain == ErrorSourceDomain::Charts
-                        }) {
+                        if self
+                            .active_runtime_error
+                            .as_ref()
+                            .is_some_and(|a| a.source_domain == ErrorSourceDomain::Charts)
+                        {
                             self.clear_active_runtime_unless_alerts_save();
                         }
                     }
@@ -2288,19 +2281,17 @@ impl App {
                         if matches!(self.last_failed_fetch, LastFailedFetch::News { .. }) {
                             self.last_failed_fetch = LastFailedFetch::None;
                         }
-                        if self.active_runtime_error.as_ref().is_some_and(|a| {
-                            a.source_domain == ErrorSourceDomain::News
-                        }) {
+                        if self
+                            .active_runtime_error
+                            .as_ref()
+                            .is_some_and(|a| a.source_domain == ErrorSourceDomain::News)
+                        {
                             self.clear_active_runtime_unless_alerts_save();
                         }
                         if n == 0 {
                             self.news_list_state.select(None);
                         } else {
-                            let i = self
-                                .news_list_state
-                                .selected()
-                                .unwrap_or(0)
-                                .min(n - 1);
+                            let i = self.news_list_state.selected().unwrap_or(0).min(n - 1);
                             self.news_list_state.select(Some(i));
                         }
                     }
@@ -2347,9 +2338,11 @@ impl App {
                         if matches!(self.last_failed_fetch, LastFailedFetch::Search { .. }) {
                             self.last_failed_fetch = LastFailedFetch::None;
                         }
-                        if self.active_runtime_error.as_ref().is_some_and(|a| {
-                            a.source_domain == ErrorSourceDomain::Search
-                        }) {
+                        if self
+                            .active_runtime_error
+                            .as_ref()
+                            .is_some_and(|a| a.source_domain == ErrorSourceDomain::Search)
+                        {
                             self.clear_active_runtime_unless_alerts_save();
                         }
                         let n = self
@@ -2360,11 +2353,7 @@ impl App {
                         if n == 0 {
                             self.search_table_state.select(None);
                         } else {
-                            let i = self
-                                .search_table_state
-                                .selected()
-                                .unwrap_or(0)
-                                .min(n - 1);
+                            let i = self.search_table_state.selected().unwrap_or(0).min(n - 1);
                             self.search_table_state.select(Some(i));
                         }
                     }
@@ -2422,21 +2411,22 @@ impl App {
                                     Some((wire, chain.expirations.clone()));
                             }
                             let spot = self.get_current_price(&self.symbol);
-                            self.options_selected_strike = Some(
-                                crate::app::options::default_selected_strike(&chain, spot),
-                            );
+                            self.options_selected_strike =
+                                Some(crate::app::options::default_selected_strike(&chain, spot));
                             self.options_chain = Some(chain);
                             crate::app::options::rebuild_options_display_cache(self);
-                            if self.active_runtime_error.as_ref().is_some_and(|a| {
-                                a.source_domain == ErrorSourceDomain::Options
-                            }) {
+                            if self
+                                .active_runtime_error
+                                .as_ref()
+                                .is_some_and(|a| a.source_domain == ErrorSourceDomain::Options)
+                            {
                                 self.clear_active_runtime_unless_alerts_save();
                             }
                         }
                     }
                     Err(err) => {
-                        let preserve_chain = expiration_ts.is_some()
-                            && self.options_chain_matches_symbol();
+                        let preserve_chain =
+                            expiration_ts.is_some() && self.options_chain_matches_symbol();
                         if preserve_chain {
                             self.surface_runtime_error(
                                 Tab::Options,
@@ -2445,8 +2435,7 @@ impl App {
                                 true,
                             );
                         } else {
-                            let no_opts =
-                                crate::api::error::provider_error_is_no_options(&err);
+                            let no_opts = crate::api::error::provider_error_is_no_options(&err);
                             crate::app::options::clear_options_session(self);
                             if no_opts {
                                 self.options_no_listed = true;
@@ -2474,9 +2463,11 @@ impl App {
                         if self.backtest_trade_list_state.selected().is_none() && n > 0 {
                             self.backtest_trade_list_state.select(Some(0));
                         }
-                        if self.active_runtime_error.as_ref().is_some_and(|a| {
-                            a.source_domain == ErrorSourceDomain::Backtest
-                        }) {
+                        if self
+                            .active_runtime_error
+                            .as_ref()
+                            .is_some_and(|a| a.source_domain == ErrorSourceDomain::Backtest)
+                        {
                             self.clear_active_runtime_unless_alerts_save();
                         }
                     }
@@ -2605,10 +2596,7 @@ impl App {
             .map(|r| {
                 r.results
                     .iter()
-                    .filter_map(|row| {
-                        normalize_symbol(&row.ticker)
-                            .map(|n| (n, row.type_.clone()))
-                    })
+                    .filter_map(|row| normalize_symbol(&row.ticker).map(|n| (n, row.type_.clone())))
                     .collect()
             })
             .unwrap_or_default();
@@ -2628,9 +2616,11 @@ impl App {
             return;
         }
         let active = self.symbol.as_str();
-        if let Some(full_idx) = self.watchlist.iter().position(|s| {
-            normalize_symbol(s).as_deref() == Some(active)
-        }) {
+        if let Some(full_idx) = self
+            .watchlist
+            .iter()
+            .position(|s| normalize_symbol(s).as_deref() == Some(active))
+        {
             if let Some(sel) = f.iter().position(|&i| i == full_idx) {
                 self.watchlist_state.select(Some(sel));
                 return;
@@ -2677,9 +2667,11 @@ impl App {
                 AppError::ConfigSave(format!("Failed to save watchlist: {e}")),
                 true,
             );
-        } else if self.active_runtime_error.as_ref().is_some_and(|a| {
-            a.source_domain == ErrorSourceDomain::Portfolio
-        }) {
+        } else if self
+            .active_runtime_error
+            .as_ref()
+            .is_some_and(|a| a.source_domain == ErrorSourceDomain::Portfolio)
+        {
             self.active_runtime_error = None;
         }
         let f = self.watchlist_filter_indices();
@@ -2711,11 +2703,12 @@ impl App {
             return;
         }
         self.watchlist.remove(actual);
-        self.watchlist_quotes.retain(|k, _| self.watchlist.contains(k));
+        self.watchlist_quotes
+            .retain(|k, _| self.watchlist.contains(k));
         self.symbol_kind_cache.retain(|k, _| {
-            self.watchlist.iter().any(|w| {
-                normalize_symbol(w).as_deref() == Some(k.as_str())
-            })
+            self.watchlist
+                .iter()
+                .any(|w| normalize_symbol(w).as_deref() == Some(k.as_str()))
         });
         self.config.watchlist = self.watchlist.clone();
         if let Err(e) = self.try_save_config_with_session() {
@@ -2725,9 +2718,11 @@ impl App {
                 AppError::ConfigSave(format!("Failed to save watchlist: {e}")),
                 true,
             );
-        } else if self.active_runtime_error.as_ref().is_some_and(|a| {
-            a.source_domain == ErrorSourceDomain::Portfolio
-        }) {
+        } else if self
+            .active_runtime_error
+            .as_ref()
+            .is_some_and(|a| a.source_domain == ErrorSourceDomain::Portfolio)
+        {
             self.active_runtime_error = None;
         }
 
@@ -2747,10 +2742,7 @@ impl App {
             }
         }
 
-        self.ticker_data = self
-            .watchlist_quotes
-            .get(&self.symbol)
-            .cloned();
+        self.ticker_data = self.watchlist_quotes.get(&self.symbol).cloned();
         if !self.watchlist.is_empty() {
             self.on_active_symbol_changed_for_charts();
         }
@@ -2763,9 +2755,7 @@ impl App {
             return;
         }
         match self.watchlist_state.selected() {
-            None => self
-                .watchlist_state
-                .select(Some(f.len().saturating_sub(1))),
+            None => self.watchlist_state.select(Some(f.len().saturating_sub(1))),
             Some(i) if i > 0 => self.watchlist_state.select(Some(i - 1)),
             _ => {}
         }
@@ -2815,9 +2805,11 @@ impl App {
             self.clear_charts_polygon_notice();
             crate::app::backtest_ui::clear_backtest_session(self);
             crate::app::backtest_ui::rebuild_backtest_params_cache(self);
-            if self.active_runtime_error.as_ref().is_some_and(|a| {
-                a.source_domain == ErrorSourceDomain::Charts
-            }) {
+            if self
+                .active_runtime_error
+                .as_ref()
+                .is_some_and(|a| a.source_domain == ErrorSourceDomain::Charts)
+            {
                 self.active_runtime_error = None;
             }
         }
@@ -2906,9 +2898,7 @@ impl App {
             self.surface_runtime_error(
                 Tab::Backtest,
                 ErrorSourceDomain::Backtest,
-                AppError::Internal(
-                    "Load chart data first (Charts tab, Y1 recommended).".into(),
-                ),
+                AppError::Internal("Load chart data first (Charts tab, Y1 recommended).".into()),
                 true,
             );
             return;
@@ -3210,7 +3200,11 @@ impl App {
         }
         let chain = self.options_chain.as_ref()?;
         let strikes = chain.slice.calls.len().max(chain.slice.puts.len());
-        let g = if self.options_show_greeks { "on" } else { "off" };
+        let g = if self.options_show_greeks {
+            "on"
+        } else {
+            "off"
+        };
         Some(format!(
             "OPT: {} │ {strikes} strikes │ g {g}",
             chain.slice.expiration.label
@@ -3282,9 +3276,8 @@ impl App {
         let json = serde_json::to_string_pretty(&bundle).map_err(|e| e.to_string())?;
         fs::write(&json_path, json).map_err(|e| e.to_string())?;
 
-        let mut csv = std::io::BufWriter::new(
-            fs::File::create(&csv_path).map_err(|e| e.to_string())?,
-        );
+        let mut csv =
+            std::io::BufWriter::new(fs::File::create(&csv_path).map_err(|e| e.to_string())?);
         writeln!(
             csv,
             "entry_ts,exit_ts,side,entry_price,exit_price,shares,pnl"
@@ -3299,8 +3292,7 @@ impl App {
             .map_err(|e| e.to_string())?;
         }
         writeln!(csv, "# symbol,{}", report.summary.symbol).map_err(|e| e.to_string())?;
-        writeln!(csv, "# total_pnl,{}", report.summary.total_pnl)
-            .map_err(|e| e.to_string())?;
+        writeln!(csv, "# total_pnl,{}", report.summary.total_pnl).map_err(|e| e.to_string())?;
         writeln!(
             csv,
             "# max_drawdown_pct,{}",
@@ -3551,9 +3543,7 @@ pub(crate) fn search_result_matches_current(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        data_poll_interval_secs, search_result_matches_current, App, ChartDisplayMode,
-    };
+    use super::{data_poll_interval_secs, search_result_matches_current, App, ChartDisplayMode};
     use crate::app::app_error::{push_error_log, ErrorLogEntry, UiErrorCategory, ERROR_LOG_CAP};
     use crate::app::Tab;
     use crate::config::Config;
@@ -3795,9 +3785,7 @@ mod tests {
         app.stock_fetch_generation = 1;
         app.stock_refresh_inflight = true;
         app.active_runtime_error = Some(ActiveErrorState::new(
-            AppError::Internal(format!(
-                "{ALERTS_SAVE_ERROR_PREFIX} disk · first-batch"
-            )),
+            AppError::Internal(format!("{ALERTS_SAVE_ERROR_PREFIX} disk · first-batch")),
             ErrorPersistence::Sticky,
             Instant::now(),
             ErrorSourceDomain::Stock,
@@ -3884,9 +3872,7 @@ mod tests {
 
         let mut app = App::new();
         app.active_runtime_error = Some(ActiveErrorState::new(
-            AppError::Internal(format!(
-                "{ALERTS_SAVE_ERROR_PREFIX} simulated · API: bad"
-            )),
+            AppError::Internal(format!("{ALERTS_SAVE_ERROR_PREFIX} simulated · API: bad")),
             ErrorPersistence::Sticky,
             Instant::now(),
             ErrorSourceDomain::Stock,
@@ -3945,10 +3931,7 @@ mod tests {
 
         assert!(app.search_query.is_empty());
         assert!(app.search_results.is_none());
-        assert_eq!(
-            app.error_message().as_deref(),
-            Some("[int] quote failed")
-        );
+        assert_eq!(app.error_message().as_deref(), Some("[int] quote failed"));
     }
 
     #[test]
@@ -3994,10 +3977,9 @@ mod tests {
 
         assert!(app.search_query.is_empty());
         assert!(app.preserves_alerts_save_banner());
-        assert!(
-            app.error_message()
-                .is_some_and(|m| m.contains(ALERTS_SAVE_ERROR_PREFIX))
-        );
+        assert!(app
+            .error_message()
+            .is_some_and(|m| m.contains(ALERTS_SAVE_ERROR_PREFIX)));
     }
 
     #[test]
@@ -4238,9 +4220,7 @@ mod tests {
         app.options_select_expiration(200);
         assert!(!app.options_inflight);
         assert_eq!(
-            app.options_chain
-                .as_ref()
-                .map(|c| c.selected_expiration_ts),
+            app.options_chain.as_ref().map(|c| c.selected_expiration_ts),
             Some(200)
         );
         assert_eq!(

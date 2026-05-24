@@ -166,16 +166,9 @@ pub fn sync_options_table_states(app: &mut App) {
     let selected = app.options_selected_strike;
     let calls_idx = selected_row_index(&cache.calls, selected);
     let puts_idx = selected_row_index(&cache.puts, selected);
-    let calls_scroll = table_scroll_offset(
-        calls_idx,
-        cache.calls.len(),
-        OPTIONS_TABLE_VIEWPORT_ROWS,
-    );
-    let puts_scroll = table_scroll_offset(
-        puts_idx,
-        cache.puts.len(),
-        OPTIONS_TABLE_VIEWPORT_ROWS,
-    );
+    let calls_scroll =
+        table_scroll_offset(calls_idx, cache.calls.len(), OPTIONS_TABLE_VIEWPORT_ROWS);
+    let puts_scroll = table_scroll_offset(puts_idx, cache.puts.len(), OPTIONS_TABLE_VIEWPORT_ROWS);
     app.options_calls_table_state.select(Some(calls_idx));
     *app.options_calls_table_state.offset_mut() = calls_scroll as usize;
     app.options_puts_table_state.select(Some(puts_idx));
@@ -396,8 +389,7 @@ pub fn rebuild_options_display_cache(app: &mut App) {
         "Greeks: off (g)"
     };
 
-    app.options_display.header_primary =
-        format!("{expiration_banner} │ {spot_label} │ ");
+    app.options_display.header_primary = format!("{expiration_banner} │ {spot_label} │ ");
     app.options_display.header_muted = greeks_hint.to_string();
     app.options_display.calls = calls;
     app.options_display.puts = puts;
@@ -454,24 +446,21 @@ pub fn draw_options(f: &mut Frame, app: &mut App, area: Rect, rt: &ResolvedTheme
     f.render_widget(block, area);
 
     if app.options_inflight {
-        let msg = Paragraph::new("Loading options…")
-            .style(Style::default().fg(rt.muted));
+        let msg = Paragraph::new("Loading options…").style(Style::default().fg(rt.muted));
         f.render_widget(msg, inner);
         return;
     }
 
     if app.options_no_listed {
         let popup = centered_rect(inner, 60, 30);
-        let msg = Paragraph::new("No options available")
-            .style(Style::default().fg(rt.foreground));
+        let msg = Paragraph::new("No options available").style(Style::default().fg(rt.foreground));
         f.render_widget(msg, popup);
         return;
     }
 
     if app.options_chain.is_none() {
         let popup = centered_rect(inner, 70, 30);
-        let msg = Paragraph::new(cache.empty_hint.as_str())
-            .style(Style::default().fg(rt.muted));
+        let msg = Paragraph::new(cache.empty_hint.as_str()).style(Style::default().fg(rt.muted));
         f.render_widget(msg, popup);
         return;
     }
@@ -494,8 +483,16 @@ pub fn draw_options(f: &mut Frame, app: &mut App, area: Rect, rt: &ResolvedTheme
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(body);
 
-    f.render_stateful_widget(&cache.calls_table, cols[0], &mut app.options_calls_table_state);
-    f.render_stateful_widget(&cache.puts_table, cols[1], &mut app.options_puts_table_state);
+    f.render_stateful_widget(
+        &cache.calls_table,
+        cols[0],
+        &mut app.options_calls_table_state,
+    );
+    f.render_stateful_widget(
+        &cache.puts_table,
+        cols[1],
+        &mut app.options_puts_table_state,
+    );
 }
 
 #[cfg(test)]
@@ -778,5 +775,26 @@ mod tests {
         refresh_options_display_for_theme(&mut app);
 
         assert_eq!(app.options_display.calls[0].strike_label, label_before);
+    }
+
+    /// Issue #189 / SPEC §59.4 — full Options tab layout snapshot.
+    #[test]
+    fn options_tab_sample_chain() {
+        use crate::app::snapshot_test_util::{
+            buffer_snapshot_string, full_area, render_to_buffer, SNAPSHOT_HEIGHT, SNAPSHOT_WIDTH,
+        };
+
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Dark));
+        app.options_chain = Some(sample_chain());
+        rebuild_options_display_cache(&mut app);
+
+        let buf = render_to_buffer(SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT, |f| {
+            let area = full_area(SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT);
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_options(f, &mut app, area, &rt);
+        });
+        insta::assert_snapshot!("options_tab_sample_chain", buffer_snapshot_string(&buf));
     }
 }

@@ -1,0 +1,6 @@
+---
+source: src/app/ui.rs
+expression: buffer_snapshot_string(&buf)
+---
+q quit · Tab tabs · A·Z,-. type · w add · x/D rm · j/k · Enter · ^E error log · 
+Symbols starting w/x/j/k: type 1st letter with Shift (e.g. Wmt · WMT)

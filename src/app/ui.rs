@@ -2,12 +2,12 @@ use crate::app::alerts::draw_alerts;
 use crate::app::charts::draw_charts;
 use crate::app::format::{format_signed_usd_delta, format_usd_price, symbol_kind_label};
 use crate::app::layout::{centered_rect, shell_vertical_constraints};
-use crate::config::ResolvedLayout;
 use crate::app::portfolio::draw_portfolio;
 use crate::app::styles::ResolvedTheme;
 use crate::app::table_filter::filter_title_suffix;
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::MarketProviderKind;
+use crate::config::ResolvedLayout;
 use crate::models::symbol::normalize_symbol;
 use crate::models::ticker::{ticker_response_matches_symbol_for_session, TickerResponse};
 use ratatui::{
@@ -16,8 +16,7 @@ use ratatui::{
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Tabs},
-    Frame,
-    Terminal,
+    Frame, Terminal,
 };
 use std::io;
 use std::time::Instant;
@@ -211,12 +210,10 @@ fn draw_error_log_overlay(f: &mut Frame, app: &mut App, full: Rect, rt: Resolved
         width: inner.width,
         height: footer_h,
     };
-    let footer = Paragraph::new(Line::from(vec![
-        Span::styled(
-            "Esc close · j/↓ k/↑ scroll · PgUp/PgDn",
-            rt.fg_muted(),
-        ),
-    ]))
+    let footer = Paragraph::new(Line::from(vec![Span::styled(
+        "Esc close · j/↓ k/↑ scroll · PgUp/PgDn",
+        rt.fg_muted(),
+    )]))
     .style(rt.canvas());
     f.render_widget(footer, footer_area);
 }
@@ -224,13 +221,17 @@ fn draw_error_log_overlay(f: &mut Frame, app: &mut App, full: Rect, rt: Resolved
 fn resolve_quote(app: &App) -> Option<&TickerResponse> {
     app.ticker_data
         .as_ref()
-        .filter(|t| {
-            ticker_response_matches_symbol_for_session(t, &app.symbol, &app.symbol)
-        })
+        .filter(|t| ticker_response_matches_symbol_for_session(t, &app.symbol, &app.symbol))
         .or_else(|| app.watchlist_quotes.get(&app.symbol))
 }
 
-fn draw_stock_view(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme, layout: ResolvedLayout) {
+fn draw_stock_view(
+    f: &mut Frame,
+    app: &mut App,
+    area: Rect,
+    rt: ResolvedTheme,
+    layout: ResolvedLayout,
+) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -343,11 +344,7 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
                         (
                             format_usd_price(bar.c),
                             format_signed_usd_delta(price_change),
-                            format!(
-                                "{}{:.2}%",
-                                if price_change >= 0.0 { "+" } else { "" },
-                                pct
-                            ),
+                            format!("{}{:.2}%", if price_change >= 0.0 { "+" } else { "" }, pct),
                             format!("{:.0}", bar.v),
                             chg_color,
                         )
@@ -378,20 +375,16 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
         .map(|r| {
             let mut cells = vec![Cell::from(r.sym.as_str())];
             if show_kind {
-                cells.push(
-                    Cell::from(r.kind.as_str()).style(if r.kind.is_empty() {
-                        row_style
-                    } else {
-                        rt.fg_color(rt.muted)
-                    }),
-                );
+                cells.push(Cell::from(r.kind.as_str()).style(if r.kind.is_empty() {
+                    row_style
+                } else {
+                    rt.fg_color(rt.muted)
+                }));
             }
             cells.extend([
                 Cell::from(r.last_s.as_str()),
-                Cell::from(r.chg_s.as_str())
-                    .style(rt.fg_color(r.chg_color)),
-                Cell::from(r.pct_s.as_str())
-                    .style(rt.fg_color(r.chg_color)),
+                Cell::from(r.chg_s.as_str()).style(rt.fg_color(r.chg_color)),
+                Cell::from(r.pct_s.as_str()).style(rt.fg_color(r.chg_color)),
                 Cell::from(r.vol_s.as_str()),
             ]);
             Row::new(cells).height(1).style(row_style)
@@ -418,16 +411,16 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
     };
 
     let table = Table::new(rows, constraints)
-    .header(header)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(wl_title)
-            .style(rt.canvas())
-            .border_style(Style::default().fg(rt.border).bg(rt.background)),
-    )
-    .highlight_style(selected_style)
-    .highlight_symbol("> ");
+        .header(header)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(wl_title)
+                .style(rt.canvas())
+                .border_style(Style::default().fg(rt.border).bg(rt.background)),
+        )
+        .highlight_style(selected_style)
+        .highlight_symbol("> ");
 
     f.render_stateful_widget(table, area, &mut app.watchlist_state);
 }
@@ -503,25 +496,16 @@ fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
             ]),
             Line::from(vec![
                 Span::styled("Volume: ", rt.canvas()),
-                Span::styled(
-                    format!("{:.0}", result.v),
-                    rt.fg_foreground(),
-                ),
+                Span::styled(format!("{:.0}", result.v), rt.fg_foreground()),
             ]),
         ];
 
         f.render_widget(Paragraph::new(text).block(block), area);
     } else if let Some(error) = app.error_message().as_deref() {
-        let text = vec![Line::from(vec![Span::styled(
-            error,
-            rt.error_text(),
-        )])];
+        let text = vec![Line::from(vec![Span::styled(error, rt.error_text())])];
         f.render_widget(Paragraph::new(text).block(block), area);
     } else {
-        let text = vec![Line::from(vec![Span::styled(
-            "Loading...",
-            rt.fg_border(),
-        )])];
+        let text = vec![Line::from(vec![Span::styled("Loading...", rt.fg_border())])];
         f.render_widget(Paragraph::new(text).block(block), area);
     }
 }
@@ -571,25 +555,16 @@ fn draw_search(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
     let n = app.search_results_len();
     if n == 0 {
         let msg = if app.search_refresh_inflight {
-            Line::from(vec![Span::styled(
-                "Searching…",
-                rt.fg_border(),
-            )])
+            Line::from(vec![Span::styled("Searching…", rt.fg_border())])
         } else if app.search_query.trim().is_empty() {
             Line::from(vec![Span::styled(
                 "Enter a company or ticker fragment.",
                 rt.fg_muted(),
             )])
         } else if app.search_results.is_some() {
-            Line::from(vec![Span::styled(
-                "No results",
-                rt.fg_border(),
-            )])
+            Line::from(vec![Span::styled("No results", rt.fg_border())])
         } else {
-            Line::from(vec![Span::styled(
-                "Waiting for debounce…",
-                rt.fg_muted(),
-            )])
+            Line::from(vec![Span::styled("Waiting for debounce…", rt.fg_muted())])
         };
         f.render_widget(
             Paragraph::new(msg).block(
@@ -648,10 +623,7 @@ fn draw_search(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
     }
 
     let footer = if app.search_refresh_inflight {
-        Line::from(vec![Span::styled(
-            "Searching…",
-            rt.fg_accent(),
-        )])
+        Line::from(vec![Span::styled("Searching…", rt.fg_accent())])
     } else {
         Line::from(vec![Span::styled(
             "250 ms debounce · one request at a time",
@@ -679,20 +651,14 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
     }
 
     if app.news_refresh_inflight && app.news_data.is_none() {
-        let t = Line::from(vec![Span::styled(
-            "Loading…",
-            rt.fg_border(),
-        )]);
+        let t = Line::from(vec![Span::styled("Loading…", rt.fg_border())]);
         f.render_widget(Paragraph::new(t).block(block), area);
         return;
     }
 
     if let Some(data) = &app.news_data {
         if data.results.is_empty() {
-            let t = Line::from(vec![Span::styled(
-                "No news available",
-                rt.fg_border(),
-            )]);
+            let t = Line::from(vec![Span::styled("No news available", rt.fg_border())]);
             f.render_widget(Paragraph::new(t).block(block), area);
             return;
         }
@@ -707,22 +673,14 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
                 let line = Line::from(vec![
                     Span::styled(format!("{pub_name:<20} "), rt.fg_accent()),
                     Span::styled(title_s, rt.canvas()),
-                    Span::styled(
-                        format!("  [{date_s}]"),
-                        rt.fg_muted(),
-                    ),
+                    Span::styled(format!("  [{date_s}]"), rt.fg_muted()),
                 ]);
                 ListItem::new(line)
             })
             .collect();
 
         let list = List::new(items)
-            .block(
-                block.title(format!(
-                    "{} (j/k · Enter open · c copy)",
-                    title
-                )),
-            )
+            .block(block.title(format!("{} (j/k · Enter open · c copy)", title)))
             .highlight_style(
                 Style::default()
                     .bg(rt.selection)
@@ -734,10 +692,7 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
         return;
     }
 
-    let t = Line::from(vec![Span::styled(
-        "Loading…",
-        rt.fg_border(),
-    )]);
+    let t = Line::from(vec![Span::styled("Loading…", rt.fg_border())]);
     f.render_widget(Paragraph::new(t).block(block), area);
 }
 
@@ -821,10 +776,7 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
     lines.push(Line::from(vec![
         Span::styled("0. Refresh (seconds): ", row_style(0)),
         Span::styled(rr_display, rt.canvas()),
-        Span::styled(
-            "  (effective ≥ 5s; 0 → 30s default)",
-            rt.fg_muted(),
-        ),
+        Span::styled("  (effective ≥ 5s; 0 → 30s default)", rt.fg_muted()),
     ]));
 
     let ds_display = if app.settings_editing == Some(SettingsEdit::DefaultSymbol) {
@@ -837,7 +789,11 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
         Span::styled(ds_display, rt.canvas()),
     ]));
 
-    let notify_s = if app.config.notifications_enabled { "on" } else { "off" };
+    let notify_s = if app.config.notifications_enabled {
+        "on"
+    } else {
+        "off"
+    };
     lines.push(Line::from(vec![
         Span::styled("2. Desktop alert toasts: ", row_style(2)),
         Span::styled(notify_s, rt.canvas()),
@@ -901,16 +857,10 @@ fn draw_settings(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
     ]));
 
     if let Some(e) = &app.settings_inline_error {
-        lines.push(Line::from(vec![Span::styled(
-            e.as_str(),
-            rt.error_text(),
-        )]));
+        lines.push(Line::from(vec![Span::styled(e.as_str(), rt.error_text())]));
     }
     if flash {
-        lines.push(Line::from(vec![Span::styled(
-            "Saved",
-            rt.success_text(),
-        )]));
+        lines.push(Line::from(vec![Span::styled("Saved", rt.success_text())]));
     }
 
     let p = Paragraph::new(lines).style(rt.canvas());
@@ -993,10 +943,7 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
     let lines: Vec<Line> = if let Some(error) = app.error_message() {
         vec![Line::from(vec![Span::styled(error, rt.error_text())])]
     } else if app.active_tab == Tab::Search && app.search_refresh_inflight {
-        vec![Line::from(vec![Span::styled(
-            "Searching…",
-            rt.fg_accent(),
-        )])]
+        vec![Line::from(vec![Span::styled("Searching…", rt.fg_accent())])]
     } else if let Some(flash) = app.news_url_flash_line() {
         vec![Line::from(vec![Span::styled(flash, rt.success_text())])]
     } else if app.active_tab == Tab::News && app.news_refresh_inflight {
@@ -1086,11 +1033,7 @@ mod status_bar_tests {
     fn stock_view_status_lines_wide_is_one_line() {
         let lines = stock_view_status_lines(120, test_rt());
         assert_eq!(lines.len(), 1);
-        let text: String = lines[0]
-            .spans
-            .iter()
-            .map(|s| s.content.as_ref())
-            .collect();
+        let text: String = lines[0].spans.iter().map(|s| s.content.as_ref()).collect();
         assert!(text.contains("Shift+1st letter"));
     }
 
@@ -1098,11 +1041,7 @@ mod status_bar_tests {
     fn stock_view_status_lines_narrow_is_two_lines() {
         let lines = stock_view_status_lines(80, test_rt());
         assert_eq!(lines.len(), 2);
-        let text: String = lines[1]
-            .spans
-            .iter()
-            .map(|s| s.content.as_ref())
-            .collect();
+        let text: String = lines[1].spans.iter().map(|s| s.content.as_ref()).collect();
         assert!(text.contains("Shift"));
     }
 
@@ -1123,19 +1062,18 @@ mod status_bar_tests {
     }
 }
 
-/// Issue #184 / SPEC §58 — `TestBackend` snapshots for `draw_error_log_overlay`.
+/// Issue #184 / SPEC §58; Issue #189 / SPEC §59 — `TestBackend` snapshots.
 #[cfg(test)]
 mod snapshot_tests {
     use super::*;
     use crate::app::app_error::{ErrorLogEntry, UiErrorCategory};
+    use crate::app::snapshot_test_util::{
+        buffer_snapshot_string, full_area, render_to_buffer, SNAPSHOT_HEIGHT, SNAPSHOT_WIDTH,
+    };
     use chrono::{DateTime, Local, TimeZone};
-    use ratatui::backend::TestBackend;
     use ratatui::buffer::Buffer;
-    use ratatui::Terminal;
     use std::collections::VecDeque;
 
-    const SNAPSHOT_WIDTH: u16 = 80;
-    const SNAPSHOT_HEIGHT: u16 = 24;
     /// List rows inside the overlay on an 80×24 terminal (inner height − footer).
     const SNAPSHOT_VISIBLE_ROWS: usize = 12;
 
@@ -1146,34 +1084,12 @@ mod snapshot_tests {
             .expect("valid local datetime")
     }
 
-    fn buffer_snapshot_string(buf: &Buffer) -> String {
-        let mut out = String::new();
-        for y in buf.area.y..buf.area.y + buf.area.height {
-            for x in buf.area.x..buf.area.x + buf.area.width {
-                let ch = buf.get(x, y).symbol().chars().next().unwrap_or('·');
-                let ch = if ch.is_control() || (ch != ' ' && !ch.is_ascii_graphic()) {
-                    '·'
-                } else {
-                    ch
-                };
-                out.push(ch);
-            }
-            out.push('\n');
-        }
-        out
-    }
-
     fn render_error_log_overlay_buf(app: &mut App, width: u16, height: u16) -> Buffer {
-        let backend = TestBackend::new(width, height);
-        let mut terminal = Terminal::new(backend).expect("test terminal");
-        terminal
-            .draw(|f| {
-                let area = Rect::new(0, 0, width, height);
-                let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
-                draw_error_log_overlay(f, app, area, rt);
-            })
-            .expect("draw error log overlay");
-        terminal.backend().buffer().clone()
+        render_to_buffer(width, height, |f| {
+            let area = full_area(width, height);
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_error_log_overlay(f, app, area, rt);
+        })
     }
 
     fn snapshot_overlay(app: &mut App, name: &str) {
@@ -1188,6 +1104,22 @@ mod snapshot_tests {
             "expected visible-row count for 80×24 fixture"
         );
         insta::assert_snapshot!(name, buffer_snapshot_string(&buf));
+    }
+
+    fn stock_view_hint_mode_app() -> App {
+        let mut app = App::new();
+        app.active_tab = Tab::StockView;
+        app.active_runtime_error = None;
+        app.stock_refresh_inflight = false;
+        app
+    }
+
+    fn render_status_bar_buf(app: &App, width: u16, height: u16) -> Buffer {
+        render_to_buffer(width, height, |f| {
+            let area = full_area(width, height);
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_status_bar(f, app, area, rt);
+        })
     }
 
     fn sample_three_error_log_entries() -> VecDeque<ErrorLogEntry> {
@@ -1253,5 +1185,36 @@ mod snapshot_tests {
         app.error_log = many_error_log_entries(20);
         app.error_log_scroll = 5;
         snapshot_overlay(&mut app, "error_log_overlay_scrolled");
+    }
+
+    #[test]
+    fn status_bar_stock_view_narrow_two_lines() {
+        let app = stock_view_hint_mode_app();
+        let buf = render_status_bar_buf(&app, 80, 2);
+        insta::assert_snapshot!(
+            "status_bar_stock_view_narrow_two_lines",
+            buffer_snapshot_string(&buf)
+        );
+    }
+
+    #[test]
+    fn status_bar_stock_view_wide_one_line() {
+        let app = stock_view_hint_mode_app();
+        let buf = render_status_bar_buf(&app, 120, 1);
+        insta::assert_snapshot!(
+            "status_bar_stock_view_wide_one_line",
+            buffer_snapshot_string(&buf)
+        );
+    }
+
+    #[test]
+    fn status_bar_stock_view_inflight_one_line() {
+        let mut app = stock_view_hint_mode_app();
+        app.stock_refresh_inflight = true;
+        let buf = render_status_bar_buf(&app, 80, 1);
+        insta::assert_snapshot!(
+            "status_bar_stock_view_inflight_one_line",
+            buffer_snapshot_string(&buf)
+        );
     }
 }

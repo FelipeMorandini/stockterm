@@ -76,17 +76,15 @@ mod tests {
 
     #[test]
     fn validate_polygon_next_url_rejects_subdomain_suffix() {
-        let err =
-            validate_polygon_next_url("https://api.polygon.io.evil.com/v2/next").unwrap_err();
+        let err = validate_polygon_next_url("https://api.polygon.io.evil.com/v2/next").unwrap_err();
         assert!(matches!(err, ProviderError::ApiMessage(_)));
     }
 
     #[test]
     fn validate_polygon_next_url_accepts_polygon_host() {
-        let url = validate_polygon_next_url(
-            "https://api.polygon.io/v3/snapshot/options/AAPL?cursor=abc",
-        )
-        .unwrap();
+        let url =
+            validate_polygon_next_url("https://api.polygon.io/v3/snapshot/options/AAPL?cursor=abc")
+                .unwrap();
         assert!(url.contains("api.polygon.io"));
     }
 

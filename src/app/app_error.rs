@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use chrono::{DateTime, Local};
 
-use crate::api::error::ProviderError;
 use super::Tab;
+use crate::api::error::ProviderError;
 
 /// Bracket prefix on the status line (§20.3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

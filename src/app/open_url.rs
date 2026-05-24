@@ -72,11 +72,7 @@ pub(crate) fn open_article_url_blocking(url: &str) -> Result<(), String> {
             })
     }
 
-    #[cfg(not(any(
-        target_os = "macos",
-        windows,
-        all(unix, not(target_os = "macos"))
-    )))]
+    #[cfg(not(any(target_os = "macos", windows, all(unix, not(target_os = "macos")))))]
     {
         let _ = url;
         Err("Unsupported platform".to_string())
@@ -164,12 +160,10 @@ fn command_exists(program: &str) -> bool {
 }
 
 /// Run inside `spawn_blocking`: open with optional clipboard fallback (§27.2.3).
-pub(crate) fn run_open_with_copy_fallback(url: &str) -> (Result<(), String>, Option<NewsUrlFlashHint>) {
-    run_open_with_copy_fallback_ops(
-        url,
-        open_article_url_blocking,
-        copy_article_url_blocking,
-    )
+pub(crate) fn run_open_with_copy_fallback(
+    url: &str,
+) -> (Result<(), String>, Option<NewsUrlFlashHint>) {
+    run_open_with_copy_fallback_ops(url, open_article_url_blocking, copy_article_url_blocking)
 }
 
 pub(crate) fn run_open_with_copy_fallback_ops(
@@ -182,7 +176,9 @@ pub(crate) fn run_open_with_copy_fallback_ops(
         Err(open_err) => match copy(url) {
             Ok(()) => (Ok(()), Some(NewsUrlFlashHint::OpenFailedCopied)),
             Err(copy_err) => (
-                Err(format!("Could not open URL: {open_err}; copy failed: {copy_err}")),
+                Err(format!(
+                    "Could not open URL: {open_err}; copy failed: {copy_err}"
+                )),
                 None,
             ),
         },
@@ -274,8 +270,7 @@ mod tests {
 
     #[test]
     fn open_with_copy_fallback_open_fail_copy_ok() {
-        let (result, flash) =
-            run_open_with_copy_fallback_ops("https://x.test", fail_open, ok);
+        let (result, flash) = run_open_with_copy_fallback_ops("https://x.test", fail_open, ok);
         assert!(result.is_ok());
         assert_eq!(flash, Some(NewsUrlFlashHint::OpenFailedCopied));
     }

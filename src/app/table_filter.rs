@@ -33,10 +33,7 @@ pub fn filter_title_suffix(query: &str) -> String {
     if query.is_empty() {
         return String::new();
     }
-    let q: String = query
-        .chars()
-        .filter(|c| !c.is_control())
-        .collect();
+    let q: String = query.chars().filter(|c| !c.is_control()).collect();
     let q = q.replace('"', "'");
     format!(r#" (filter: "{q}")"#)
 }

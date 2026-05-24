@@ -145,17 +145,17 @@ The crossterm bridge ([`src/app/event.rs`](src/app/event.rs)) stops when `App::r
 
 ### Continuous integration
 
-On every pull request and push to `main`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs:
+On every pull request and push to `main`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs (both jobs):
 
+- `cargo fmt --all -- --check` (**blocking**)
 - `cargo clippy --all-targets -- -D warnings` (default features)
 - `cargo test --all-features`
-- A second job with `--no-default-features` for both clippy and test
-
-`cargo fmt --all -- --check` runs in CI but does not fail the workflow yet.
+- A second job with `--no-default-features` for the same fmt, clippy, and test steps
 
 Reproduce locally:
 
 ```bash
+cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
 cargo test --all-features
 cargo clippy --no-default-features --all-targets -- -D warnings
@@ -164,10 +164,13 @@ cargo test --no-default-features
 
 ### UI snapshot tests
 
-TUI draw snapshot tests use [`insta`](https://github.com/mitsuhiko/insta) (see [`docs/SPEC.md`](docs/SPEC.md) §58). After changing overlay layout or copy:
+TUI draw snapshot tests use [`insta`](https://github.com/mitsuhiko/insta) (see [`docs/SPEC.md`](docs/SPEC.md) §58–§59). After changing overlay, status bar, portfolio dialog, or Options tab layout/copy:
 
 ```bash
 cargo test error_log_overlay
+cargo test status_bar_
+cargo test portfolio_add_dialog_
+cargo test options_tab_sample_chain
 cargo insta test
 cargo insta review   # accept updated .snap files when intentional
 ```

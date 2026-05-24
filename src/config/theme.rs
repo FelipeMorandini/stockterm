@@ -307,9 +307,6 @@ mod tests {
             accent_hex: None,
             background_hex: None,
         };
-        assert_eq!(
-            t.resolve_rgb().accent,
-            ThemePreset::Light.base_rgb().accent
-        );
+        assert_eq!(t.resolve_rgb().accent, ThemePreset::Light.base_rgb().accent);
     }
 }

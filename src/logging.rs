@@ -68,16 +68,14 @@ fn try_init_file_subscriber(filter: &EnvFilter) -> Result<WorkerGuard, String> {
     let file_appender = tracing_appender::rolling::never(&log_dir, "stockterm.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-    let file_layer = fmt::layer()
-        .with_writer(non_blocking)
-        .with_ansi(false);
+    let file_layer = fmt::layer().with_writer(non_blocking).with_ansi(false);
 
-    let registry = tracing_subscriber::registry().with(filter.clone()).with(file_layer);
+    let registry = tracing_subscriber::registry()
+        .with(filter.clone())
+        .with(file_layer);
 
     if log_stderr_mirror_enabled() {
-        let stderr_layer = fmt::layer()
-            .with_writer(std::io::stderr)
-            .with_ansi(false);
+        let stderr_layer = fmt::layer().with_writer(std::io::stderr).with_ansi(false);
         registry.with(stderr_layer).init();
     } else {
         registry.init();

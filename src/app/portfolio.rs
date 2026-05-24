@@ -1,10 +1,10 @@
 #![allow(clippy::collapsible_match, clippy::needless_return)]
 
-use crate::app::format::{format_usd_price, symbol_kind_label};
-use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
+use crate::app::format::{format_usd_price, symbol_kind_label};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
+use crate::app::styles::ResolvedTheme;
 use crate::app::table_filter::filter_title_suffix;
 use crate::app::{normalize_symbol, App, PortfolioAddField, PortfolioDialogKind, Tab};
 use crate::config::keymap::{Action, BindingLayer};
@@ -116,9 +116,7 @@ fn portfolio_move_up(app: &mut App) {
         return;
     }
     match app.portfolio_state.selected() {
-        None => app
-            .portfolio_state
-            .select(Some(f.len().saturating_sub(1))),
+        None => app.portfolio_state.select(Some(f.len().saturating_sub(1))),
         Some(i) if i > 0 => app.portfolio_state.select(Some(i - 1)),
         _ => {}
     }
@@ -239,14 +237,13 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
             ),
         ])];
 
-        let summary = Paragraph::new(summary_text)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Summary")
-                    .style(theme.canvas())
-                    .border_style(border_st),
-            );
+        let summary = Paragraph::new(summary_text).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Summary")
+                .style(theme.canvas())
+                .border_style(border_st),
+        );
 
         f.render_widget(summary, chunks[0]);
 
@@ -325,13 +322,11 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
                 let kind = symbol_kind_label(app.symbol_kind_for_display(&item.symbol));
                 let mut cells = vec![Cell::from(item.symbol.clone())];
                 if show_kind {
-                    cells.push(
-                        Cell::from(kind).style(if kind.is_empty() {
-                            theme.canvas()
-                        } else {
-                            theme.fg_color(theme.muted)
-                        }),
-                    );
+                    cells.push(Cell::from(kind).style(if kind.is_empty() {
+                        theme.canvas()
+                    } else {
+                        theme.fg_color(theme.muted)
+                    }));
                 }
                 cells.extend([
                     Cell::from(format!("{:.2}", item.shares)),
@@ -369,16 +364,16 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
             };
 
             let table = Table::new(rows, constraints)
-            .header(header)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(holdings_title)
-                    .style(theme.canvas())
-                    .border_style(border_st),
-            )
-            .highlight_style(selected_style)
-            .highlight_symbol("> ");
+                .header(header)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(holdings_title)
+                        .style(theme.canvas())
+                        .border_style(border_st),
+                )
+                .highlight_style(selected_style)
+                .highlight_symbol("> ");
 
             f.render_stateful_widget(table, table_chunk, &mut app.portfolio_state);
         }
@@ -609,9 +604,7 @@ fn handle_portfolio_dialog_keys(app: &mut App, key: KeyEvent) {
                     try_commit_portfolio_edit_dialog(app);
                     return;
                 }
-                Action::PortfolioDialogSaveDecline
-                    if letter_key_plain(key.modifiers) =>
-                {
+                Action::PortfolioDialogSaveDecline if letter_key_plain(key.modifiers) => {
                     disarm_portfolio_dialog_commit(app);
                     return;
                 }
@@ -902,5 +895,61 @@ mod tests {
     fn validate_holding_limits_rejects_above_ceiling() {
         assert!(validate_holding_limits(MAX_HOLDING_SHARES * 2.0, 1.0).is_err());
         assert!(validate_holding_limits(1.0, MAX_HOLDING_PRICE_PER_SHARE * 2.0).is_err());
+    }
+}
+
+/// Issue #189 / SPEC §59 — `TestBackend` snapshots for `draw_portfolio_add_overlay`.
+#[cfg(test)]
+mod snapshot_tests {
+    use super::draw_portfolio_add_overlay;
+    use crate::app::snapshot_test_util::{
+        buffer_snapshot_string, full_area, render_to_buffer, SNAPSHOT_HEIGHT, SNAPSHOT_WIDTH,
+    };
+    use crate::app::styles::ResolvedTheme;
+    use crate::app::{App, PortfolioAddDialog, PortfolioAddField};
+    use ratatui::buffer::Buffer;
+
+    fn render_portfolio_add_overlay_buf(app: &App) -> Buffer {
+        render_to_buffer(SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT, |f| {
+            let area = full_area(SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT);
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_portfolio_add_overlay(f, app, area, rt);
+        })
+    }
+
+    fn app_with_dialog(dialog: PortfolioAddDialog) -> App {
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        app.portfolio_dialog = Some(dialog);
+        app
+    }
+
+    #[test]
+    fn portfolio_add_dialog_shares_focused() {
+        let dialog = PortfolioAddDialog {
+            focused: PortfolioAddField::Shares,
+            ..Default::default()
+        };
+        let app = app_with_dialog(dialog);
+        insta::assert_snapshot!(
+            "portfolio_add_dialog_shares_focused",
+            buffer_snapshot_string(&render_portfolio_add_overlay_buf(&app))
+        );
+    }
+
+    #[test]
+    fn portfolio_add_dialog_inline_error() {
+        let dialog = PortfolioAddDialog {
+            focused: PortfolioAddField::Shares,
+            shares_buffer: "abc".into(),
+            price_buffer: "10".into(),
+            inline_error: Some("Invalid shares".into()),
+            ..Default::default()
+        };
+        let app = app_with_dialog(dialog);
+        insta::assert_snapshot!(
+            "portfolio_add_dialog_inline_error",
+            buffer_snapshot_string(&render_portfolio_add_overlay_buf(&app))
+        );
     }
 }

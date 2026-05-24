@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**[#181](https://github.com/FelipeMorandini/stockterm/issues/181)** — GitHub Actions CI (`cargo test` + `clippy -D warnings`) — **§57** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#181** — sign-off **2026-05-23**; **PR:** [#188](https://github.com/FelipeMorandini/stockterm/pull/188)). **[#184](https://github.com/FelipeMorandini/stockterm/issues/184)** — `TestBackend` draw snapshot tests (error overlay first) — **§58** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#184** — sign-off **2026-05-23**; **PR:** [#188](https://github.com/FelipeMorandini/stockterm/pull/188)). **[#183](https://github.com/FelipeMorandini/stockterm/issues/183)** — Options: rebuild display tables when theme preset changes (**§53.2** / **§21** follow-up — **§56**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#183** — sign-off **2026-05-23**; **PR:** [#187](https://github.com/FelipeMorandini/stockterm/pull/187)). **[#182](https://github.com/FelipeMorandini/stockterm/issues/182)** — Portfolio row edit UI for existing holdings (**§13** / **§15** follow-up — **§55**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#182** — sign-off **2026-05-23**). **[#180](https://github.com/FelipeMorandini/stockterm/issues/180)** — Persist Charts **`time_range`** and **`chart_mode`** in **`~/.stockterm.json`** (**§11** follow-up — **§54**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#180** — sign-off **2026-05-23**; **PR:** [#185](https://github.com/FelipeMorandini/stockterm/pull/185)). **[#65](https://github.com/FelipeMorandini/stockterm/issues/65)** — Polygon historical response size limit + free-tier messaging (**§11** follow-up — **§52**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#65** — sign-off **2026-05-22**). **Options tab polish** (post-**§48** / **§50** / **§51** UX hardening — **§52.2**; same PR as **#65**). **[#176](https://github.com/FelipeMorandini/stockterm/issues/176)** — Polygon historical `next_url` pagination loop (**§52** follow-up — **§53.1**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#176** — sign-off **2026-05-22**; **PR:** [#179](https://github.com/FelipeMorandini/stockterm/pull/179)). **[#177](https://github.com/FelipeMorandini/stockterm/issues/177)** — Options tab zero-clone draw path (**§52.2** follow-up — **§53.2**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#177** — sign-off **2026-05-22**; **PR:** [#179](https://github.com/FelipeMorandini/stockterm/pull/179)). **[#171](https://github.com/FelipeMorandini/stockterm/issues/171)** — Polygon options expiration list session cache (**§50** follow-up — **§51**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#171** — sign-off **2026-05-22**; **PR:** [#173](https://github.com/FelipeMorandini/stockterm/pull/173)). **[#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — Yahoo options expiration slice cache (**§48** follow-up — **§49.2**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#167](https://github.com/FelipeMorandini/stockterm/issues/167)** — Polygon.io options chain provider (**§48** follow-up — **§50**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#167** — sign-off **2026-05-22**; **PR:** [#172](https://github.com/FelipeMorandini/stockterm/pull/172)). **[#165](https://github.com/FelipeMorandini/stockterm/issues/165) / [#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — §47 / §48 follow-ons: backtest golden metric fixtures + Yahoo options expiration slice cache (**§49**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#165, #168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#22](https://github.com/FelipeMorandini/stockterm/issues/22)** — options chains + **Options** tab (calls/puts table, expiration selector, Greeks toggle — **§48**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#22** — sign-off **2026-05-21**; **PR:** [#169](https://github.com/FelipeMorandini/stockterm/pull/169)). **[#25](https://github.com/FelipeMorandini/stockterm/issues/25)** — backtesting engine + **Backtest** tab (strategy trait, SMA crossover / RSI mean-reversion, equity curve, CSV/JSON export — **§47**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#25** — sign-off **2026-05-21**; **PR:** [#166](https://github.com/FelipeMorandini/stockterm/pull/166)). **[#21](https://github.com/FelipeMorandini/stockterm/issues/21)** — technical indicators (SMA / EMA / RSI / MACD) on the Charts tab (**§46**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21** — sign-off **2026-05-21**; **PR:** [#164](https://github.com/FelipeMorandini/stockterm/pull/164)). **Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#160](https://github.com/FelipeMorandini/stockterm/issues/160) / [#161](https://github.com/FelipeMorandini/stockterm/issues/161)** — §44 follow-ons: clear **`symbol_kind_cache`** on Settings provider change + Polygon crypto **`X:`** wire mapping in **`resolve_provider_symbol`** (**§45**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#160, #161** — sign-off **2026-05-20**; **PR:** [#163](https://github.com/FelipeMorandini/stockterm/pull/163)). **[#157](https://github.com/FelipeMorandini/stockterm/issues/157) / [#158](https://github.com/FelipeMorandini/stockterm/issues/158)** — provider-aware symbol resolver (Yahoo vs Polygon HTTP namespaces) + **`SymbolKind`** from Yahoo **`quoteType`** metadata with heuristic fallback (**§44**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#157, #158** — sign-off **2026-05-20**; **PR:** [#162](https://github.com/FelipeMorandini/stockterm/pull/162)). **[#23](https://github.com/FelipeMorandini/stockterm/issues/23)** — cryptocurrency quotes via Yahoo-style symbols (`BTC-USD`), adaptive price formatting, **`SymbolKind`** UI label, Stock View hyphen entry, §43.13 quote-cache alignment (**§43**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#23** — sign-off **2026-05-19**; **PR:** [#159](https://github.com/FelipeMorandini/stockterm/pull/159)). **[#51](https://github.com/FelipeMorandini/stockterm/issues/51) / [#28](https://github.com/FelipeMorandini/stockterm/issues/28)** — global **`q`/`Q`** quit via **`should_global_quit`**, Tab meta policy, **`STOCKTERM_API_KEY`** runtime overlay (no env merge on load — **§42**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** — sign-off **2026-05-19**; **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156)). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**[#189](https://github.com/FelipeMorandini/stockterm/issues/189)** — M7 Phase 2: expand `insta` snapshots (Stock View status + portfolio dialog) — **§59** (implemented — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#189** pending). **[#193](https://github.com/FelipeMorandini/stockterm/issues/193)** — CI: enforce blocking `cargo fmt --check` — **§60** (implemented — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#193** pending). **[#181](https://github.com/FelipeMorandini/stockterm/issues/181)** — GitHub Actions CI (`cargo test` + `clippy -D warnings`) — **§57** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#181** — sign-off **2026-05-23**; **PR:** [#188](https://github.com/FelipeMorandini/stockterm/pull/188)). **[#184](https://github.com/FelipeMorandini/stockterm/issues/184)** — `TestBackend` draw snapshot tests (error overlay first) — **§58** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#184** — sign-off **2026-05-23**; **PR:** [#188](https://github.com/FelipeMorandini/stockterm/pull/188)). **[#183](https://github.com/FelipeMorandini/stockterm/issues/183)** — Options: rebuild display tables when theme preset changes (**§53.2** / **§21** follow-up — **§56**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#183** — sign-off **2026-05-23**; **PR:** [#187](https://github.com/FelipeMorandini/stockterm/pull/187)). **[#182](https://github.com/FelipeMorandini/stockterm/issues/182)** — Portfolio row edit UI for existing holdings (**§13** / **§15** follow-up — **§55**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#182** — sign-off **2026-05-23**). **[#180](https://github.com/FelipeMorandini/stockterm/issues/180)** — Persist Charts **`time_range`** and **`chart_mode`** in **`~/.stockterm.json`** (**§11** follow-up — **§54**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#180** — sign-off **2026-05-23**; **PR:** [#185](https://github.com/FelipeMorandini/stockterm/pull/185)). **[#65](https://github.com/FelipeMorandini/stockterm/issues/65)** — Polygon historical response size limit + free-tier messaging (**§11** follow-up — **§52**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#65** — sign-off **2026-05-22**). **Options tab polish** (post-**§48** / **§50** / **§51** UX hardening — **§52.2**; same PR as **#65**). **[#176](https://github.com/FelipeMorandini/stockterm/issues/176)** — Polygon historical `next_url` pagination loop (**§52** follow-up — **§53.1**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#176** — sign-off **2026-05-22**; **PR:** [#179](https://github.com/FelipeMorandini/stockterm/pull/179)). **[#177](https://github.com/FelipeMorandini/stockterm/issues/177)** — Options tab zero-clone draw path (**§52.2** follow-up — **§53.2**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#177** — sign-off **2026-05-22**; **PR:** [#179](https://github.com/FelipeMorandini/stockterm/pull/179)). **[#171](https://github.com/FelipeMorandini/stockterm/issues/171)** — Polygon options expiration list session cache (**§50** follow-up — **§51**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#171** — sign-off **2026-05-22**; **PR:** [#173](https://github.com/FelipeMorandini/stockterm/pull/173)). **[#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — Yahoo options expiration slice cache (**§48** follow-up — **§49.2**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#167](https://github.com/FelipeMorandini/stockterm/issues/167)** — Polygon.io options chain provider (**§48** follow-up — **§50**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#167** — sign-off **2026-05-22**; **PR:** [#172](https://github.com/FelipeMorandini/stockterm/pull/172)). **[#165](https://github.com/FelipeMorandini/stockterm/issues/165) / [#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — §47 / §48 follow-ons: backtest golden metric fixtures + Yahoo options expiration slice cache (**§49**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#165, #168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#22](https://github.com/FelipeMorandini/stockterm/issues/22)** — options chains + **Options** tab (calls/puts table, expiration selector, Greeks toggle — **§48**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#22** — sign-off **2026-05-21**; **PR:** [#169](https://github.com/FelipeMorandini/stockterm/pull/169)). **[#25](https://github.com/FelipeMorandini/stockterm/issues/25)** — backtesting engine + **Backtest** tab (strategy trait, SMA crossover / RSI mean-reversion, equity curve, CSV/JSON export — **§47**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#25** — sign-off **2026-05-21**; **PR:** [#166](https://github.com/FelipeMorandini/stockterm/pull/166)). **[#21](https://github.com/FelipeMorandini/stockterm/issues/21)** — technical indicators (SMA / EMA / RSI / MACD) on the Charts tab (**§46**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21** — sign-off **2026-05-21**; **PR:** [#164](https://github.com/FelipeMorandini/stockterm/pull/164)). **Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#160](https://github.com/FelipeMorandini/stockterm/issues/160) / [#161](https://github.com/FelipeMorandini/stockterm/issues/161)** — §44 follow-ons: clear **`symbol_kind_cache`** on Settings provider change + Polygon crypto **`X:`** wire mapping in **`resolve_provider_symbol`** (**§45**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#160, #161** — sign-off **2026-05-20**; **PR:** [#163](https://github.com/FelipeMorandini/stockterm/pull/163)). **[#157](https://github.com/FelipeMorandini/stockterm/issues/157) / [#158](https://github.com/FelipeMorandini/stockterm/issues/158)** — provider-aware symbol resolver (Yahoo vs Polygon HTTP namespaces) + **`SymbolKind`** from Yahoo **`quoteType`** metadata with heuristic fallback (**§44**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#157, #158** — sign-off **2026-05-20**; **PR:** [#162](https://github.com/FelipeMorandini/stockterm/pull/162)). **[#23](https://github.com/FelipeMorandini/stockterm/issues/23)** — cryptocurrency quotes via Yahoo-style symbols (`BTC-USD`), adaptive price formatting, **`SymbolKind`** UI label, Stock View hyphen entry, §43.13 quote-cache alignment (**§43**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#23** — sign-off **2026-05-19**; **PR:** [#159](https://github.com/FelipeMorandini/stockterm/pull/159)). **[#51](https://github.com/FelipeMorandini/stockterm/issues/51) / [#28](https://github.com/FelipeMorandini/stockterm/issues/28)** — global **`q`/`Q`** quit via **`should_global_quit`**, Tab meta policy, **`STOCKTERM_API_KEY`** runtime overlay (no env merge on load — **§42**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** — sign-off **2026-05-19**; **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156)). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -10167,7 +10167,7 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
-      - name: rustfmt (advisory)
+      - name: rustfmt (advisory — see §60 / Issue #193 for blocking follow-on)
         run: cargo fmt --all -- --check
         continue-on-error: true
       - name: clippy
@@ -10197,7 +10197,7 @@ jobs:
 | **`ubuntu-latest` only** | Matches issue scope; macOS/Windows matrix is future M7 work. |
 | **`dtolnay/rust-toolchain@stable`** | Pins stable + installs `clippy` / `rustfmt` components without custom setup. |
 | **`Swatinem/rust-cache@v2`** | Caches registry, git deps, and `target/` — keeps PR feedback fast. |
-| **`cargo fmt --check` advisory** | Issue #181 allows non-blocking fmt until the tree is consistently formatted; `continue-on-error: true`. |
+| **`cargo fmt --check` advisory** | Issue #181 allows non-blocking fmt until the tree is consistently formatted; `continue-on-error: true`. **Follow-on:** **§60** / Issue **#193** makes fmt blocking on both CI jobs. |
 | **`clippy` + `test` blocking** | Required acceptance criteria. |
 | **`--all-features` on default job** | Ensures `desktop-notify` / `notify-rust` paths compile in CI (default local dev). |
 | **Second job `no-default-features`** | Mirrors existing QA_PLAN matrix; **blocking** (not log-only) so alert-notify-free builds stay green. |
@@ -10412,15 +10412,15 @@ Existing unit tests in [`src/app/app.rs`](../src/app/app.rs) (`clamp_error_log_s
 
 ---
 
-### 58.6 Future snapshot targets (out of scope for #184)
+### 58.6 Future snapshot targets (Issue [#189](https://github.com/FelipeMorandini/stockterm/issues/189))
 
-Document for follow-up issues (not #184):
+Follow-up issue [#189](https://github.com/FelipeMorandini/stockterm/issues/189) (not #184) — **canonical plan: §59**.
 
-| Target | SPEC / issue |
-|--------|----------------|
-| Stock View narrow status | §37.1 / Issue **#81** |
-| Portfolio add dialog | §18.13 / Issue **#93** |
-| `draw_options` full tab | §52.2 — larger surface; consider after overlay pattern proven |
+| Target | SPEC / prior issue |
+|--------|---------------------|
+| Stock View narrow status | §37.1 / shipped [#81](https://github.com/FelipeMorandini/stockterm/issues/81) |
+| Portfolio add dialog | §18.13 / shipped [#93](https://github.com/FelipeMorandini/stockterm/issues/93) |
+| `draw_options` full tab | §52.2 — larger surface; optional stretch in **§59** |
 
 ---
 
@@ -10468,4 +10468,331 @@ After maintainer approval of **§58**, the **engineer** may implement per [`.cur
 - **Tracking:** [Issue #184](https://github.com/FelipeMorandini/stockterm/issues/184).
 - **Code:** `Cargo.toml`, `src/app/ui.rs`, `src/app/snapshots/*.snap`, `README.md`.
 - **Depends on:** **§57** / Issue **#181**, **§20.15** (shipped).
+- **Blocks:** **§59** / Issue **#189** (snapshot expansion builds on §58 harness).
+
+---
+
+## 59. Issues [#189](https://github.com/FelipeMorandini/stockterm/issues/189) — Expand `insta` `TestBackend` snapshots (M7 Phase 2)
+
+**Tracking:**
+
+- [Issue #189](https://github.com/FelipeMorandini/stockterm/issues/189) — *M7 Phase 2: expand insta TestBackend snapshots (status bar, portfolio dialog)* (`roadmap`).
+
+**Related:** **§58** (error overlay snapshots — shipped **#184**), **§37.1** / Issue **#81** (narrow Stock View status), **§18.13** / Issues **#93–#95** (portfolio add overlay + `centered_rect`), **§55** / Issue **#182** (edit dialog variant), **§52.2** (Options tab — optional stretch), prior art in [`src/app/options.rs`](../src/app/options.rs) (`TestBackend` theme refresh tests).
+
+**Problem (verified in tree):**
+
+| Area | State today |
+|------|-------------|
+| Snapshot coverage | **§58** ships 3 scenarios for `draw_error_log_overlay` only (`src/app/ui.rs` `snapshot_tests`). |
+| Stock View status | **§37.1** has span-level unit tests (`stock_view_status_lines_*`, `status_bar_row_count_*`) but **no** pixel/regression snapshots for `draw_status_bar` two-line narrow layout. |
+| Portfolio dialog | `draw_portfolio_add_overlay` in [`src/app/portfolio.rs`](../src/app/portfolio.rs) has behavioral tests (`try_commit_portfolio_dialog`, edit flow) but **no** `insta` coverage for modal chrome, field focus styling, or inline error row. |
+| Shared harness | `buffer_snapshot_string` lives only in `ui.rs` `snapshot_tests` — portfolio tests would duplicate unless extracted. |
+
+**Goal:** Add **≥2** new deterministic snapshot scenarios (status bar + portfolio dialog minimum) using the same **§58** conventions. Optionally add one `draw_options` snapshot if scope stays small.
+
+**Dependency:** **§58** / Issue **#184** merged (harness + CI `cargo test` gate).
+
+---
+
+### 59.1 Shared test harness — extract from §58
+
+**New file:** [`src/app/snapshot_test_util.rs`](../src/app/snapshot_test_util.rs) (crate-private, `#[cfg(test)]` only via `mod` wiring in [`src/app/mod.rs`](../src/app/mod.rs)).
+
+| Item | Signature / behavior |
+|------|----------------------|
+| Constants | `pub const SNAPSHOT_WIDTH: u16 = 80;` `pub const SNAPSHOT_HEIGHT: u16 = 24;` (reuse §58 defaults) |
+| `buffer_snapshot_string` | Move from `ui.rs` `snapshot_tests` — symbol-only row-major ASCII (§58.2) |
+| `render_to_buffer` | Generic helper: `TestBackend::new(w, h)` + `Terminal::draw` closure → `Buffer` |
+| `assert_buffer_snapshot` | Thin wrapper: `insta::assert_snapshot!(name, buffer_snapshot_string(&buf))` |
+
+**Refactor (same PR):** Update existing §58 overlay tests in [`src/app/ui.rs`](../src/app/ui.rs) to import the shared helpers — **no** snapshot file renames unless content changes (paths stay `src/app/snapshots/*.snap`).
+
+**Determinism rules (inherit §58.2):**
+
+| Source of flake | Mitigation |
+|-----------------|------------|
+| Theme | `ThemePreset::Dark` (or `App::new()` default) before draw |
+| Terminal size | **80×24** full buffer for dialog/options; **80×2** status-only fixture for narrow status |
+| Live clocks | Do not call `push_error_log` / network / `App::run` |
+| Symbol label in dialog | Set `app.symbol = "AAPL".into()` (fixed uppercase) |
+| Portfolio edit variant | Prefill from a fixed `PortfolioItem` struct in test setup — not `Config::load` |
+
+---
+
+### 59.2 Stock View status bar snapshots (`src/app/ui.rs`)
+
+**Target draw fn:** private `draw_status_bar` (same file — extend existing `snapshot_tests` mod).
+
+**Render helper:**
+
+```rust
+fn render_status_bar_buf(app: &App, width: u16, height: u16) -> Buffer {
+    render_to_buffer(width, height, |f| {
+        let area = Rect::new(0, 0, width, height);
+        let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+        draw_status_bar(f, app, area, rt);
+    })
+}
+```
+
+**Snapshot scenarios (minimum 1, recommend 2):**
+
+| Test name | `App` setup | Geometry | Asserts |
+|-----------|-------------|----------|---------|
+| `status_bar_stock_view_narrow_two_lines` | `active_tab = StockView`; no runtime error; `stock_refresh_inflight = false`; `news_url_flash_line = None` | **80×2** | Two hint lines visible; line 2 contains `Shift`; line 1 contains `^E` / `^R` suffix (§37.1.3) |
+| `status_bar_stock_view_wide_one_line` (recommended) | Same hint-mode flags | **120×1** | Single line; contains `Shift+1st letter` wide copy (regression guard vs narrow split) |
+
+**Optional third scenario (same PR if cheap):**
+
+| Test name | Setup | Asserts |
+|-----------|-------|---------|
+| `status_bar_stock_view_inflight_one_line` | `stock_refresh_inflight = true` on Stock View | **80×1** — inflight message replaces two-line hint (§37.1.3 “non-hint → one row”) |
+
+**Do not snapshot:** full `draw()` shell, tab bar, or animated status strings tied to `Local::now()`.
+
+---
+
+### 59.3 Portfolio add dialog snapshots (`src/app/portfolio.rs`)
+
+**Target draw fn:** private `draw_portfolio_add_overlay`.
+
+**New module:** `#[cfg(test)] mod snapshot_tests` at bottom of [`src/app/portfolio.rs`](../src/app/portfolio.rs) (same-file pattern as §58 — keep overlay private).
+
+**Render helper:** Full **80×24** buffer; `Clear` + centered popup matches production (`centered_rect(area, 55, 40)`).
+
+**Snapshot scenarios (minimum 1, recommend 2):**
+
+| Test name | `PortfolioAddDialog` setup | Asserts |
+|-----------|---------------------------|---------|
+| `portfolio_add_dialog_shares_focused` | `PortfolioAddDialog::default()`; `app.symbol = "AAPL"`; `focused = Shares`; buffers empty | Title **"Add to portfolio"**; **Symbol: AAPL**; **Shares** field accent; help line from §18.13 |
+| `portfolio_add_dialog_inline_error` | Same + `shares_buffer = "abc"`; `price_buffer = "10"`; `inline_error = Some("Invalid shares")` | Error row visible with dialog still open (§15 / Issue #67 regression) |
+
+**Optional (defer if scope tight):**
+
+| Test name | Setup | Asserts |
+|-----------|-------|---------|
+| `portfolio_edit_dialog_commit_armed` | `PortfolioAddDialog::for_edit(&item, 0)` + `commit_armed = true` | **"Edit holding"** title; armed-save hint line (§55) |
+
+**Do not snapshot:** full `draw_portfolio` table behind the modal (only overlay path — `draw_portfolio_add_overlay` directly).
+
+---
+
+### 59.4 Optional stretch — `draw_options` snapshot (`src/app/options.rs`)
+
+**Only if §59.2–§59.3 land under ~1 day of engineer time.**
+
+| Test name | Setup | Asserts |
+|-----------|-------|---------|
+| `options_tab_sample_chain` | Reuse existing `sample_chain()` + `rebuild_options_display_cache`; `app.symbol = "AAPL"`; **80×24** | Calls/puts table headers; at least one strike row; no network |
+
+Prior art: `buffer_contains_bg` theme test — replace or supplement with one **`insta`** symbol snapshot for layout/copy regressions (§52.2 Vol/OI columns).
+
+**If Options snapshot slips:** close Issue **#189** with status + portfolio minimum; file a follow-up issue (do not block #189 acceptance).
+
+---
+
+### 59.5 Module map
+
+| File | Change |
+|------|--------|
+| [`src/app/snapshot_test_util.rs`](../src/app/snapshot_test_util.rs) | **New** — shared `buffer_snapshot_string`, `render_to_buffer`, constants |
+| [`src/app/mod.rs`](../src/app/mod.rs) | `#[cfg(test)] mod snapshot_test_util;` |
+| [`src/app/ui.rs`](../src/app/ui.rs) | Refactor §58 tests to shared util; add §59.2 status snapshots |
+| [`src/app/portfolio.rs`](../src/app/portfolio.rs) | New `snapshot_tests` mod + §59.3 scenarios |
+| [`src/app/options.rs`](../src/app/options.rs) | Optional §59.4 snapshot |
+| `src/app/snapshots/*.snap` | New committed snapshots (insta-generated) |
+| [`README.md`](../README.md) | Extend **UI snapshot tests** — list new test name prefixes (`status_bar_`, `portfolio_add_dialog_`) |
+| [`Cargo.toml`](../Cargo.toml) | Unchanged — `insta` already in `[dev-dependencies]` from §58 |
+| `.github/workflows/ci.yml` | Unchanged — `cargo test` runs new snapshots |
+
+**No production API changes** — do not `pub` export private draw fns solely for tests.
+
+---
+
+### 59.6 Acceptance criteria
+
+- [x] SPEC **§59** approved (this section).
+- [x] Shared snapshot harness extracted; §58 overlay tests still pass (no unintended snapshot drift).
+- [x] **≥2** new snapshot scenarios beyond §58.3 (status + portfolio dialog minimum).
+- [x] Fixed geometry; no flaky timestamps or TZ output.
+- [x] Snapshots run in CI via existing `cargo test` job.
+- [x] `cargo clippy -- -D warnings` green.
+- [x] README documents new snapshot test filters.
+- [ ] Manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#189** signed.
+
+---
+
+### 59.7 Implementation sequence
+
+1. Extract `snapshot_test_util.rs`; refactor §58 `ui.rs` tests (run `cargo test error_log_overlay` — snapshots unchanged).
+2. Implement §59.2 status scenarios → `cargo insta test` → commit `.snap` files.
+3. Implement §59.3 portfolio scenarios → `cargo insta test` → commit `.snap` files.
+4. Optional §59.4 if time permits.
+5. `cargo test`, `cargo clippy -- -D warnings`.
+6. Update README; manual QA Issue **#189**.
+
+**Suggested PR title:** `§59 expand TestBackend snapshots (Issue #189)`.
+
+**May ship in the same PR as §60 / Issue #193** if maintainer prefers one M7 follow-up PR — no hard dependency between #189 and #193.
+
+---
+
+### 59.8 Manual QA pointer
+
+- [`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #189**.
+
+---
+
+### 59.9 Approval
+
+After maintainer approval of **§59**, the **engineer** may implement per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and run [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#189** before merge.
+
+### 59.10 Status
+
+- **Status:** Implemented (manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#189** pending).
+- **Tracking:** [Issue #189](https://github.com/FelipeMorandini/stockterm/issues/189).
+- **Depends on:** **§58** / Issue **#184** (shipped).
+- **Blocks:** None.
+
+---
+
+## 60. Issue [#193](https://github.com/FelipeMorandini/stockterm/issues/193) — CI: blocking `cargo fmt --check` (§57 follow-on)
+
+**Tracking:**
+
+- [Issue #193](https://github.com/FelipeMorandini/stockterm/issues/193) — *CI: enforce blocking cargo fmt --check* (`roadmap`).
+
+**Related:** **§57** / Issue **#181** (CI baseline — advisory fmt shipped in **PR #188**), ROADMAP §5 item 2.
+
+**Problem (verified in tree, 2026-05-24):**
+
+| Area | State today |
+|------|-------------|
+| `.github/workflows/ci.yml` | `rustfmt` step uses `continue-on-error: true` — format drift merges while clippy/tests pass. |
+| `no-default-features` job | **No** fmt step today — only default-features job runs advisory fmt. |
+| Local tree | `cargo fmt --all -- --check` **fails** on multiple files under `src/api/`, `src/app/`, etc. — blocking gate requires a **one-time format commit** in the implementing PR. |
+
+**Goal:** Make `rustfmt` a **blocking** CI gate on every PR and push to `main`, matching local contributor expectation that formatted code is required before merge.
+
+**Dependency:** **§57** / Issue **#181** merged (workflow exists).
+
+---
+
+### 60.1 Workflow changes — `.github/workflows/ci.yml`
+
+**Default-features job** — replace advisory step:
+
+```yaml
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+```
+
+Remove `continue-on-error: true` and rename step from `rustfmt (advisory)` → `rustfmt`.
+
+**No-default-features job** — add matching fmt step **before** clippy (install `rustfmt` component):
+
+```yaml
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      ...
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+```
+
+**Note:** `cargo fmt` does not accept Cargo's `--locked` flag (unlike `cargo test` / `clippy`). Keep `--locked` on clippy/test steps only.
+
+**Design notes (update §57.1 table):**
+
+| Choice | Rationale |
+|--------|-----------|
+| **Blocking fmt on both jobs** | Formatting is feature-gated-code agnostic; a `#[cfg(feature = "...")]` block can still drift. |
+| **Fmt before clippy** | Fail fast on mechanical diffs; saves CI time on unformatted PRs. |
+| **One-time tree format** | Engineer runs `cargo fmt --all` once on the PR branch so the first green CI run establishes baseline. |
+
+---
+
+### 60.2 Documentation
+
+| File | Change |
+|------|--------|
+| [`README.md`](../README.md) | **Continuous integration** — state `cargo fmt --all -- --check` is **blocking**; add to local reproduce script **before** clippy. |
+| [`docs/SPEC.md`](SPEC.md) **§57.1** | Update YAML excerpt + design table: advisory → blocking (cross-ref **§60**). |
+| [`docs/QA_PLAN.md`](QA_PLAN.md) **Issue #181** | Historical note: fmt was advisory until **§60** / Issue **#193** (optional footnote at sign-off). |
+
+**README snippet (intent):**
+
+```markdown
+On every pull request and push to `main`, GitHub Actions runs (both feature jobs):
+
+- `cargo fmt --all -- --check` (**blocking**)
+- `cargo clippy --all-targets -- -D warnings`
+- `cargo test --all-features` / `--no-default-features`
+
+Reproduce locally:
+
+cargo fmt --all -- --check
+cargo clippy --all-targets -- -D warnings
+cargo test --all-features
+...
+```
+
+---
+
+### 60.3 Module / crate map
+
+| Path | Change |
+|------|--------|
+| `.github/workflows/ci.yml` | Blocking fmt + second-job fmt step |
+| `README.md` | CI docs |
+| Entire `src/` (and any formatted test modules) | One-time `cargo fmt --all` — **no** behavioral changes |
+
+**No application logic changes** unless rustfmt exposes a pre-existing bug (unlikely).
+
+---
+
+### 60.4 Acceptance criteria
+
+- [x] SPEC **§60** approved (this section); **§57.1** cross-reference updated.
+- [x] `continue-on-error` removed from fmt step(s).
+- [x] Both CI jobs run blocking `cargo fmt --all -- --check`.
+- [x] Tree formatted — local `cargo fmt --all -- --check` exits **0**.
+- [ ] CI fails when a contributor introduces unformatted code (verify with intentional whitespace drift on throwaway commit).
+- [x] README documents blocking fmt.
+- [ ] Manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#193** signed.
+
+---
+
+### 60.5 Implementation sequence
+
+1. Maintainer approval of **§60**.
+2. Run `cargo fmt --all` on the PR branch; commit format-only diff (may be large — separate commit message recommended: `chore: rustfmt entire tree (Issue #193)`).
+3. Update `.github/workflows/ci.yml` (§60.1).
+4. Update `README.md` + §57.1 excerpt in this SPEC.
+5. Push; confirm CI green on both jobs.
+6. Optional: introduce intentional fmt violation on throwaway branch → confirm CI red → revert.
+7. Manual QA Issue **#193**.
+
+**Suggested PR title:** `§60 blocking rustfmt CI gate (Issue #193)`.
+
+**May combine with §59 / Issue #189** in one PR if desired — run fmt **before** snapshot commits to avoid noisy diffs.
+
+---
+
+### 60.6 Manual QA pointer
+
+- [`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #193**.
+
+---
+
+### 60.7 Approval
+
+After maintainer approval of **§60**, the **engineer** may implement per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and run [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#193** before merge.
+
+### 60.8 Status
+
+- **Status:** Implemented (manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#193** pending).
+- **Tracking:** [Issue #193](https://github.com/FelipeMorandini/stockterm/issues/193).
+- **Depends on:** **§57** / Issue **#181** (shipped).
 - **Blocks:** None.

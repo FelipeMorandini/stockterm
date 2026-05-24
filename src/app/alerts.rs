@@ -1,10 +1,10 @@
 #![allow(clippy::collapsible_match, clippy::needless_return)]
 
-use crate::app::format::format_usd_price;
-use crate::app::styles::ResolvedTheme;
 use crate::app::app_error::{AppError, ErrorSourceDomain};
+use crate::app::format::format_usd_price;
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
+use crate::app::styles::ResolvedTheme;
 use crate::app::{AlertAddDialog, AlertAddField, App, Tab};
 use crate::config::keymap::{Action, BindingLayer};
 use crate::models::alerts::{process_alert_crossings, Alert, AlertCondition};
@@ -106,7 +106,10 @@ pub(crate) fn sanitize_alert_notify_display_text(s: &str) -> String {
     if trimmed.chars().count() > NOTIFY_SYMBOL_DISPLAY_MAX_CHARS {
         format!(
             "{}…",
-            trimmed.chars().take(NOTIFY_SYMBOL_DISPLAY_MAX_CHARS).collect::<String>()
+            trimmed
+                .chars()
+                .take(NOTIFY_SYMBOL_DISPLAY_MAX_CHARS)
+                .collect::<String>()
         )
     } else {
         trimmed.to_string()
@@ -486,10 +489,7 @@ fn alert_dialog_apply_unbound_char(app: &mut App, key: &KeyEvent) {
 }
 
 fn handle_alert_dialog_keys(app: &mut App, key: KeyEvent) {
-    if let Some(a) = app
-        .resolved_keymap
-        .action(BindingLayer::AlertDialog, &key)
-    {
+    if let Some(a) = app.resolved_keymap.action(BindingLayer::AlertDialog, &key) {
         match a {
             Action::AlertDialogEsc if key.modifiers == KeyModifiers::NONE => {
                 app.alert_add_dialog = None;
@@ -718,10 +718,7 @@ impl App {
                         AlertCondition::Above => "Above",
                         AlertCondition::Below => "Below",
                     };
-                    let mut line = format!(
-                        "{sym} {cond_s} {}",
-                        format_usd_price(alert.price)
-                    );
+                    let mut line = format!("{sym} {cond_s} {}", format_usd_price(alert.price));
                     if let Some(p) = last {
                         line.push_str(&format!(" · last {}", format_usd_price(p)));
                     }
@@ -892,14 +889,8 @@ mod sanitize_tests {
 
     #[test]
     fn sanitize_strips_control_and_collapses_whitespace() {
-        assert_eq!(
-            sanitize_alert_notify_display_text("AA\nPL"),
-            "AA PL"
-        );
-        assert_eq!(
-            sanitize_alert_notify_display_text("MSFT\x00"),
-            "MSFT"
-        );
+        assert_eq!(sanitize_alert_notify_display_text("AA\nPL"), "AA PL");
+        assert_eq!(sanitize_alert_notify_display_text("MSFT\x00"), "MSFT");
     }
 
     #[test]
@@ -926,10 +917,7 @@ mod notify_body_cap_tests {
 
     #[test]
     fn truncate_noop_when_under_cap() {
-        assert_eq!(
-            truncate_utf8_notify_body_to_max_bytes("a\nb", 1024),
-            "a\nb"
-        );
+        assert_eq!(truncate_utf8_notify_body_to_max_bytes("a\nb", 1024), "a\nb");
     }
 
     #[test]

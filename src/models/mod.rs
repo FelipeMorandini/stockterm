@@ -1,10 +1,10 @@
-pub mod ticker;
-pub mod historical;
-pub mod time_range;
-pub mod search;
-pub mod news;
-pub mod portfolio;
 pub mod alerts;
-pub mod symbol;
 pub mod backtest;
+pub mod historical;
+pub mod news;
 pub mod options;
+pub mod portfolio;
+pub mod search;
+pub mod symbol;
+pub mod ticker;
+pub mod time_range;

@@ -14,9 +14,7 @@ const BACKOFF_CAP_MS: u64 = 30_000;
 
 fn exp_delay_for_attempt(attempt: usize) -> Duration {
     let pow = BACKOFF_MULTIPLIER.saturating_pow(attempt as u32);
-    let ms = BASE_DELAY_MS
-        .saturating_mul(pow)
-        .clamp(1, BACKOFF_CAP_MS);
+    let ms = BASE_DELAY_MS.saturating_mul(pow).clamp(1, BACKOFF_CAP_MS);
     Duration::from_millis(ms)
 }
 
@@ -39,9 +37,9 @@ fn is_transient(err: &ProviderError) -> bool {
         ProviderError::Timeout => true,
         ProviderError::Transport(_) => true,
         ProviderError::Http { status, .. } => *status == 408 || (500..600).contains(status),
-        ProviderError::Json(_) | ProviderError::ApiMessage(_) | ProviderError::RateLimited { .. } => {
-            false
-        }
+        ProviderError::Json(_)
+        | ProviderError::ApiMessage(_)
+        | ProviderError::RateLimited { .. } => false,
     }
 }
 
@@ -230,9 +228,7 @@ mod wiremock_tests {
     async fn stall_triggers_timeout() {
         let srv = MockServer::start().await;
         Mock::given(method("GET"))
-            .respond_with(
-                ResponseTemplate::new(200).set_delay(std::time::Duration::from_secs(120)),
-            )
+            .respond_with(ResponseTemplate::new(200).set_delay(std::time::Duration::from_secs(120)))
             .mount(&srv)
             .await;
 
@@ -243,9 +239,7 @@ mod wiremock_tests {
             .build()
             .unwrap();
 
-        let h = tokio::spawn(async move {
-            execute_get_text_with_retry_inner(&client, &url).await
-        });
+        let h = tokio::spawn(async move { execute_get_text_with_retry_inner(&client, &url).await });
 
         tokio::task::yield_now().await;
         tokio::time::advance(Duration::from_millis(300)).await;
