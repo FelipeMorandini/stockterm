@@ -2064,6 +2064,7 @@ impl App {
                 self.active_runtime_error = None;
             }
             self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
+            crate::app::options::refresh_options_display_for_theme(self);
         }
     }
 
