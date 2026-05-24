@@ -115,6 +115,8 @@ pub enum Action {
     PortfolioFilterToggle,
     PortfolioAdd,
     PortfolioRemoveArm,
+    /// Edit selected holding shares / avg cost (Issue #182 / §55).
+    PortfolioRowEdit,
     PortfolioRowDown,
     PortfolioRowUp,
     PortfolioEnterStock,
@@ -126,6 +128,12 @@ pub enum Action {
     PortfolioDialogBackspace,
     PortfolioDialogEnter,
     PortfolioDialogDigitOrDot,
+    /// Edit dialog armed save confirm (Issue #182 / §55).
+    PortfolioDialogSaveConfirm,
+    /// Edit dialog armed save decline (Issue #182 / §55).
+    PortfolioDialogSaveDecline,
+    /// Edit dialog armed save cancel — same default chord as Esc (Issue #182 / §55).
+    PortfolioDialogSaveCancel,
     AlertAdd,
     AlertRemove,
     AlertRowUp,
@@ -196,13 +204,14 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         | SettingsRowUp | SettingsEnter => BindingLayer::SettingsBrowse,
         SettingsEditEsc | SettingsEditEnter | SettingsEditBackspace | SettingsEditDigit
         | SettingsEditSymbolChar => BindingLayer::SettingsEdit,
-        PortfolioFilterToggle | PortfolioAdd | PortfolioRemoveArm | PortfolioRowDown
-        | PortfolioRowUp | PortfolioEnterStock => BindingLayer::Portfolio,
+        PortfolioFilterToggle | PortfolioAdd | PortfolioRemoveArm | PortfolioRowEdit
+        | PortfolioRowDown | PortfolioRowUp | PortfolioEnterStock => BindingLayer::Portfolio,
         PortfolioRemoveCancel | PortfolioRemoveDecline | PortfolioRemoveConfirm => {
             BindingLayer::PortfolioRemoveArmed
         }
         PortfolioDialogEsc | PortfolioDialogFocusNext | PortfolioDialogBackspace
-        | PortfolioDialogEnter | PortfolioDialogDigitOrDot => BindingLayer::PortfolioDialog,
+        | PortfolioDialogEnter | PortfolioDialogDigitOrDot | PortfolioDialogSaveConfirm
+        | PortfolioDialogSaveDecline | PortfolioDialogSaveCancel => BindingLayer::PortfolioDialog,
         AlertAdd | AlertRemove | AlertRowUp | AlertRowDown => BindingLayer::Alerts,
         AlertDialogEsc | AlertDialogTab | AlertDialogShiftTab | AlertDialogLeft
         | AlertDialogRight | AlertDialogConditionCycleOrFocusNext | AlertDialogEnter
@@ -544,6 +553,7 @@ const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = {
         (Portfolio, "slash", PortfolioFilterToggle),
         (Portfolio, "char:a", PortfolioAdd),
         (Portfolio, "char:d", PortfolioRemoveArm),
+        (Portfolio, "char:e", PortfolioRowEdit),
         (Portfolio, "char:j", PortfolioRowDown),
         (Portfolio, "down", PortfolioRowDown),
         (Portfolio, "char:k", PortfolioRowUp),
@@ -561,6 +571,8 @@ const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = {
         (PortfolioDialog, "semicolon", PortfolioDialogFocusNext),
         (PortfolioDialog, "backspace", PortfolioDialogBackspace),
         (PortfolioDialog, "enter", PortfolioDialogEnter),
+        (PortfolioDialog, "char:y", PortfolioDialogSaveConfirm),
+        (PortfolioDialog, "char:n", PortfolioDialogSaveDecline),
         (Alerts, "char:a", AlertAdd),
         (Alerts, "char:d", AlertRemove),
         (Alerts, "up", AlertRowUp),
@@ -916,6 +928,27 @@ mod tests {
     }
 
     #[test]
+    fn issue182_portfolio_row_edit_default() {
+        let (km, err) = ResolvedKeymap::build(None);
+        assert!(err.is_none());
+        let e = KeyEvent::new(KeyCode::Char('e'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::Portfolio, &e),
+            Some(Action::PortfolioRowEdit)
+        );
+        let y = KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::PortfolioDialog, &y),
+            Some(Action::PortfolioDialogSaveConfirm)
+        );
+        let n = KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE);
+        assert_eq!(
+            km.action(BindingLayer::PortfolioDialog, &n),
+            Some(Action::PortfolioDialogSaveDecline)
+        );
+    }
+
+    #[test]
     fn issue136_portfolio_dialog_digit_or_dot_defaults() {
         let (km, err) = ResolvedKeymap::build(None);
         assert!(err.is_none());
@@ -1115,7 +1148,7 @@ mod tests {
 
     #[test]
     fn default_bindings_total_row_count() {
-        assert_eq!(default_bindings().len(), 244);
+        assert_eq!(default_bindings().len(), 247);
     }
 
     #[test]

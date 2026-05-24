@@ -6,7 +6,7 @@ use crate::app::app_error::{AppError, ErrorSourceDomain};
 use crate::app::keyboard::letter_key_plain;
 use crate::app::layout::centered_rect;
 use crate::app::table_filter::filter_title_suffix;
-use crate::app::{normalize_symbol, App, PortfolioAddField, Tab};
+use crate::app::{normalize_symbol, App, PortfolioAddField, PortfolioDialogKind, Tab};
 use crate::config::keymap::{Action, BindingLayer};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
@@ -26,6 +26,27 @@ const PORTFOLIO_KIND_COLUMN_MIN_WIDTH: u16 = 88;
 pub(crate) const MAX_HOLDING_SHARES: f64 = 1_000_000_000.0;
 /// Upper sanity bound for price per share; SPEC §15.5.
 pub(crate) const MAX_HOLDING_PRICE_PER_SHARE: f64 = 1e12;
+
+/// Shown when edit commit fails because the portfolio index is stale (Issue #182 / §55).
+pub(crate) const PORTFOLIO_EDIT_STALE_INDEX_INLINE: &str =
+    "Could not update holding: row no longer exists.";
+
+/// Format a holding numeric field for edit-buffer prefill (no scientific notation).
+pub(crate) fn format_holding_input_value(v: f64) -> String {
+    if !v.is_finite() || v <= 0.0 {
+        return String::new();
+    }
+    let mut s = format!("{:.8}", v);
+    if s.contains('.') {
+        while s.ends_with('0') {
+            s.pop();
+        }
+        if s.ends_with('.') {
+            s.pop();
+        }
+    }
+    s
+}
 
 /// Shown when commit fails because `App.symbol` does not normalize (Issues #69 / #83).
 pub(crate) const PORTFOLIO_ADD_INVALID_SYMBOL_INLINE: &str =
@@ -64,6 +85,7 @@ pub(crate) fn cycle_portfolio_dialog_focus(app: &mut App, _forward: bool) {
         return;
     };
     d.inline_error = None;
+    d.commit_armed = false;
     d.focused = match d.focused {
         PortfolioAddField::Shares => PortfolioAddField::Price,
         PortfolioAddField::Price => PortfolioAddField::Shares,
@@ -113,6 +135,35 @@ fn portfolio_move_down(app: &mut App) {
             app.portfolio_state.select(Some(i + 1));
         }
         _ => {}
+    }
+}
+
+fn selected_portfolio_index(app: &App) -> Option<usize> {
+    let filtered = app.portfolio_filter_indices();
+    if filtered.is_empty() {
+        return None;
+    }
+    let selected_f = app.portfolio_state.selected().unwrap_or(0);
+    if selected_f < filtered.len() {
+        Some(filtered[selected_f])
+    } else {
+        None
+    }
+}
+
+fn parse_dialog_holding_fields(
+    shares_buffer: &str,
+    price_buffer: &str,
+) -> Result<(f64, f64), &'static str> {
+    let shares = parse_holding_decimal(shares_buffer)?;
+    let price = parse_holding_decimal(price_buffer)?;
+    validate_holding_limits(shares, price)?;
+    Ok((shares, price))
+}
+
+fn disarm_portfolio_dialog_commit(app: &mut App) {
+    if let Some(d) = app.portfolio_dialog.as_mut() {
+        d.commit_armed = false;
     }
 }
 
@@ -356,7 +407,15 @@ fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect, theme: Resol
 
     let popup = centered_rect(area, 55, 40);
     let border_st = Style::default().fg(theme.border).bg(theme.background);
-    let sym_label = normalize_symbol(&app.symbol).unwrap_or_default();
+
+    let sym_label = match dialog.kind {
+        PortfolioDialogKind::Add => normalize_symbol(&app.symbol).unwrap_or_default(),
+        PortfolioDialogKind::Edit { portfolio_index } => app
+            .portfolio
+            .get(portfolio_index)
+            .and_then(|item| normalize_symbol(&item.symbol))
+            .unwrap_or_default(),
+    };
 
     let shares_style = if dialog.focused == PortfolioAddField::Shares {
         theme.fg_accent()
@@ -369,11 +428,17 @@ fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect, theme: Resol
         theme.fg_foreground()
     };
 
+    let help_line = match dialog.kind {
+        PortfolioDialogKind::Add => {
+            "Add holding — Esc cancel · Tab / Shift+Tab or ; cycle field · Enter on Price saves"
+        }
+        PortfolioDialogKind::Edit { .. } => {
+            "Edit holding — Esc cancel · Tab / Shift+Tab or ; cycle · Enter on Price arms save"
+        }
+    };
+
     let mut lines: Vec<Line> = vec![
-        Line::from(vec![Span::styled(
-            "Add holding — Esc cancel · Tab / Shift+Tab or ; cycle field · Enter on Price saves",
-            theme.canvas(),
-        )]),
+        Line::from(vec![Span::styled(help_line, theme.canvas())]),
         Line::from(vec![
             Span::styled("Symbol: ", theme.canvas()),
             Span::styled(sym_label, theme.fg_accent().add_modifier(Modifier::BOLD)),
@@ -386,11 +451,28 @@ fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect, theme: Resol
             Span::styled("Price:   ", price_style),
             Span::styled(dialog.price_buffer.as_str(), theme.fg_foreground()),
         ]),
-        Line::from(vec![Span::styled(
-            "Enter on Shares → Price | Enter on Price → save",
-            theme.fg_muted(),
-        )]),
     ];
+
+    match dialog.kind {
+        PortfolioDialogKind::Add => {
+            lines.push(Line::from(vec![Span::styled(
+                "Enter on Shares → Price | Enter on Price → save",
+                theme.fg_muted(),
+            )]));
+        }
+        PortfolioDialogKind::Edit { .. } if dialog.commit_armed => {
+            lines.push(Line::from(vec![Span::styled(
+                "Save armed — confirm: Enter or y  |  cancel: Esc or n",
+                theme.fg_border(),
+            )]));
+        }
+        PortfolioDialogKind::Edit { .. } => {
+            lines.push(Line::from(vec![Span::styled(
+                "Enter on Shares → Price | Enter on Price → arm save",
+                theme.fg_muted(),
+            )]));
+        }
+    }
 
     if let Some(ref err) = dialog.inline_error {
         lines.push(Line::from(vec![Span::styled(
@@ -399,9 +481,14 @@ fn draw_portfolio_add_overlay(f: &mut Frame, app: &App, area: Rect, theme: Resol
         )]));
     }
 
+    let title = match dialog.kind {
+        PortfolioDialogKind::Add => "Add to portfolio",
+        PortfolioDialogKind::Edit { .. } => "Edit holding",
+    };
+
     let block = Block::default()
         .borders(Borders::ALL)
-        .title("Add to portfolio")
+        .title(title)
         .style(theme.canvas())
         .border_style(border_st);
     let p = Paragraph::new(lines).block(block);
@@ -421,17 +508,12 @@ pub(crate) fn try_commit_portfolio_dialog(app: &mut App) {
     let Some(ref dlg) = app.portfolio_dialog else {
         return;
     };
-    let shares_r = parse_holding_decimal(&dlg.shares_buffer);
-    let price_r = parse_holding_decimal(&dlg.price_buffer);
+    if !matches!(dlg.kind, PortfolioDialogKind::Add) {
+        return;
+    }
 
-    match (shares_r, price_r) {
-        (Ok(shares), Ok(price)) => {
-            if let Err(e) = validate_holding_limits(shares, price) {
-                if let Some(d) = app.portfolio_dialog.as_mut() {
-                    d.inline_error = Some(e.to_string());
-                }
-                return;
-            }
+    match parse_dialog_holding_fields(&dlg.shares_buffer, &dlg.price_buffer) {
+        Ok((shares, price)) => {
             if app.add_to_portfolio(shares, price) {
                 app.portfolio_dialog = None;
                 app.request_immediate_stock_poll();
@@ -441,9 +523,66 @@ pub(crate) fn try_commit_portfolio_dialog(app: &mut App) {
                 }
             }
         }
-        (Err(e), _) | (_, Err(e)) => {
+        Err(e) => {
             if let Some(d) = app.portfolio_dialog.as_mut() {
                 d.inline_error = Some(e.to_string());
+            }
+        }
+    }
+}
+
+fn try_arm_portfolio_edit_dialog(app: &mut App) {
+    let Some(ref dlg) = app.portfolio_dialog else {
+        return;
+    };
+    if !matches!(dlg.kind, PortfolioDialogKind::Edit { .. }) {
+        return;
+    }
+
+    match parse_dialog_holding_fields(&dlg.shares_buffer, &dlg.price_buffer) {
+        Ok(_) => {
+            if let Some(d) = app.portfolio_dialog.as_mut() {
+                d.inline_error = None;
+                d.commit_armed = true;
+            }
+        }
+        Err(e) => {
+            if let Some(d) = app.portfolio_dialog.as_mut() {
+                d.inline_error = Some(e.to_string());
+                d.commit_armed = false;
+            }
+        }
+    }
+}
+
+/// Commits the portfolio edit dialog after the two-step confirm (Issue #182 / §55).
+pub(crate) fn try_commit_portfolio_edit_dialog(app: &mut App) {
+    let portfolio_index = match app.portfolio_dialog.as_ref().map(|d| d.kind) {
+        Some(PortfolioDialogKind::Edit { portfolio_index }) => portfolio_index,
+        _ => return,
+    };
+    let (shares_buffer, price_buffer) = match app.portfolio_dialog.as_ref() {
+        Some(d) => (d.shares_buffer.clone(), d.price_buffer.clone()),
+        None => return,
+    };
+
+    match parse_dialog_holding_fields(&shares_buffer, &price_buffer) {
+        Ok((shares, price)) => {
+            if app.update_portfolio_holding(portfolio_index, shares, price) {
+                app.portfolio_dialog = None;
+            } else if app.error_message().is_none() {
+                if let Some(d) = app.portfolio_dialog.as_mut() {
+                    d.inline_error = Some(PORTFOLIO_EDIT_STALE_INDEX_INLINE.into());
+                    d.commit_armed = false;
+                }
+            } else if let Some(d) = app.portfolio_dialog.as_mut() {
+                d.commit_armed = false;
+            }
+        }
+        Err(e) => {
+            if let Some(d) = app.portfolio_dialog.as_mut() {
+                d.inline_error = Some(e.to_string());
+                d.commit_armed = false;
             }
         }
     }
@@ -454,8 +593,42 @@ fn handle_portfolio_dialog_keys(app: &mut App, key: KeyEvent) {
         .resolved_keymap
         .action(BindingLayer::PortfolioDialog, &key)
     {
+        let commit_armed = app
+            .portfolio_dialog
+            .as_ref()
+            .is_some_and(|d| d.commit_armed);
+
+        if commit_armed {
+            match a {
+                Action::PortfolioDialogSaveConfirm | Action::PortfolioDialogEnter
+                    if key.modifiers == KeyModifiers::NONE
+                        && app.portfolio_dialog.as_ref().is_some_and(|d| {
+                            matches!(d.kind, PortfolioDialogKind::Edit { .. })
+                        }) =>
+                {
+                    try_commit_portfolio_edit_dialog(app);
+                    return;
+                }
+                Action::PortfolioDialogSaveDecline
+                    if letter_key_plain(key.modifiers) =>
+                {
+                    disarm_portfolio_dialog_commit(app);
+                    return;
+                }
+                Action::PortfolioDialogEsc | Action::PortfolioDialogSaveCancel
+                    if key.modifiers == KeyModifiers::NONE =>
+                {
+                    disarm_portfolio_dialog_commit(app);
+                    return;
+                }
+                _ => return,
+            }
+        }
+
         match a {
-            Action::PortfolioDialogEsc if key.modifiers == KeyModifiers::NONE => {
+            Action::PortfolioDialogEsc | Action::PortfolioDialogSaveCancel
+                if key.modifiers == KeyModifiers::NONE =>
+            {
                 app.portfolio_dialog = None;
                 return;
             }
@@ -466,6 +639,7 @@ fn handle_portfolio_dialog_keys(app: &mut App, key: KeyEvent) {
             Action::PortfolioDialogBackspace if key.modifiers == KeyModifiers::NONE => {
                 if let Some(d) = app.portfolio_dialog.as_mut() {
                     d.inline_error = None;
+                    d.commit_armed = false;
                     let buf = match d.focused {
                         PortfolioAddField::Shares => &mut d.shares_buffer,
                         PortfolioAddField::Price => &mut d.price_buffer,
@@ -477,13 +651,21 @@ fn handle_portfolio_dialog_keys(app: &mut App, key: KeyEvent) {
             Action::PortfolioDialogEnter if key.modifiers == KeyModifiers::NONE => {
                 if let Some(d) = app.portfolio_dialog.as_mut() {
                     d.inline_error = None;
-                    match d.focused {
-                        PortfolioAddField::Shares => d.focused = PortfolioAddField::Price,
-                        PortfolioAddField::Price => try_commit_portfolio_dialog(app),
+                    match (d.kind, d.focused) {
+                        (_, PortfolioAddField::Shares) => {
+                            d.focused = PortfolioAddField::Price;
+                        }
+                        (PortfolioDialogKind::Add, PortfolioAddField::Price) => {
+                            try_commit_portfolio_dialog(app);
+                        }
+                        (PortfolioDialogKind::Edit { .. }, PortfolioAddField::Price) => {
+                            try_arm_portfolio_edit_dialog(app);
+                        }
                     }
                 }
                 return;
             }
+            Action::PortfolioDialogSaveConfirm if letter_key_plain(key.modifiers) => return,
             Action::PortfolioDialogDigitOrDot => {
                 if !letter_key_plain(key.modifiers) {
                     return;
@@ -493,6 +675,7 @@ fn handle_portfolio_dialog_keys(app: &mut App, key: KeyEvent) {
                 };
                 if let Some(d) = app.portfolio_dialog.as_mut() {
                     d.inline_error = None;
+                    d.commit_armed = false;
                     let buf = match d.focused {
                         PortfolioAddField::Shares => &mut d.shares_buffer,
                         PortfolioAddField::Price => &mut d.price_buffer,
@@ -595,6 +778,21 @@ pub fn handle_portfolio_events(app: &mut App, key: KeyEvent) {
                 }
                 app.portfolio_remove_armed = true;
             }
+            Action::PortfolioRowEdit if letter_key_plain(key.modifiers) => {
+                if app.portfolio.is_empty() {
+                    return;
+                }
+                if app.portfolio_state.selected().is_none() {
+                    app.portfolio_state.select(Some(0));
+                }
+                if let Some(idx) = selected_portfolio_index(app) {
+                    let item = app.portfolio[idx].clone();
+                    app.portfolio_remove_armed = false;
+                    app.portfolio_dialog =
+                        Some(crate::app::PortfolioAddDialog::for_edit(&item, idx));
+                    app.clear_active_runtime_unless_alerts_save();
+                }
+            }
             Action::PortfolioRowUp => {
                 portfolio_move_up(app);
             }
@@ -624,9 +822,60 @@ pub fn handle_portfolio_events(app: &mut App, key: KeyEvent) {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_holding_decimal, validate_holding_limits, MAX_HOLDING_PRICE_PER_SHARE,
-        MAX_HOLDING_SHARES,
+        format_holding_input_value, parse_holding_decimal, try_commit_portfolio_edit_dialog,
+        validate_holding_limits, MAX_HOLDING_PRICE_PER_SHARE, MAX_HOLDING_SHARES,
     };
+    use crate::app::{App, PortfolioAddDialog, PortfolioAddField, PortfolioDialogKind};
+    use crate::models::portfolio::PortfolioItem;
+
+    #[test]
+    fn format_holding_input_value_formats_whole_and_decimal() {
+        assert_eq!(format_holding_input_value(10.0), "10");
+        assert_eq!(format_holding_input_value(412.55), "412.55");
+        assert_eq!(format_holding_input_value(1.5), "1.5");
+    }
+
+    #[test]
+    fn format_holding_input_value_rejects_non_positive() {
+        assert!(format_holding_input_value(0.0).is_empty());
+        assert!(format_holding_input_value(-1.0).is_empty());
+        assert!(format_holding_input_value(f64::NAN).is_empty());
+    }
+
+    #[test]
+    fn update_portfolio_holding_overwrites_in_place() {
+        let mut app = App::new();
+        app.portfolio = vec![PortfolioItem::new("AAPL".into(), 10.0, 100.0)];
+        app.config.portfolio = app.portfolio.clone();
+        assert!(app.update_portfolio_holding(0, 12.0, 145.0));
+        assert!((app.portfolio[0].shares - 12.0).abs() < f64::EPSILON);
+        assert!((app.portfolio[0].purchase_price - 145.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn update_portfolio_holding_rejects_out_of_range() {
+        let mut app = App::new();
+        app.portfolio = vec![PortfolioItem::new("AAPL".into(), 10.0, 100.0)];
+        assert!(!app.update_portfolio_holding(1, 12.0, 145.0));
+    }
+
+    #[test]
+    fn try_commit_portfolio_edit_dialog_closes_on_success() {
+        let mut app = App::new();
+        app.portfolio = vec![PortfolioItem::new("AAPL".into(), 10.0, 100.0)];
+        app.config.portfolio = app.portfolio.clone();
+        app.portfolio_dialog = Some(PortfolioAddDialog {
+            kind: PortfolioDialogKind::Edit { portfolio_index: 0 },
+            shares_buffer: "15".into(),
+            price_buffer: "120".into(),
+            focused: PortfolioAddField::Price,
+            inline_error: None,
+            commit_armed: true,
+        });
+        try_commit_portfolio_edit_dialog(&mut app);
+        assert!(app.portfolio_dialog.is_none());
+        assert!((app.portfolio[0].shares - 15.0).abs() < f64::EPSILON);
+    }
 
     #[test]
     fn parse_holding_decimal_accepts_positive() {
