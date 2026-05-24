@@ -105,22 +105,51 @@ pub enum PortfolioAddField {
     Price,
 }
 
-/// In-modal state for adding a portfolio row (Issue #6 / SPEC §13).
+/// Add vs edit mode for the portfolio holding modal (Issue #182 / §55).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PortfolioDialogKind {
+    /// New holding for [`App::symbol`] (Issue #6 / §13).
+    Add,
+    /// In-place edit of an existing [`PortfolioItem`] by portfolio vec index.
+    Edit { portfolio_index: usize },
+}
+
+/// In-modal state for adding or editing a portfolio row (Issue #6 / §13; Issue #182 / §55).
 #[derive(Debug, Clone)]
 pub struct PortfolioAddDialog {
+    pub kind: PortfolioDialogKind,
     pub shares_buffer: String,
     pub price_buffer: String,
     pub focused: PortfolioAddField,
     pub inline_error: Option<String>,
+    /// Edit-only: first Enter on Price arms save; second Enter/y commits (§55.1).
+    pub commit_armed: bool,
 }
 
 impl Default for PortfolioAddDialog {
     fn default() -> Self {
         Self {
+            kind: PortfolioDialogKind::Add,
             shares_buffer: String::new(),
             price_buffer: String::new(),
             focused: PortfolioAddField::Shares,
             inline_error: None,
+            commit_armed: false,
+        }
+    }
+}
+
+impl PortfolioAddDialog {
+    /// Prefilled edit dialog for an existing holding (Issue #182 / §55).
+    pub fn for_edit(item: &crate::models::portfolio::PortfolioItem, portfolio_index: usize) -> Self {
+        use crate::app::portfolio::format_holding_input_value;
+        Self {
+            kind: PortfolioDialogKind::Edit { portfolio_index },
+            shares_buffer: format_holding_input_value(item.shares),
+            price_buffer: format_holding_input_value(item.purchase_price),
+            focused: PortfolioAddField::Shares,
+            inline_error: None,
+            commit_armed: false,
         }
     }
 }
@@ -3443,6 +3472,45 @@ impl App {
         }
     }
 
+    /// Overwrites shares and avg cost for the holding at `index` and persists config (Issue #182 / §55).
+    ///
+    /// # Returns
+    ///
+    /// - `true` if the row existed and [`Self::try_save_config_with_session`] succeeded.
+    /// - `false` if index out of range or save failed (save failure sets runtime error).
+    pub fn update_portfolio_holding(
+        &mut self,
+        index: usize,
+        shares: f64,
+        purchase_price: f64,
+    ) -> bool {
+        if index >= self.portfolio.len() {
+            return false;
+        }
+
+        let backup = self.portfolio.clone();
+        self.portfolio[index].shares = shares;
+        self.portfolio[index].purchase_price = purchase_price;
+        self.config.portfolio = self.portfolio.clone();
+        match self.try_save_config_with_session() {
+            Ok(()) => {
+                self.clamp_portfolio_filter_selection();
+                true
+            }
+            Err(e) => {
+                self.portfolio = backup;
+                self.config.portfolio = self.portfolio.clone();
+                self.surface_runtime_error(
+                    Tab::Portfolio,
+                    ErrorSourceDomain::Portfolio,
+                    AppError::ConfigSave(e.to_string()),
+                    true,
+                );
+                false
+            }
+        }
+    }
+
     pub fn calculate_portfolio_value(&self) -> f64 {
         self.portfolio
             .iter()
@@ -3942,10 +4010,12 @@ mod tests {
         app.symbol.clear();
         app.active_runtime_error = None;
         app.portfolio_dialog = Some(PortfolioAddDialog {
+            kind: crate::app::PortfolioDialogKind::Add,
             shares_buffer: "1".into(),
             price_buffer: "1".into(),
             focused: PortfolioAddField::Price,
             inline_error: None,
+            commit_armed: false,
         });
         try_commit_portfolio_dialog(&mut app);
         assert!(app.portfolio_dialog.is_some());

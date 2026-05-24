@@ -19,5 +19,5 @@ mod format;
 
 pub use self::app::{
     normalize_symbol, AlertAddDialog, AlertAddField, App, FetchDone, PortfolioAddDialog,
-    PortfolioAddField, SettingsEdit, Tab, SETTINGS_ROW_COUNT,
+    PortfolioAddField, PortfolioDialogKind, SettingsEdit, Tab, SETTINGS_ROW_COUNT,
 };
