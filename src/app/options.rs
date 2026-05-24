@@ -801,7 +801,10 @@ mod tests {
         app.options_chain = Some(sample_chain());
         rebuild_options_display_cache(&mut app);
 
-        let stamp = app.options_display.baked_theme_stamp.expect("stamp after rebuild");
+        let stamp = app
+            .options_display
+            .baked_theme_stamp
+            .expect("stamp after rebuild");
         sync_options_display_theme(&mut app, stamp);
         assert_eq!(app.options_display.baked_theme_stamp, Some(stamp));
         sync_options_display_theme(&mut app, stamp);
@@ -826,10 +829,7 @@ mod tests {
         let palette = app.theme_palette_for_render();
         sync_options_display_theme(&mut app, ThemeStamp::from_palette(&palette));
 
-        assert_ne!(
-            app.options_display.baked_theme_stamp,
-            dark_stamp
-        );
+        assert_ne!(app.options_display.baked_theme_stamp, dark_stamp);
         assert_eq!(
             app.options_display.baked_theme_stamp,
             Some(ThemeStamp::from_palette(&app.theme_palette_for_render()))

@@ -938,8 +938,7 @@ mod theme_tracking_tests {
     #[test]
     fn portfolio_pl_color_tracks_committed_theme() {
         let mut app = sample_portfolio_app();
-        let dark_positive =
-            ResolvedTheme::from_palette(app.theme_palette_for_render()).positive;
+        let dark_positive = ResolvedTheme::from_palette(app.theme_palette_for_render()).positive;
         let buf_dark = render_to_buffer(120, 24, |f| {
             let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
             draw_portfolio(f, &mut app, full_area(120, 24), rt);
@@ -947,8 +946,7 @@ mod theme_tracking_tests {
         assert!(buffer_has_fg_color(&buf_dark, dark_positive));
 
         app.config.theme = Some(Theme::from_preset(ThemePreset::Light));
-        let light_positive =
-            ResolvedTheme::from_palette(app.theme_palette_for_render()).positive;
+        let light_positive = ResolvedTheme::from_palette(app.theme_palette_for_render()).positive;
         let buf_light = render_to_buffer(120, 24, |f| {
             let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
             draw_portfolio(f, &mut app, full_area(120, 24), rt);
