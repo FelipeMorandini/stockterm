@@ -63,7 +63,10 @@ fn fill_price(close: f64, side: OrderSide, slippage_bps: f64) -> f64 {
 }
 
 /// Returns `Ok(())` when `hist.ticker` is empty or matches `symbol` (case-insensitive).
-pub fn verify_historical_symbol(hist: &HistoricalResponse, symbol: &str) -> Result<(), BacktestError> {
+pub fn verify_historical_symbol(
+    hist: &HistoricalResponse,
+    symbol: &str,
+) -> Result<(), BacktestError> {
     let t = hist.ticker.trim();
     if t.is_empty() || t.eq_ignore_ascii_case(symbol) {
         return Ok(());
@@ -139,7 +142,8 @@ pub fn run_backtest(
                     let price = fill_price(bar.c, OrderSide::Sell, sim.slippage_bps);
                     let proceeds = shares * price - sim.commission_per_trade;
                     if let Some(pos) = open.take() {
-                        let pnl = proceeds - pos.entry_price * pos.shares - sim.commission_per_trade;
+                        let pnl =
+                            proceeds - pos.entry_price * pos.shares - sim.commission_per_trade;
                         trades.push(TradeRecord {
                             entry_ts: pos.entry_ts,
                             exit_ts: bar.t,
@@ -184,7 +188,13 @@ pub fn run_backtest(
         }
     }
 
-    let summary = build_summary(symbol, bars.len(), sim.initial_capital, &trades, &equity_curve);
+    let summary = build_summary(
+        symbol,
+        bars.len(),
+        sim.initial_capital,
+        &trades,
+        &equity_curve,
+    );
 
     Ok(BacktestReport {
         summary,

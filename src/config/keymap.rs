@@ -189,8 +189,8 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         OverlayClose | OverlayScrollDown | OverlayScrollUp | OverlayPageDown | OverlayPageUp => {
             BindingLayer::ErrorOverlay
         }
-        StockFilterToggle | WatchlistAdd | WatchlistRemove | WatchlistRemoveShift | StockRowDown
-        | StockRowUp | StockBackspace | StockEnter => BindingLayer::StockView,
+        StockFilterToggle | WatchlistAdd | WatchlistRemove | WatchlistRemoveShift
+        | StockRowDown | StockRowUp | StockBackspace | StockEnter => BindingLayer::StockView,
         ChartRangeD1 | ChartRangeW1 | ChartRangeM1 | ChartRangeY1 | ChartResetViewport
         | ChartZoomIn | ChartZoomOut | ChartPanLeft | ChartPanRight | ChartToggleCandle
         | ChartToggleSma | ChartToggleEma | ChartToggleRsi | ChartToggleMacd => {
@@ -200,30 +200,59 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
             BindingLayer::Search
         }
         NewsRowDown | NewsRowUp | NewsEnter | NewsCopyUrl => BindingLayer::News,
-        SettingsEscThemeDraft | SettingsThemePrev | SettingsThemeNext | SettingsRowDown
-        | SettingsRowUp | SettingsEnter => BindingLayer::SettingsBrowse,
-        SettingsEditEsc | SettingsEditEnter | SettingsEditBackspace | SettingsEditDigit
+        SettingsEscThemeDraft
+        | SettingsThemePrev
+        | SettingsThemeNext
+        | SettingsRowDown
+        | SettingsRowUp
+        | SettingsEnter => BindingLayer::SettingsBrowse,
+        SettingsEditEsc
+        | SettingsEditEnter
+        | SettingsEditBackspace
+        | SettingsEditDigit
         | SettingsEditSymbolChar => BindingLayer::SettingsEdit,
-        PortfolioFilterToggle | PortfolioAdd | PortfolioRemoveArm | PortfolioRowEdit
-        | PortfolioRowDown | PortfolioRowUp | PortfolioEnterStock => BindingLayer::Portfolio,
+        PortfolioFilterToggle
+        | PortfolioAdd
+        | PortfolioRemoveArm
+        | PortfolioRowEdit
+        | PortfolioRowDown
+        | PortfolioRowUp
+        | PortfolioEnterStock => BindingLayer::Portfolio,
         PortfolioRemoveCancel | PortfolioRemoveDecline | PortfolioRemoveConfirm => {
             BindingLayer::PortfolioRemoveArmed
         }
-        PortfolioDialogEsc | PortfolioDialogFocusNext | PortfolioDialogBackspace
-        | PortfolioDialogEnter | PortfolioDialogDigitOrDot | PortfolioDialogSaveConfirm
-        | PortfolioDialogSaveDecline | PortfolioDialogSaveCancel => BindingLayer::PortfolioDialog,
+        PortfolioDialogEsc
+        | PortfolioDialogFocusNext
+        | PortfolioDialogBackspace
+        | PortfolioDialogEnter
+        | PortfolioDialogDigitOrDot
+        | PortfolioDialogSaveConfirm
+        | PortfolioDialogSaveDecline
+        | PortfolioDialogSaveCancel => BindingLayer::PortfolioDialog,
         AlertAdd | AlertRemove | AlertRowUp | AlertRowDown => BindingLayer::Alerts,
-        AlertDialogEsc | AlertDialogTab | AlertDialogShiftTab | AlertDialogLeft
-        | AlertDialogRight | AlertDialogConditionCycleOrFocusNext | AlertDialogEnter
-        | AlertDialogBackspace | AlertDialogDigitOrDot | AlertDialogSymbolChar
-        | AlertDialogConditionAbove | AlertDialogConditionBelow => BindingLayer::AlertDialog,
+        AlertDialogEsc
+        | AlertDialogTab
+        | AlertDialogShiftTab
+        | AlertDialogLeft
+        | AlertDialogRight
+        | AlertDialogConditionCycleOrFocusNext
+        | AlertDialogEnter
+        | AlertDialogBackspace
+        | AlertDialogDigitOrDot
+        | AlertDialogSymbolChar
+        | AlertDialogConditionAbove
+        | AlertDialogConditionBelow => BindingLayer::AlertDialog,
         FilterClear | FilterCommit | FilterBackspace | FilterSlash | FilterQueryChar => {
             BindingLayer::FilterInput
         }
         BacktestRun | BacktestExport | BacktestStrategyNext | BacktestScrollUp
         | BacktestScrollDown => BindingLayer::Backtest,
-        OptionsRefresh | OptionsExpirationPrev | OptionsExpirationNext | OptionsStrikeUp
-        | OptionsStrikeDown | OptionsToggleGreeks => BindingLayer::Options,
+        OptionsRefresh
+        | OptionsExpirationPrev
+        | OptionsExpirationNext
+        | OptionsStrikeUp
+        | OptionsStrikeDown
+        | OptionsToggleGreeks => BindingLayer::Options,
     }
 }
 
@@ -269,7 +298,11 @@ pub fn parse_chord(s: &str) -> Result<Chord, KeymapParseError> {
         return Err(KeymapParseError::EmptyChord);
     }
     let lower = s.to_ascii_lowercase();
-    let parts: Vec<&str> = lower.split('+').map(str::trim).filter(|p| !p.is_empty()).collect();
+    let parts: Vec<&str> = lower
+        .split('+')
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .collect();
     if parts.is_empty() {
         return Err(KeymapParseError::EmptyChord);
     }
@@ -298,7 +331,9 @@ pub fn parse_chord(s: &str) -> Result<Chord, KeymapParseError> {
 fn parse_key_token(tail: &str) -> Result<(KeyCode, KeyModifiers), KeymapParseError> {
     if let Some(rest) = tail.strip_prefix("char:") {
         let mut it = rest.chars();
-        let c = it.next().ok_or_else(|| KeymapParseError::InvalidChord(tail.to_string()))?;
+        let c = it
+            .next()
+            .ok_or_else(|| KeymapParseError::InvalidChord(tail.to_string()))?;
         if it.next().is_some() {
             return Err(KeymapParseError::InvalidChord(tail.to_string()));
         }
@@ -357,10 +392,7 @@ impl ResolvedKeymap {
             Err(e) => {
                 let mut fresh: HashMap<BindingLayer, LayerMap> = HashMap::new();
                 let _ = insert_defaults(&mut fresh);
-                (
-                    Self { layers: fresh },
-                    Some(format!("keymap: {e}")),
-                )
+                (Self { layers: fresh }, Some(format!("keymap: {e}")))
             }
         }
     }
@@ -769,7 +801,10 @@ mod tests {
         let (km, err) = ResolvedKeymap::build(Some(&m));
         assert!(err.is_none());
         let quit_key = KeyEvent::new(KeyCode::Char(':'), KeyModifiers::NONE);
-        assert_eq!(km.action(BindingLayer::Global, &quit_key), Some(Action::Quit));
+        assert_eq!(
+            km.action(BindingLayer::Global, &quit_key),
+            Some(Action::Quit)
+        );
         let old = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
         assert_eq!(km.action(BindingLayer::Global, &old), None);
     }
@@ -835,10 +870,8 @@ mod tests {
     fn shift_tab_tab_with_super_does_not_alias_to_backtab() {
         let (km, err) = ResolvedKeymap::build(None);
         assert!(err.is_none());
-        let tab_shift_super = KeyEvent::new(
-            KeyCode::Tab,
-            KeyModifiers::SHIFT | KeyModifiers::SUPER,
-        );
+        let tab_shift_super =
+            KeyEvent::new(KeyCode::Tab, KeyModifiers::SHIFT | KeyModifiers::SUPER);
         assert_eq!(km.action(BindingLayer::Global, &tab_shift_super), None);
     }
 
@@ -913,18 +946,9 @@ mod tests {
         let mut base: HashMap<BindingLayer, LayerMap> = HashMap::new();
         insert_defaults(&mut base).unwrap();
         let chord = parse_chord("q").unwrap();
-        let err = apply_user_remap(
-            &mut base,
-            "q",
-            chord,
-            Action::Quit,
-            &[],
-        );
+        let err = apply_user_remap(&mut base, "q", chord, Action::Quit, &[]);
         assert!(err.is_err());
-        assert!(
-            err.unwrap_err()
-                .contains("has no default bindings")
-        );
+        assert!(err.unwrap_err().contains("has no default bindings"));
     }
 
     #[test]

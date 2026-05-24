@@ -58,7 +58,9 @@ fn map_historical_plan_error(msg: &str) -> ProviderError {
 }
 
 /// Follows Polygon `next_url` until exhausted or [`POLYGON_HISTORICAL_MAX_PAGES`] (Issue #176).
-async fn fetch_polygon_historical_merged(initial_url: String) -> ProviderResult<HistoricalResponse> {
+async fn fetch_polygon_historical_merged(
+    initial_url: String,
+) -> ProviderResult<HistoricalResponse> {
     let mut url = initial_url;
     let mut merged_results = Vec::new();
     let mut last = HistoricalResponse::default();
@@ -94,11 +96,7 @@ async fn fetch_polygon_historical_merged(initial_url: String) -> ProviderResult<
         }
     }
 
-    let stopped_reason = if last
-        .next_url
-        .as_ref()
-        .is_some_and(|s| !s.is_empty())
-    {
+    let stopped_reason = if last.next_url.as_ref().is_some_and(|s| !s.is_empty()) {
         "page_cap"
     } else {
         "no_next_url"
@@ -135,7 +133,9 @@ impl MarketDataProvider for PolygonProvider {
     async fn get_quote(&self, symbol: &str, config: &Config) -> ProviderResult<TickerResponse> {
         let key = polygon_key(config)?;
         let to = Local::now().format("%Y-%m-%d").to_string();
-        let from = (Local::now() - Duration::days(30)).format("%Y-%m-%d").to_string();
+        let from = (Local::now() - Duration::days(30))
+            .format("%Y-%m-%d")
+            .to_string();
         // `sort=desc` + small `limit`: latest session first, minimal payload (Issue #2 / SPEC §17.4).
         let url = format!(
             "{}/v2/aggs/ticker/{}/range/1/day/{}/{}?adjusted=true&sort=desc&limit=5&apiKey={}",
@@ -184,7 +184,11 @@ impl MarketDataProvider for PolygonProvider {
         Ok(data)
     }
 
-    async fn search_symbols(&self, query: &str, config: &Config) -> ProviderResult<SymbolSearchResponse> {
+    async fn search_symbols(
+        &self,
+        query: &str,
+        config: &Config,
+    ) -> ProviderResult<SymbolSearchResponse> {
         let key = polygon_key(config)?;
         let url = format!(
             "{}/v3/reference/tickers?search={}&active=true&apiKey={}",
@@ -237,7 +241,9 @@ fn is_polygon_plan_message(msg: &str) -> bool {
 mod tests {
     use super::*;
     use crate::models::historical::{polygon_page_truncated, HistoricalResponse};
-    use crate::models::time_range::{polygon_historical_limit, TimeRange, POLYGON_AGG_LIMIT_CEILING};
+    use crate::models::time_range::{
+        polygon_historical_limit, TimeRange, POLYGON_AGG_LIMIT_CEILING,
+    };
     use std::path::PathBuf;
 
     fn fixture_path(name: &str) -> PathBuf {

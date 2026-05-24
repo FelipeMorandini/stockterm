@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PortfolioItem {
@@ -35,6 +35,7 @@ impl PortfolioItem {
     }
 
     pub fn profit_loss_percent(&self) -> Option<f64> {
-        self.profit_loss().map(|pl| (pl / self.cost_basis()) * 100.0)
+        self.profit_loss()
+            .map(|pl| (pl / self.cost_basis()) * 100.0)
     }
 }

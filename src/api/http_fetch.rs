@@ -151,7 +151,10 @@ pub(crate) async fn get_text_once(
         }));
     }
 
-    let text = resp.text().await.map_err(|e| FetchOnceError::Fatal(map_reqwest(e)))?;
+    let text = resp
+        .text()
+        .await
+        .map_err(|e| FetchOnceError::Fatal(map_reqwest(e)))?;
     Ok(text)
 }
 
@@ -164,10 +167,7 @@ mod tests {
     fn parse_retry_after_integer_seconds() {
         let mut h = HeaderMap::new();
         h.insert("retry-after", HeaderValue::from_static("120"));
-        assert_eq!(
-            parse_retry_after_header(&h),
-            Some(Duration::from_secs(120))
-        );
+        assert_eq!(parse_retry_after_header(&h), Some(Duration::from_secs(120)));
     }
 
     #[test]
@@ -249,9 +249,7 @@ mod wiremock_drain_tests {
             .expect("client");
 
         let url = format!("{}/big", srv.uri());
-        let err = get_text_once(&client, &url)
-            .await
-            .expect_err("403");
+        let err = get_text_once(&client, &url).await.expect_err("403");
         match err {
             FetchOnceError::Fatal(ProviderError::Http { body_snippet, .. }) => {
                 let snippet = body_snippet.expect("snippet");

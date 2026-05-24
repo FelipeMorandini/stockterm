@@ -1,21 +1,24 @@
-mod app_error;
-pub mod styles;
+pub mod alerts;
 #[allow(clippy::module_inception)]
 pub mod app;
-mod open_url;
-pub mod ui;
+mod app_error;
+mod backtest_ui;
+pub mod charts;
 pub mod event;
+mod fetch_delivery;
+mod format;
 pub mod handlers;
 pub mod keyboard;
 mod layout;
-pub mod charts;
-mod backtest_ui;
+mod open_url;
 mod options;
 pub mod portfolio;
-pub mod alerts;
+pub mod styles;
 mod table_filter;
-mod fetch_delivery;
-mod format;
+pub mod ui;
+
+#[cfg(test)]
+mod snapshot_test_util;
 
 pub use self::app::{
     normalize_symbol, AlertAddDialog, AlertAddField, App, FetchDone, PortfolioAddDialog,

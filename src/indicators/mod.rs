@@ -11,7 +11,7 @@ pub use macd::macd;
 pub use rsi::rsi;
 pub use sma::sma;
 pub use types::{
-    MacdOutput, IndicatorSeries, EMA_PERIOD, MACD_FAST, MACD_SIGNAL, MACD_SLOW, RSI_PERIOD,
+    IndicatorSeries, MacdOutput, EMA_PERIOD, MACD_FAST, MACD_SIGNAL, MACD_SLOW, RSI_PERIOD,
     SMA_PERIOD,
 };
 
@@ -86,11 +86,7 @@ mod test_util {
     }
 
     fn assert_option_series(got: &IndicatorSeries, expected: &[Option<f64>]) {
-        assert_eq!(
-            got.len(),
-            expected.len(),
-            "series length mismatch"
-        );
+        assert_eq!(got.len(), expected.len(), "series length mismatch");
         for (i, (g, e)) in got.iter().zip(expected.iter()).enumerate() {
             match (g, e) {
                 (None, None) => {}

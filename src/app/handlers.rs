@@ -17,10 +17,7 @@ fn modal_add_dialog_open(app: &App) -> bool {
 pub fn handle_event(app: &mut App, key: KeyEvent) {
     // Issue #123 / SPEC §20.15.4 — `Quit` is global, including when the error log overlay is open.
     // Issue #51 / §42.1 — `q`/`Q` wildcard respects §24 when `q` is remapped on Global.
-    if should_global_quit(
-        &key,
-        app.resolved_keymap.action(BindingLayer::Global, &key),
-    ) {
+    if should_global_quit(&key, app.resolved_keymap.action(BindingLayer::Global, &key)) {
         app.should_quit = true;
         return;
     }
@@ -58,8 +55,7 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
                 app.next_tab();
             }
         }
-        Some(Action::GlobalTab)
-            if !tab_key_plain(key.modifiers) && modal_add_dialog_open(app) => {}
+        Some(Action::GlobalTab) if !tab_key_plain(key.modifiers) && modal_add_dialog_open(app) => {}
         Some(Action::GlobalBackTab) if tab_key_plain(key.modifiers) => {
             if app.active_tab == Tab::Alerts && app.alert_add_dialog.is_some() {
                 cycle_alert_dialog_focus(app, false);
@@ -107,25 +103,21 @@ fn handle_options_events(app: &mut App, key: KeyEvent) {
     use Action::*;
     if let Some(a) = app.resolved_keymap.action(BindingLayer::Options, &key) {
         match a {
-            OptionsRefresh if letter_key_plain(key.modifiers)
-                || (key.code == KeyCode::Char('r') && letter_key_plain(key.modifiers)) =>
+            OptionsRefresh
+                if letter_key_plain(key.modifiers)
+                    || (key.code == KeyCode::Char('r') && letter_key_plain(key.modifiers)) =>
             {
                 crate::app::options::invalidate_options_refresh_caches(app);
-                let exp = app
-                    .options_chain
-                    .as_ref()
-                    .map(|c| c.selected_expiration_ts);
+                let exp = app.options_chain.as_ref().map(|c| c.selected_expiration_ts);
                 app.request_options_fetch(exp);
             }
             OptionsExpirationPrev
-                if key.modifiers == KeyModifiers::NONE
-                    || letter_key_plain(key.modifiers) =>
+                if key.modifiers == KeyModifiers::NONE || letter_key_plain(key.modifiers) =>
             {
                 app.options_expiration_prev();
             }
             OptionsExpirationNext
-                if key.modifiers == KeyModifiers::NONE
-                    || letter_key_plain(key.modifiers) =>
+                if key.modifiers == KeyModifiers::NONE || letter_key_plain(key.modifiers) =>
             {
                 app.options_expiration_next();
             }
@@ -155,8 +147,9 @@ fn handle_backtest_events(app: &mut App, key: KeyEvent) {
                     app.request_backtest_run();
                 }
             }
-            BacktestExport if key.modifiers == KeyModifiers::NONE
-                || (key.code == KeyCode::Char('x') && letter_key_plain(key.modifiers)) =>
+            BacktestExport
+                if key.modifiers == KeyModifiers::NONE
+                    || (key.code == KeyCode::Char('x') && letter_key_plain(key.modifiers)) =>
             {
                 if let Err(e) = app.backtest_export_to_disk() {
                     app.surface_runtime_error(
@@ -420,7 +413,12 @@ fn settings_edit_append_symbol_char(app: &mut App, key: &KeyEvent) -> bool {
     true
 }
 
-fn settings_edit_apply_keymap_action(app: &mut App, key: &KeyEvent, action: Action, mode: SettingsEdit) {
+fn settings_edit_apply_keymap_action(
+    app: &mut App,
+    key: &KeyEvent,
+    action: Action,
+    mode: SettingsEdit,
+) {
     use Action::*;
     if settings_edit_apply_common_action(app, key, action) {
         return;
@@ -481,10 +479,7 @@ fn settings_edit_apply_unmatched_wildcard(app: &mut App, key: &KeyEvent, mode: S
 fn handle_settings_events(app: &mut App, key: KeyEvent) {
     use Action::*;
     if let Some(mode) = app.settings_editing {
-        if let Some(a) = app
-            .resolved_keymap
-            .action(BindingLayer::SettingsEdit, &key)
-        {
+        if let Some(a) = app.resolved_keymap.action(BindingLayer::SettingsEdit, &key) {
             settings_edit_apply_keymap_action(app, &key, a, mode);
         } else {
             settings_edit_apply_unmatched_wildcard(app, &key, mode);

@@ -136,7 +136,11 @@ mod tests {
             status: "OK".into(),
             error: None,
         };
-        assert!(ticker_response_matches_symbol_for_session(&resp, "MSFT", "MSFT"));
-        assert!(!ticker_response_matches_symbol_for_session(&resp, "AAPL", "MSFT"));
+        assert!(ticker_response_matches_symbol_for_session(
+            &resp, "MSFT", "MSFT"
+        ));
+        assert!(!ticker_response_matches_symbol_for_session(
+            &resp, "AAPL", "MSFT"
+        ));
     }
 }

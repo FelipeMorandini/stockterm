@@ -27,9 +27,7 @@ pub fn resolve_provider_symbol(kind: MarketProviderKind, input: &str) -> String 
     let compact = user_symbol(input).unwrap_or_else(|| input.trim().to_uppercase());
     match kind {
         MarketProviderKind::Yahoo => compact,
-        MarketProviderKind::Polygon => {
-            polygon_crypto_wire_from_user(&compact).unwrap_or(compact)
-        }
+        MarketProviderKind::Polygon => polygon_crypto_wire_from_user(&compact).unwrap_or(compact),
     }
 }
 

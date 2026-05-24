@@ -62,27 +62,15 @@ pub(crate) fn rebuild_backtest_params_cache(app: &mut App) {
         ),
         (String::new(), false),
         ("Simulation".into(), false),
-        (
-            format!("  Capital: ${:.2}", sim.initial_capital),
-            true,
-        ),
+        (format!("  Capital: ${:.2}", sim.initial_capital), true),
         (
             format!("  Commission/trade: ${:.2}", sim.commission_per_trade),
             true,
         ),
-        (
-            format!("  Slippage: {:.1} bps", sim.slippage_bps),
-            true,
-        ),
+        (format!("  Slippage: {:.1} bps", sim.slippage_bps), true),
         (String::new(), false),
-        (
-            "Edit capital/fees: Settings rows 7–9".into(),
-            true,
-        ),
-        (
-            "Long-only · close fills · force-flat last bar".into(),
-            true,
-        ),
+        ("Edit capital/fees: Settings rows 7–9".into(), true),
+        ("Long-only · close fills · force-flat last bar".into(), true),
     ];
 
     app.backtest_params_cache = Some(BacktestParamsCache {
@@ -102,7 +90,10 @@ pub(crate) fn rebuild_backtest_draw_cache(app: &mut App) {
     };
     let s = &report.summary;
     let summary_table_rows = vec![
-        Row::new(vec![Cell::from("PnL"), Cell::from(format!("${:.2}", s.total_pnl))]),
+        Row::new(vec![
+            Cell::from("PnL"),
+            Cell::from(format!("${:.2}", s.total_pnl)),
+        ]),
         Row::new(vec![
             Cell::from("Return %"),
             Cell::from(format!("{:.2}%", s.total_return_pct)),
@@ -173,10 +164,7 @@ fn draw_backtest_left(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme
         .style(theme.canvas());
 
     let Some(cache) = &app.backtest_params_cache else {
-        f.render_widget(
-            Paragraph::new("Loading…").block(block),
-            area,
-        );
+        f.render_widget(Paragraph::new("Loading…").block(block), area);
         return;
     };
 
@@ -215,11 +203,8 @@ fn draw_backtest_right(f: &mut Frame, app: &mut App, area: Rect, theme: Resolved
 }
 
 fn draw_backtest_summary(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme) {
-    let header = Row::new(vec![
-        Cell::from("Metric"),
-        Cell::from("Value"),
-    ])
-    .style(Style::default().add_modifier(Modifier::BOLD));
+    let header = Row::new(vec![Cell::from("Metric"), Cell::from("Value")])
+        .style(Style::default().add_modifier(Modifier::BOLD));
 
     let rows: Vec<Row<'_>> = if let Some(cache) = &app.backtest_draw_cache {
         cache.summary_table_rows.to_vec()
@@ -229,14 +214,17 @@ fn draw_backtest_summary(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTh
         return;
     };
 
-    let table = Table::new(rows, [Constraint::Percentage(50), Constraint::Percentage(50)])
-        .header(header)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Summary")
-                .style(theme.canvas()),
-        );
+    let table = Table::new(
+        rows,
+        [Constraint::Percentage(50), Constraint::Percentage(50)],
+    )
+    .header(header)
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Summary")
+            .style(theme.canvas()),
+    );
     f.render_widget(table, area);
 }
 
@@ -247,24 +235,21 @@ fn draw_backtest_equity(f: &mut Frame, app: &App, area: Rect, theme: ResolvedThe
         .style(theme.canvas());
 
     let Some(cache) = &app.backtest_draw_cache else {
-        f.render_widget(
-            Paragraph::new("No equity data yet").block(block),
-            area,
-        );
+        f.render_widget(Paragraph::new("No equity data yet").block(block), area);
         return;
     };
 
     if cache.equity_points.is_empty() {
-        f.render_widget(
-            Paragraph::new("Empty equity curve").block(block),
-            area,
-        );
+        f.render_widget(Paragraph::new("Empty equity curve").block(block), area);
         return;
     }
 
     let points = &cache.equity_points;
     let y_min = points.iter().map(|(_, y)| *y).fold(f64::INFINITY, f64::min);
-    let y_max = points.iter().map(|(_, y)| *y).fold(f64::NEG_INFINITY, f64::max);
+    let y_max = points
+        .iter()
+        .map(|(_, y)| *y)
+        .fold(f64::NEG_INFINITY, f64::max);
     let pad = ((y_max - y_min) * 0.05).max(1.0);
 
     let dataset = Dataset::default()
@@ -276,15 +261,11 @@ fn draw_backtest_equity(f: &mut Frame, app: &App, area: Rect, theme: ResolvedThe
 
     let chart = Chart::new(vec![dataset])
         .block(block)
-        .x_axis(
-            ratatui::widgets::Axis::default().bounds([
-                points.first().map(|p| p.0).unwrap_or(0.0),
-                points.last().map(|p| p.0).unwrap_or(1.0),
-            ]),
-        )
-        .y_axis(
-            ratatui::widgets::Axis::default().bounds([y_min - pad, y_max + pad]),
-        );
+        .x_axis(ratatui::widgets::Axis::default().bounds([
+            points.first().map(|p| p.0).unwrap_or(0.0),
+            points.last().map(|p| p.0).unwrap_or(1.0),
+        ]))
+        .y_axis(ratatui::widgets::Axis::default().bounds([y_min - pad, y_max + pad]));
 
     f.render_widget(chart, area);
 }
@@ -303,11 +284,14 @@ fn draw_backtest_trades(f: &mut Frame, app: &mut App, area: Rect, theme: Resolve
         .map(|c| c.trade_table_rows.to_vec())
         .unwrap_or_default();
 
-    let table = Table::new(rows, [
-        Constraint::Percentage(35),
-        Constraint::Percentage(35),
-        Constraint::Percentage(30),
-    ])
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Percentage(35),
+            Constraint::Percentage(35),
+            Constraint::Percentage(30),
+        ],
+    )
     .header(header)
     .block(
         Block::default()

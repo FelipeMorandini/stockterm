@@ -92,7 +92,8 @@ fn sharpe_annualization_scale(equity_curve: &[(u64, f64)]) -> f64 {
             .last()
             .map(|l| l.0)
             .unwrap_or(0)
-            .saturating_sub(equity_curve.first().map(|f| f.0).unwrap_or(0)) as f64
+            .saturating_sub(equity_curve.first().map(|f| f.0).unwrap_or(0))
+            as f64
             / 1000.0;
         if span_sec <= 0.0 {
             252.0
@@ -139,12 +140,7 @@ mod tests {
 
     #[test]
     fn max_drawdown_simple_peak_trough() {
-        let curve = vec![
-            (0, 100.0),
-            (1, 120.0),
-            (2, 90.0),
-            (3, 100.0),
-        ];
+        let curve = vec![(0, 100.0), (1, 120.0), (2, 90.0), (3, 100.0)];
         let dd = max_drawdown_pct(&curve);
         // (120 - 90) / 120 = 25%
         assert!((dd - 25.0).abs() < 1e-6);

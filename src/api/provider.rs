@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::config::MarketProviderKind;
 use crate::config::Config;
+use crate::config::MarketProviderKind;
 use crate::models::historical::HistoricalResponse;
 use crate::models::news::NewsResponse;
 use crate::models::options::OptionsChain;
@@ -28,7 +28,11 @@ pub trait MarketDataProvider: Send + Sync {
         config: &Config,
     ) -> ProviderResult<HistoricalResponse>;
 
-    async fn search_symbols(&self, query: &str, config: &Config) -> ProviderResult<SymbolSearchResponse>;
+    async fn search_symbols(
+        &self,
+        query: &str,
+        config: &Config,
+    ) -> ProviderResult<SymbolSearchResponse>;
 
     async fn get_news(&self, symbol: &str, config: &Config) -> ProviderResult<NewsResponse>;
 

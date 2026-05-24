@@ -29,7 +29,9 @@ mod tests {
     async fn acquire_quote_permit_closed_semaphore_returns_transport() {
         let sem = Arc::new(Semaphore::new(1));
         sem.close();
-        let err = acquire_quote_permit(&sem, "AAPL", "test").await.unwrap_err();
+        let err = acquire_quote_permit(&sem, "AAPL", "test")
+            .await
+            .unwrap_err();
         assert!(matches!(err, ProviderError::Transport(msg) if msg.contains("semaphore closed")));
     }
 }

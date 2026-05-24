@@ -166,10 +166,7 @@ impl Layout {
 }
 
 fn clamp_stock_view_watchlist_pct(v: u8) -> u16 {
-    u16::from(v.clamp(
-        STOCK_VIEW_WATCHLIST_PCT_MIN,
-        STOCK_VIEW_WATCHLIST_PCT_MAX,
-    ))
+    u16::from(v.clamp(STOCK_VIEW_WATCHLIST_PCT_MIN, STOCK_VIEW_WATCHLIST_PCT_MAX))
 }
 
 fn clamp_charts_chart_pct(v: u8) -> u16 {

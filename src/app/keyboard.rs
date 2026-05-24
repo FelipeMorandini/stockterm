@@ -76,7 +76,9 @@ mod tests {
         assert!(!letter_key_plain(KeyModifiers::SUPER));
         assert!(!letter_key_plain(KeyModifiers::HYPER));
         assert!(!letter_key_plain(KeyModifiers::META));
-        assert!(!letter_key_plain(KeyModifiers::CONTROL | KeyModifiers::SHIFT));
+        assert!(!letter_key_plain(
+            KeyModifiers::CONTROL | KeyModifiers::SHIFT
+        ));
         assert!(!letter_key_plain(KeyModifiers::ALT | KeyModifiers::SHIFT));
     }
 

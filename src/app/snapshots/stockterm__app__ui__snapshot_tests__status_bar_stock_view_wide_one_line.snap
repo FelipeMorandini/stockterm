@@ -1,0 +1,5 @@
+---
+source: src/app/ui.rs
+expression: buffer_snapshot_string(&buf)
+---
+q quit · Tab tabs · A·Z,-. type · w add · x/D rm · j/k · Enter · ^E error log · ^R retry · tickers w/x/j/k: Shift+1st le

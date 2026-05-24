@@ -3,10 +3,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::api::concurrency::acquire_quote_permit;
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
 use serde::Deserialize;
-use crate::api::concurrency::acquire_quote_permit;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use urlencoding::encode;
@@ -86,7 +86,11 @@ impl MarketDataProvider for YahooProvider {
         }
     }
 
-    async fn search_symbols(&self, query: &str, config: &Config) -> ProviderResult<SymbolSearchResponse> {
+    async fn search_symbols(
+        &self,
+        query: &str,
+        config: &Config,
+    ) -> ProviderResult<SymbolSearchResponse> {
         let _ = config;
         yahoo_search(query).await
     }
@@ -191,10 +195,7 @@ fn v7_item_to_ticker_response(q: &V7QuoteItem, requested: &str) -> ProviderResul
         .unwrap_or_else(|| Utc::now().timestamp());
     let t_ms = (t_sec.max(0) as u64).saturating_mul(1000);
 
-    let ticker_name = q
-        .symbol
-        .clone()
-        .unwrap_or_else(|| requested.to_uppercase());
+    let ticker_name = q.symbol.clone().unwrap_or_else(|| requested.to_uppercase());
 
     Ok(TickerResponse {
         ticker: ticker_name,
@@ -280,7 +281,10 @@ fn v7_rows_by_symbol_key(items: &[V7QuoteItem]) -> HashMap<String, usize> {
 /// Max length of the full **`v7/finance/quote`** request URL (Issue #53 / SPEC §9.15.5).
 pub(crate) const YAHOO_V7_QUOTE_SYMBOLS_MAX_URL_BYTES: usize = 3000;
 
-fn chunk_symbols_for_v7_quote_url_with_budget(symbols: &[String], max_url_bytes: usize) -> Vec<Vec<String>> {
+fn chunk_symbols_for_v7_quote_url_with_budget(
+    symbols: &[String],
+    max_url_bytes: usize,
+) -> Vec<Vec<String>> {
     let base_len = format!("{}/v7/finance/quote?symbols=", QUERY1).len();
     let mut chunks: Vec<Vec<String>> = Vec::new();
     let mut cur: Vec<String> = Vec::new();
@@ -289,11 +293,7 @@ fn chunk_symbols_for_v7_quote_url_with_budget(symbols: &[String], max_url_bytes:
 
     for s in symbols {
         let enc_len = encode(s.as_str()).len();
-        let extra = if cur.is_empty() {
-            enc_len
-        } else {
-            enc_len + 1
-        };
+        let extra = if cur.is_empty() { enc_len } else { enc_len + 1 };
         let new_total = cur_query_len + extra;
         if base_len + new_total <= max_url_bytes {
             cur.push(s.clone());
@@ -569,9 +569,7 @@ fn chart_to_ticker(env: &ChartEnvelope, requested: &str) -> ProviderResult<Ticke
     let close = meta
         .regular_market_price
         .or_else(|| last_close_from_bars(series))
-        .ok_or_else(|| {
-            ProviderError::ApiMessage(format!("No price data for {}", requested))
-        })?;
+        .ok_or_else(|| ProviderError::ApiMessage(format!("No price data for {}", requested)))?;
 
     // Open: prefer session open, then chart previous close, then close.
     let open = meta
@@ -581,7 +579,9 @@ fn chart_to_ticker(env: &ChartEnvelope, requested: &str) -> ProviderResult<Ticke
     let high = meta.regular_market_day_high.unwrap_or(close);
     let low = meta.regular_market_day_low.unwrap_or(close);
     let vol = meta.regular_market_volume.map(|v| v as f64).unwrap_or(0.0);
-    let t_sec = meta.regular_market_time.unwrap_or_else(|| Utc::now().timestamp());
+    let t_sec = meta
+        .regular_market_time
+        .unwrap_or_else(|| Utc::now().timestamp());
     let t_ms = (t_sec.max(0) as u64).saturating_mul(1000);
 
     let ticker_name = meta
@@ -645,12 +645,10 @@ async fn yahoo_historical(
     to_date: &str,
     interval: &str,
 ) -> ProviderResult<HistoricalResponse> {
-    let from = NaiveDate::parse_from_str(from_date, "%Y-%m-%d").map_err(|_| {
-        ProviderError::ApiMessage(format!("Invalid from_date: {from_date}"))
-    })?;
-    let to = NaiveDate::parse_from_str(to_date, "%Y-%m-%d").map_err(|_| {
-        ProviderError::ApiMessage(format!("Invalid to_date: {to_date}"))
-    })?;
+    let from = NaiveDate::parse_from_str(from_date, "%Y-%m-%d")
+        .map_err(|_| ProviderError::ApiMessage(format!("Invalid from_date: {from_date}")))?;
+    let to = NaiveDate::parse_from_str(to_date, "%Y-%m-%d")
+        .map_err(|_| ProviderError::ApiMessage(format!("Invalid to_date: {to_date}")))?;
     let period1 = DateTime::<Utc>::from_naive_utc_and_offset(
         from.and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap()),
         Utc,
@@ -767,10 +765,7 @@ fn chart_to_historical(env: &ChartEnvelope, requested: &str) -> ProviderResult<H
 
 async fn yahoo_search(query: &str) -> ProviderResult<SymbolSearchResponse> {
     let enc_q = encode(query);
-    let url = format!(
-        "{}/v1/finance/search?q={}&quotesCount=10",
-        QUERY1, enc_q
-    );
+    let url = format!("{}/v1/finance/search?q={}&quotesCount=10", QUERY1, enc_q);
     let text = fetch_text(&url).await?;
     let env: SearchEnvelope = serde_json::from_str(&text)?;
     let quotes = env.quotes.unwrap_or_default();
@@ -785,10 +780,7 @@ async fn yahoo_search(query: &str) -> ProviderResult<SymbolSearchResponse> {
 
 fn map_search_quote(q: SearchQuote) -> Option<SymbolResult> {
     let ticker = q.symbol?;
-    let name = q
-        .shortname
-        .or(q.longname)
-        .unwrap_or_else(|| ticker.clone());
+    let name = q.shortname.or(q.longname).unwrap_or_else(|| ticker.clone());
     let market = q.exch_disp.or(q.exchange).unwrap_or_default();
     Some(SymbolResult {
         ticker,
@@ -958,9 +950,8 @@ async fn yahoo_news_via_search(symbol: &str) -> ProviderResult<NewsResponse> {
         QUERY1, enc
     );
     let text = fetch_text(&url).await?;
-    let env: SearchNewsEnvelope = serde_json::from_str(&text).map_err(|e| {
-        ProviderError::ApiMessage(format!("Yahoo search/news JSON: {e}"))
-    })?;
+    let env: SearchNewsEnvelope = serde_json::from_str(&text)
+        .map_err(|e| ProviderError::ApiMessage(format!("Yahoo search/news JSON: {e}")))?;
     let items = env.news.unwrap_or_default();
     let results: Vec<NewsItem> = items
         .into_iter()
@@ -1130,9 +1121,9 @@ fn yahoo_news_query2_from_text(text: &str, symbol: &str) -> ProviderResult<NewsR
         Query2LenientExtract::Stream(stream) => Ok(map_news_stream(stream, symbol)),
         Query2LenientExtract::Flat(items) => Ok(news_response_from_items(items)),
         Query2LenientExtract::Empty => Ok(empty_news_response()),
-        Query2LenientExtract::NoMatch => Err(ProviderError::ApiMessage(
-            QUERY2_NEWS_SHAPE_ERR.to_string(),
-        )),
+        Query2LenientExtract::NoMatch => {
+            Err(ProviderError::ApiMessage(QUERY2_NEWS_SHAPE_ERR.to_string()))
+        }
     }
 }
 
@@ -1244,10 +1235,7 @@ fn map_query2_flat_news_array(arr: &serde_json::Value, symbol: &str) -> Option<V
 fn map_news_stream_item(item: NewsStreamItem, symbol: &str) -> Option<NewsItem> {
     let content = item.content?;
     let title = content.title.filter(|t| !t.is_empty())?;
-    let url = content
-        .canonical_url
-        .map(|c| c.url)
-        .unwrap_or_default();
+    let url = content.canonical_url.map(|c| c.url).unwrap_or_default();
     let published = content
         .pub_date
         .or(content.provider_publish_time)
@@ -1754,7 +1742,8 @@ mod tests {
 
     #[test]
     fn v7_envelope_api_error_returns_err() {
-        let json = r#"{"quoteResponse":{"result":null,"error":{"description":"User is not logged in"}}}"#;
+        let json =
+            r#"{"quoteResponse":{"result":null,"error":{"description":"User is not logged in"}}}"#;
         let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse");
         let e = v7_envelope_to_ticker_with_type(&env, "X").unwrap_err();
         match e {
@@ -1922,7 +1911,10 @@ mod tests {
 
     #[test]
     fn yahoo_w1_fallback_skips_wrong_range_or_interval() {
-        assert_eq!(yahoo_w1_daily_fallback_interval(Some("1mo"), "30m", 0), None);
+        assert_eq!(
+            yahoo_w1_daily_fallback_interval(Some("1mo"), "30m", 0),
+            None
+        );
         assert_eq!(yahoo_w1_daily_fallback_interval(Some("5d"), "1d", 0), None);
         assert_eq!(yahoo_w1_daily_fallback_interval(None, "30m", 0), None);
     }
@@ -1997,9 +1989,10 @@ mod wiremock_quote_fallback_tests {
         let srv = MockServer::start().await;
         Mock::given(method("GET"))
             .and(path("/v7/finance/quote"))
-            .respond_with(ResponseTemplate::new(200).set_body_string(
-                r#"{"quoteResponse":{"result":[],"error":null}}"#,
-            ))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_string(r#"{"quoteResponse":{"result":[],"error":null}}"#),
+            )
             .expect(1)
             .mount(&srv)
             .await;

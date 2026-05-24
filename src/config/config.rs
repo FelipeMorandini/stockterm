@@ -6,10 +6,10 @@ use std::path::{Path, PathBuf};
 
 use super::layout::Layout;
 use super::theme::Theme;
-use std::collections::HashMap;
 use crate::models::alerts::Alert;
 use crate::models::backtest::{BacktestConfig, BacktestStrategyParams};
 use crate::models::portfolio::PortfolioItem;
+use std::collections::HashMap;
 use thiserror::Error;
 
 /// Market data backend. Yahoo is the default (no API key). Polygon requires `api_key` / `STOCKTERM_API_KEY`.
@@ -331,5 +331,4 @@ mod tests {
             "expected Serde error, got {res:?}"
         );
     }
-
 }

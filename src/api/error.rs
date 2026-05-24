@@ -21,9 +21,7 @@ pub enum ProviderError {
     },
     /// HTTP 429 before retries are exhausted; after exhaustion callers map to [`Http`] with status 429.
     #[error("{}", rate_limited_display(.retry_after))]
-    RateLimited {
-        retry_after: Option<Duration>,
-    },
+    RateLimited { retry_after: Option<Duration> },
     /// JSON deserialization failure.
     ///
     /// **Caveat (Issue #122 / SPEC §20.15.3):** this variant is *not*
@@ -217,10 +215,7 @@ mod tests {
             body_snippet: None,
         };
         let d = format!("{e:?}");
-        assert!(
-            !d.contains("SECRET99"),
-            "Debug leaked secret: {d}"
-        );
+        assert!(!d.contains("SECRET99"), "Debug leaked secret: {d}");
         assert!(!d.contains("apiKey="), "Debug leaked query: {d}");
         assert!(d.contains("api.polygon.io"), "{d}");
     }

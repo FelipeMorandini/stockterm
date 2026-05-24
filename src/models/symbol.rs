@@ -42,7 +42,9 @@ const CRYPTO_QUOTE_SUFFIXES: &[&str] = &["-USD", "-USDT", "-EUR", "-GBP", "-BTC"
 
 /// True when a normalized ticker looks like a hyphenated crypto pair (§45.2 / Issue #161).
 pub(crate) fn is_crypto_symbol_heuristic(sym: &str) -> bool {
-    CRYPTO_QUOTE_SUFFIXES.iter().any(|suffix| sym.ends_with(suffix))
+    CRYPTO_QUOTE_SUFFIXES
+        .iter()
+        .any(|suffix| sym.ends_with(suffix))
 }
 
 fn is_fx_symbol(sym: &str) -> bool {
@@ -135,24 +137,15 @@ mod tests {
 
     #[test]
     fn normalize_symbol_trims_and_uppercases() {
-        assert_eq!(
-            normalize_symbol("  aapl  ").as_deref(),
-            Some("AAPL")
-        );
+        assert_eq!(normalize_symbol("  aapl  ").as_deref(), Some("AAPL"));
         assert_eq!(normalize_symbol("   "), None);
         assert_eq!(normalize_symbol(""), None);
     }
 
     #[test]
     fn normalize_symbol_compacts_crypto_pair_whitespace() {
-        assert_eq!(
-            normalize_symbol("btc - usd").as_deref(),
-            Some("BTC-USD")
-        );
-        assert_eq!(
-            normalize_symbol("  BTC-USD  ").as_deref(),
-            Some("BTC-USD")
-        );
+        assert_eq!(normalize_symbol("btc - usd").as_deref(), Some("BTC-USD"));
+        assert_eq!(normalize_symbol("  BTC-USD  ").as_deref(), Some("BTC-USD"));
     }
 
     #[test]

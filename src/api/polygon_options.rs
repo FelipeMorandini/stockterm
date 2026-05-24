@@ -41,12 +41,12 @@ pub async fn polygon_options_chain_with_slices(
     let key = polygon_key(config)?;
     let wire = resolve_provider_symbol(MarketProviderKind::Polygon, symbol);
 
-    let (expirations, contracts_fetch) = if let Some(cached) = cached_expirations.filter(|e| !e.is_empty())
-    {
-        (cached.to_vec(), false)
-    } else {
-        (fetch_contract_expirations(&wire, &key).await?, true)
-    };
+    let (expirations, contracts_fetch) =
+        if let Some(cached) = cached_expirations.filter(|e| !e.is_empty()) {
+            (cached.to_vec(), false)
+        } else {
+            (fetch_contract_expirations(&wire, &key).await?, true)
+        };
     if expirations.is_empty() {
         return Err(ProviderError::ApiMessage("No options available".into()));
     }
@@ -99,7 +99,9 @@ where
         .iter()
         .find(|e| e.ts == selected_ts)
         .map(|e| e.label.as_str())
-        .ok_or_else(|| ProviderError::ApiMessage(format!("No options for expiration {selected_ts}")))?;
+        .ok_or_else(|| {
+            ProviderError::ApiMessage(format!("No options for expiration {selected_ts}"))
+        })?;
 
     let contracts = snapshot_fetch(date_label).await?;
     let slice = build_slice_from_contracts(symbol, &expirations, selected_ts, contracts);
@@ -131,7 +133,10 @@ where
         );
     }
 
-    Ok(PolygonOptionsParseResult { chain, slices_by_ts })
+    Ok(PolygonOptionsParseResult {
+        chain,
+        slices_by_ts,
+    })
 }
 
 /// Maps `YYYY-MM-DD` to Unix seconds at UTC midnight.
@@ -261,8 +266,7 @@ fn build_slice_from_contracts(
         .cloned()
         .unwrap_or_else(|| {
             expiration_from_date(
-                &Utc
-                    .timestamp_opt(selected_ts as i64, 0)
+                &Utc.timestamp_opt(selected_ts as i64, 0)
                     .single()
                     .map(|dt| dt.format("%Y-%m-%d").to_string())
                     .unwrap_or_else(|| selected_ts.to_string()),
@@ -296,7 +300,11 @@ fn build_slice_from_contracts(
 
 /// Splits snapshot JSON into calls/puts for fixture validation (unit tests).
 #[cfg(test)]
-fn parse_snapshot_page(text: &str, underlying: &str, expiration_date: &str) -> ProviderResult<OptionsChainSlice> {
+fn parse_snapshot_page(
+    text: &str,
+    underlying: &str,
+    expiration_date: &str,
+) -> ProviderResult<OptionsChainSlice> {
     let page: SnapshotPage = serde_json::from_str(text)?;
     let expiration_ts = expiration_date_to_ts(expiration_date).ok_or_else(|| {
         ProviderError::ApiMessage(format!("Invalid expiration date {expiration_date}"))
@@ -518,8 +526,7 @@ mod tests {
         let exp2 = expiration_from_date("2026-06-27").unwrap();
         let exp2_ts = exp2.ts;
         let expirations = vec![exp1, exp2];
-        let slice =
-            parse_snapshot_page(&snapshot_fixture_text(), "AAPL", "2026-06-20").unwrap();
+        let slice = parse_snapshot_page(&snapshot_fixture_text(), "AAPL", "2026-06-20").unwrap();
         let chain = OptionsChain {
             underlying: "AAPL".into(),
             expirations: expirations.clone(),
@@ -573,8 +580,7 @@ mod tests {
         let exp1 = expiration_from_date("2026-06-20").unwrap();
         let exp2 = expiration_from_date("2026-06-27").unwrap();
         let expirations = vec![exp1.clone(), exp2];
-        let slice =
-            parse_snapshot_page(&snapshot_fixture_text(), "AAPL", "2026-06-20").unwrap();
+        let slice = parse_snapshot_page(&snapshot_fixture_text(), "AAPL", "2026-06-20").unwrap();
         let contracts: Vec<OptionContract> = slice
             .calls
             .into_iter()

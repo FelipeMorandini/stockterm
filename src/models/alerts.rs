@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlertCondition {
@@ -40,10 +40,7 @@ pub fn process_alert_crossings(alerts: &mut [Alert], prices: &[(String, f64)]) -
         if alert.triggered {
             continue;
         }
-        let Some((_, price)) = prices
-            .iter()
-            .find(|(symbol, _)| symbol == &alert.symbol)
-        else {
+        let Some((_, price)) = prices.iter().find(|(symbol, _)| symbol == &alert.symbol) else {
             continue;
         };
         let crossed = match alert.condition {

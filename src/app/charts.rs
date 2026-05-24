@@ -3,11 +3,11 @@
 use crate::app::styles::ResolvedTheme;
 use crate::app::App;
 use crate::config::{MarketProviderKind, ResolvedLayout};
+use crate::indicators::types::IndicatorSeries;
 use crate::indicators::{
     ema, macd, rsi, sma, MacdOutput, EMA_PERIOD, MACD_FAST, MACD_SIGNAL, MACD_SLOW, RSI_PERIOD,
     SMA_PERIOD,
 };
-use crate::indicators::types::IndicatorSeries;
 use crate::models::historical::{HistoricalData, HistoricalResponse};
 use crate::models::time_range::TimeRange;
 use chrono::{DateTime, Utc};
@@ -137,7 +137,10 @@ impl ChartIndicatorCache {
 }
 
 /// Visible bars for rendering; empty if there is no data.
-pub fn visible_slice<'a>(results: &'a [HistoricalData], vp: &ChartViewport) -> &'a [HistoricalData] {
+pub fn visible_slice<'a>(
+    results: &'a [HistoricalData],
+    vp: &ChartViewport,
+) -> &'a [HistoricalData] {
     let len = results.len();
     if len == 0 {
         return &[];
@@ -176,7 +179,10 @@ pub fn clamp_viewport_to_len(vp: ChartViewport, len: usize) -> ChartViewport {
     ChartViewport { start, end }
 }
 
-fn effective_series_ticker<'a>(series: &'a HistoricalResponse, requested_symbol: &'a str) -> &'a str {
+fn effective_series_ticker<'a>(
+    series: &'a HistoricalResponse,
+    requested_symbol: &'a str,
+) -> &'a str {
     let t = series.ticker.trim();
     if t.is_empty() {
         requested_symbol
@@ -501,25 +507,20 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
     }
 
     let Some((price_min, price_max)) = price_bounds(slice) else {
-        let no_data_text = Line::from(vec![Span::styled(
-            "Invalid price data",
-            theme.error_text(),
-        )]);
+        let no_data_text = Line::from(vec![Span::styled("Invalid price data", theme.error_text())]);
         let paragraph = ratatui::widgets::Paragraph::new(no_data_text).block(block);
         f.render_widget(paragraph, area);
         return;
     };
 
-    let data: Vec<(f64, f64)> = slice
-        .iter()
-        .map(|b| (b.t as f64 / 1000.0, b.c))
-        .collect();
+    let data: Vec<(f64, f64)> = slice.iter().map(|b| (b.t as f64 / 1000.0, b.c)).collect();
 
-    let (min_time, max_time) = data.iter().fold((f64::MAX, f64::MIN), |(a, b), &(t, _)| {
-        (a.min(t), b.max(t))
-    });
+    let (min_time, max_time) = data
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(a, b), &(t, _)| (a.min(t), b.max(t)));
     let span_sec = max_time - min_time;
-    let intraday = matches!(app.time_range, TimeRange::D1 | TimeRange::W1) || span_sec < 86400.0 * 3.0;
+    let intraday =
+        matches!(app.time_range, TimeRange::D1 | TimeRange::W1) || span_sec < 86400.0 * 3.0;
 
     let first_ts = slice.first().map(|b| b.t as f64).unwrap_or(0.0);
     let last_ts = slice.last().map(|b| b.t as f64).unwrap_or(0.0);
@@ -538,7 +539,9 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
                 let msg = Line::from(vec![Span::styled(
                     format!(
                         "Candles need 2+ bars (visible {}–{}, {} bar(s)). Press `c` for line.",
-                        vis_from, vis_to, slice.len()
+                        vis_from,
+                        vis_to,
+                        slice.len()
                     ),
                     theme.warning_text(),
                 )]);
@@ -828,7 +831,10 @@ impl CandlestickChart<'_> {
         }
         let slot = f64::from(w) / n as f64;
         let cx = f64::from(area.left()) + slot * (i as f64 + 0.5);
-        cx.round().clamp(f64::from(area.left()), f64::from(area.right().saturating_sub(1))) as u16
+        cx.round().clamp(
+            f64::from(area.left()),
+            f64::from(area.right().saturating_sub(1)),
+        ) as u16
     }
 
     fn body_width_cells(&self, area: Rect, n: usize) -> u16 {
@@ -926,7 +932,6 @@ impl Widget for CandlestickChart<'_> {
                 }
             }
         }
-
     }
 }
 
@@ -962,10 +967,7 @@ mod tests {
             Some(ChartDisplayMode::Candlestick)
         );
         assert!(ChartDisplayMode::from_config_str("invalid").is_none());
-        assert_eq!(
-            ChartDisplayMode::Line.as_config_str(),
-            "line"
-        );
+        assert_eq!(ChartDisplayMode::Line.as_config_str(), "line");
     }
 
     #[test]
@@ -978,9 +980,7 @@ mod tests {
 
     #[test]
     fn visible_slice_window() {
-        let v: Vec<_> = (0..10)
-            .map(|i| bar(i * 1000, 1.0, 2.0, 0.5, 1.0))
-            .collect();
+        let v: Vec<_> = (0..10).map(|i| bar(i * 1000, 1.0, 2.0, 0.5, 1.0)).collect();
         let vp = ChartViewport { start: 2, end: 6 };
         let s = visible_slice(&v, &vp);
         assert_eq!(s.len(), 4);
@@ -1036,10 +1036,7 @@ mod tests {
         let new = hist("MSFT", 10);
         let vp = chart_viewport_after_refresh(
             Some(&prev),
-            ChartViewport {
-                start: 2,
-                end: 8,
-            },
+            ChartViewport { start: 2, end: 8 },
             &new,
             "MSFT",
         );

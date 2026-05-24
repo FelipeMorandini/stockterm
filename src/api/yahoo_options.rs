@@ -104,9 +104,7 @@ pub fn parse_yahoo_options_with_slices(
     let mut slices_by_ts: HashMap<u64, OptionsChainSlice> = HashMap::new();
     for block in &result.options {
         let ts = block.expiration_date as u64;
-        if let Some(slice) =
-            block_to_slice(block, requested_symbol, &expirations, ts)
-        {
+        if let Some(slice) = block_to_slice(block, requested_symbol, &expirations, ts) {
             slices_by_ts.insert(ts, slice);
         }
     }

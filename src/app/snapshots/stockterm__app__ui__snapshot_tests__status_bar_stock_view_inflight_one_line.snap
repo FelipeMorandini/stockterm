@@ -1,0 +1,5 @@
+---
+source: src/app/ui.rs
+expression: buffer_snapshot_string(&buf)
+---
+Refreshing quotes·

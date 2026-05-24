@@ -1,0 +1,21 @@
+---
+source: src/app/portfolio.rs
+expression: buffer_snapshot_string(&render_portfolio_add_overlay_buf(&app))
+---
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+                  ·Add to portfolio···························                  
+                  ·Add holding · Esc cancel · Tab / Shift+Tab·                  
+                  ·Symbol: AAPL                              ·                  
+                  ·Shares:                                   ·                  
+                  ·Price:                                    ·                  
+                  ·Enter on Shares · Price | Enter on Price ··                  
+                  ·                                          ·                  
+                  ·                                          ·                  
+                  ·                                          ·                  
+                  ············································

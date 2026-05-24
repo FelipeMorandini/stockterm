@@ -57,9 +57,7 @@ impl TimeRange {
         let today = now.date_naive();
         match self {
             TimeRange::D1 => HistoricalQueryParams {
-                from: (today - Duration::days(5))
-                    .format("%Y-%m-%d")
-                    .to_string(),
+                from: (today - Duration::days(5)).format("%Y-%m-%d").to_string(),
                 to: today.format("%Y-%m-%d").to_string(),
                 bar_interval: "5m",
                 yahoo_range: Some("1d"),
@@ -68,9 +66,7 @@ impl TimeRange {
                 polygon_limit: polygon_historical_limit(TimeRange::D1),
             },
             TimeRange::W1 => HistoricalQueryParams {
-                from: (today - Duration::days(8))
-                    .format("%Y-%m-%d")
-                    .to_string(),
+                from: (today - Duration::days(8)).format("%Y-%m-%d").to_string(),
                 to: today.format("%Y-%m-%d").to_string(),
                 bar_interval: "30m",
                 yahoo_range: Some("5d"),
@@ -79,9 +75,7 @@ impl TimeRange {
                 polygon_limit: polygon_historical_limit(TimeRange::W1),
             },
             TimeRange::M1 => HistoricalQueryParams {
-                from: (today - Duration::days(32))
-                    .format("%Y-%m-%d")
-                    .to_string(),
+                from: (today - Duration::days(32)).format("%Y-%m-%d").to_string(),
                 to: today.format("%Y-%m-%d").to_string(),
                 bar_interval: "1d",
                 yahoo_range: Some("1mo"),
@@ -90,9 +84,7 @@ impl TimeRange {
                 polygon_limit: polygon_historical_limit(TimeRange::M1),
             },
             TimeRange::Y1 => HistoricalQueryParams {
-                from: (today - Duration::days(400))
-                    .format("%Y-%m-%d")
-                    .to_string(),
+                from: (today - Duration::days(400)).format("%Y-%m-%d").to_string(),
                 to: today.format("%Y-%m-%d").to_string(),
                 bar_interval: "1wk",
                 yahoo_range: Some("1y"),
@@ -142,10 +134,7 @@ mod tests {
     #[test]
     fn time_range_config_str_roundtrip() {
         for tr in [TimeRange::D1, TimeRange::W1, TimeRange::M1, TimeRange::Y1] {
-            assert_eq!(
-                TimeRange::from_config_str(tr.as_config_str()),
-                Some(tr)
-            );
+            assert_eq!(TimeRange::from_config_str(tr.as_config_str()), Some(tr));
         }
         assert_eq!(TimeRange::from_config_str("D1"), Some(TimeRange::D1));
         assert!(TimeRange::from_config_str("bogus").is_none());
@@ -165,10 +154,7 @@ mod tests {
     #[test]
     fn historical_params_includes_polygon_limit() {
         let now = Local::now();
-        assert_eq!(
-            TimeRange::D1.historical_params(now).polygon_limit,
-            500
-        );
+        assert_eq!(TimeRange::D1.historical_params(now).polygon_limit, 500);
         for tr in [TimeRange::D1, TimeRange::W1, TimeRange::M1, TimeRange::Y1] {
             assert!(tr.historical_params(now).polygon_limit <= POLYGON_AGG_LIMIT_CEILING);
         }

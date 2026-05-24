@@ -30,11 +30,7 @@ pub fn approx_eq(a: f64, b: f64) -> bool {
 /// Panics with a field-specific message on mismatch (test-only).
 pub fn assert_summary_matches(report: &BacktestReport, expected: &GoldenSummaryExpect) {
     assert_summary_matches_summary(&report.summary, expected);
-    let final_eq = report
-        .equity_curve
-        .last()
-        .map(|(_, e)| *e)
-        .unwrap_or(0.0);
+    let final_eq = report.equity_curve.last().map(|(_, e)| *e).unwrap_or(0.0);
     assert!(
         approx_eq(final_eq, expected.final_equity),
         "final_equity: got {final_eq}, expected {}",
