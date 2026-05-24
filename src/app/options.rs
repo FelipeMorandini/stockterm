@@ -325,6 +325,24 @@ fn rebuild_options_table_rows(app: &mut App, rt: &ResolvedTheme) {
     sync_options_table_states(app);
 }
 
+/// Re-bakes CALLS/PUTS [`Table`] styles after [`Config::theme`] changes (Issue #183 / §56).
+///
+/// No-op when there is no loaded chain and no cached row data. Does not refetch options.
+pub fn refresh_options_display_for_theme(app: &mut App) {
+    let has_row_data =
+        !app.options_display.calls.is_empty() || !app.options_display.puts.is_empty();
+    if app.options_chain.is_none() && !has_row_data {
+        return;
+    }
+    // Unexpected: chain present but row vecs empty — full rebuild recovers formatted rows.
+    if app.options_chain.is_some() && !has_row_data {
+        rebuild_options_display_cache(app);
+        return;
+    }
+    let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+    rebuild_options_table_rows(app, &rt);
+}
+
 /// Rebuilds [`App::options_display`] from [`App::options_chain`].
 pub fn rebuild_options_display_cache(app: &mut App) {
     sync_options_chrome(app);
@@ -483,9 +501,14 @@ pub fn draw_options(f: &mut Frame, app: &mut App, area: Rect, rt: &ResolvedTheme
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::theme::{Theme, ThemePreset};
     use crate::models::options::{
         Expiration, OptionContract, OptionRight, OptionsChain, OptionsChainSlice,
     };
+    use ratatui::backend::TestBackend;
+    use ratatui::layout::Rect;
+    use ratatui::style::Color;
+    use ratatui::Terminal;
     use std::collections::HashMap;
 
     fn sample_chain() -> OptionsChain {
@@ -690,5 +713,70 @@ mod tests {
             },
         ];
         assert_eq!(canonical_strikes(&chain), vec![200.0, 210.0]);
+    }
+
+    fn buffer_contains_bg(app: &mut App, target: Color) -> bool {
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+        terminal
+            .draw(|f| {
+                let area = Rect::new(0, 0, 120, 40);
+                let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+                draw_options(f, app, area, &rt);
+            })
+            .expect("draw options");
+        let buf = terminal.backend().buffer();
+        for y in 3..35 {
+            for x in 1..58 {
+                if buf.get(x, y).bg == target {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn refresh_options_display_for_theme_restyles_tables() {
+        let dark = Color::Rgb(18, 18, 24);
+        let light = Color::Rgb(250, 250, 252);
+
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Dark));
+        app.options_chain = Some(sample_chain());
+        rebuild_options_display_cache(&mut app);
+
+        assert!(buffer_contains_bg(&mut app, dark));
+        assert!(!buffer_contains_bg(&mut app, light));
+
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Light));
+        refresh_options_display_for_theme(&mut app);
+
+        assert!(buffer_contains_bg(&mut app, light));
+        assert!(!buffer_contains_bg(&mut app, dark));
+    }
+
+    #[test]
+    fn refresh_options_display_for_theme_noop_without_chain() {
+        let mut app = App::new();
+        refresh_options_display_for_theme(&mut app);
+        assert!(app.options_display.calls.is_empty());
+        assert!(app.options_display.puts.is_empty());
+    }
+
+    #[test]
+    fn refresh_preserves_row_labels() {
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Dark));
+        app.options_chain = Some(sample_chain());
+        rebuild_options_display_cache(&mut app);
+        let label_before = app.options_display.calls[0].strike_label.clone();
+
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Light));
+        refresh_options_display_for_theme(&mut app);
+
+        assert_eq!(app.options_display.calls[0].strike_label, label_before);
     }
 }
