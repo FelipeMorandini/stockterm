@@ -2049,8 +2049,18 @@ impl App {
                 self.active_runtime_error = None;
             }
             self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
-            crate::app::options::refresh_options_display_for_theme(self);
+            self.on_theme_preset_committed();
         }
+    }
+
+    /// Update-phase hook after a successful Settings theme preset save (Issues #196 / §62, #195 / §61).
+    ///
+    /// Stock View watchlist, Portfolio, and Alerts build styled widgets per frame from live
+    /// [`ResolvedTheme`] and do not need explicit invalidation here. Only Update-phase baked
+    /// caches (currently Options [`OptionsDisplayCache`]) are synced.
+    fn on_theme_preset_committed(&mut self) {
+        crate::app::options::refresh_options_display_for_theme(self);
+        // THEME_BAKED_CACHE: register future pre-built styled widget caches here.
     }
 
     pub fn settings_cycle_theme_draft_next(&mut self) {
@@ -4228,6 +4238,61 @@ mod tests {
                 .as_ref()
                 .and_then(|c| c.slice.calls.first().map(|x| x.strike)),
             Some(200.0)
+        );
+    }
+
+    /// Issue #196 / §62 — [`App::on_theme_preset_committed`] must restyle baked Options tables.
+    #[test]
+    fn on_theme_preset_committed_updates_options_baked_stamp() {
+        use crate::app::options::rebuild_options_display_cache;
+        use crate::app::styles::ThemeStamp;
+        use crate::config::theme::{Theme, ThemePreset};
+        use crate::models::options::{
+            Expiration, OptionContract, OptionRight, OptionsChain, OptionsChainSlice,
+        };
+
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Dark));
+        app.options_chain = Some(OptionsChain {
+            underlying: "AAPL".into(),
+            expirations: vec![Expiration {
+                ts: 1,
+                label: "2026-06-20".into(),
+            }],
+            selected_expiration_ts: 1,
+            slice: OptionsChainSlice {
+                underlying: "AAPL".into(),
+                expiration: Expiration {
+                    ts: 1,
+                    label: "2026-06-20".into(),
+                },
+                calls: vec![OptionContract {
+                    symbol: "C220".into(),
+                    strike: 220.0,
+                    right: OptionRight::Call,
+                    expiration_ts: 1,
+                    bid: None,
+                    ask: None,
+                    last: None,
+                    volume: None,
+                    open_interest: None,
+                    implied_volatility: None,
+                    greeks: None,
+                }],
+                puts: vec![],
+            },
+        });
+        rebuild_options_display_cache(&mut app);
+        let dark_stamp = app.options_display.baked_theme_stamp;
+
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Light));
+        app.on_theme_preset_committed();
+
+        assert_ne!(app.options_display.baked_theme_stamp, dark_stamp);
+        assert_eq!(
+            app.options_display.baked_theme_stamp,
+            Some(ThemeStamp::from_palette(&app.theme_palette_for_render()))
         );
     }
 }

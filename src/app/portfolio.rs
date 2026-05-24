@@ -898,6 +898,66 @@ mod tests {
     }
 }
 
+/// Issue #196 / SPEC §62 — portfolio draw tracks committed theme palette.
+#[cfg(test)]
+mod theme_tracking_tests {
+    use super::draw_portfolio;
+    use crate::app::snapshot_test_util::{full_area, render_to_buffer};
+    use crate::app::styles::ResolvedTheme;
+    use crate::app::App;
+    use crate::config::theme::{Theme, ThemePreset};
+    use crate::models::portfolio::PortfolioItem;
+    use ratatui::buffer::Buffer;
+    use ratatui::style::Color;
+
+    fn sample_portfolio_app() -> App {
+        let mut app = App::new();
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Dark));
+        app.portfolio = vec![PortfolioItem {
+            symbol: "AAPL".into(),
+            shares: 10.0,
+            purchase_price: 100.0,
+            current_price: Some(150.0),
+            purchase_date: None,
+            notes: None,
+        }];
+        app
+    }
+
+    fn buffer_has_fg_color(buf: &Buffer, c: Color) -> bool {
+        for y in buf.area.y..buf.area.y + buf.area.height {
+            for x in buf.area.x..buf.area.x + buf.area.width {
+                if buf.get(x, y).fg == c {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn portfolio_pl_color_tracks_committed_theme() {
+        let mut app = sample_portfolio_app();
+        let dark_positive =
+            ResolvedTheme::from_palette(app.theme_palette_for_render()).positive;
+        let buf_dark = render_to_buffer(120, 24, |f| {
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_portfolio(f, &mut app, full_area(120, 24), rt);
+        });
+        assert!(buffer_has_fg_color(&buf_dark, dark_positive));
+
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Light));
+        let light_positive =
+            ResolvedTheme::from_palette(app.theme_palette_for_render()).positive;
+        let buf_light = render_to_buffer(120, 24, |f| {
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_portfolio(f, &mut app, full_area(120, 24), rt);
+        });
+        assert!(buffer_has_fg_color(&buf_light, light_positive));
+        assert_ne!(dark_positive, light_positive);
+    }
+}
+
 /// Issue #189 / SPEC §59 — `TestBackend` snapshots for `draw_portfolio_add_overlay`.
 #[cfg(test)]
 mod snapshot_tests {

@@ -2,8 +2,9 @@
 
 use crate::app::format::format_usd_price;
 use crate::app::layout::centered_rect;
-use crate::app::styles::ResolvedTheme;
+use crate::app::styles::{ResolvedTheme, ThemeStamp};
 use crate::app::App;
+use crate::config::theme::PaletteRgb;
 use crate::config::MarketProviderKind;
 use crate::models::options::{OptionContract, OptionsChain, OptionsChainSlice};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -50,6 +51,8 @@ pub struct OptionsDisplayCache {
     /// Pre-built PUTS table (Update only).
     pub puts_table: Table<'static>,
     pub table_col_widths: Vec<Constraint>,
+    /// Palette fingerprint when `calls_table` / `puts_table` were last styled (Issue #195).
+    pub baked_theme_stamp: Option<ThemeStamp>,
 }
 
 /// Merges inline expiration blocks from one HTTP response into the session cache (Issue #168).
@@ -84,6 +87,7 @@ pub fn clear_options_session(app: &mut App) {
     app.options_display.calls_table = Table::default();
     app.options_display.puts_table = Table::default();
     app.options_display.table_col_widths.clear();
+    app.options_display.baked_theme_stamp = None;
     app.options_display.header_primary.clear();
     app.options_display.header_muted.clear();
     app.options_calls_table_state = TableState::default();
@@ -271,7 +275,9 @@ fn col_widths(show_greeks: bool) -> Vec<Constraint> {
     }
 }
 
-fn rebuild_options_table_rows(app: &mut App, rt: &ResolvedTheme) {
+fn rebuild_options_table_rows(app: &mut App, palette: PaletteRgb) {
+    let rt = ResolvedTheme::from_palette(palette);
+    let stamp = ThemeStamp::from_palette(&palette);
     let show_greeks = app.options_show_greeks;
     let cache = &mut app.options_display;
     let highlight_style = Style::default()
@@ -282,12 +288,12 @@ fn rebuild_options_table_rows(app: &mut App, rt: &ResolvedTheme) {
     let call_rows: Vec<Row<'static>> = cache
         .calls
         .iter()
-        .map(|d| table_row_from_display(d, show_greeks, rt))
+        .map(|d| table_row_from_display(d, show_greeks, &rt))
         .collect();
     let put_rows: Vec<Row<'static>> = cache
         .puts
         .iter()
-        .map(|d| table_row_from_display(d, show_greeks, rt))
+        .map(|d| table_row_from_display(d, show_greeks, &rt))
         .collect();
 
     cache.table_col_widths = col_widths(show_greeks);
@@ -315,13 +321,11 @@ fn rebuild_options_table_rows(app: &mut App, rt: &ResolvedTheme) {
         .highlight_style(highlight_style)
         .highlight_symbol("> ");
 
+    cache.baked_theme_stamp = Some(stamp);
     sync_options_table_states(app);
 }
 
-/// Re-bakes CALLS/PUTS [`Table`] styles after [`Config::theme`] changes (Issue #183 / §56).
-///
-/// No-op when there is no loaded chain and no cached row data. Does not refetch options.
-pub fn refresh_options_display_for_theme(app: &mut App) {
+fn apply_options_display_theme_refresh(app: &mut App) {
     let has_row_data =
         !app.options_display.calls.is_empty() || !app.options_display.puts.is_empty();
     if app.options_chain.is_none() && !has_row_data {
@@ -332,8 +336,27 @@ pub fn refresh_options_display_for_theme(app: &mut App) {
         rebuild_options_display_cache(app);
         return;
     }
-    let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
-    rebuild_options_table_rows(app, &rt);
+    let palette = app.theme_palette_for_render();
+    rebuild_options_table_rows(app, palette);
+}
+
+/// Ensures pre-built Options tables match the current render palette (Issues #195 / §61).
+///
+/// Compares `current` against [`OptionsDisplayCache::baked_theme_stamp`].
+/// On mismatch, runs the §56.1 style-only path. On match, returns immediately (no table rebuild).
+pub(crate) fn sync_options_display_theme(app: &mut App, current: ThemeStamp) {
+    if app.options_display.baked_theme_stamp == Some(current) {
+        return;
+    }
+    apply_options_display_theme_refresh(app);
+}
+
+/// Re-bakes CALLS/PUTS [`Table`] styles after [`Config::theme`] changes (Issue #183 / §56).
+///
+/// No-op when there is no loaded chain and no cached row data. Does not refetch options.
+pub fn refresh_options_display_for_theme(app: &mut App) {
+    let palette = app.theme_palette_for_render();
+    sync_options_display_theme(app, ThemeStamp::from_palette(&palette));
 }
 
 /// Rebuilds [`App::options_display`] from [`App::options_chain`].
@@ -347,6 +370,7 @@ pub fn rebuild_options_display_cache(app: &mut App) {
         app.options_display.calls_table = Table::default();
         app.options_display.puts_table = Table::default();
         app.options_display.table_col_widths.clear();
+        app.options_display.baked_theme_stamp = None;
         app.options_calls_table_state = TableState::default();
         app.options_puts_table_state = TableState::default();
         return;
@@ -394,8 +418,7 @@ pub fn rebuild_options_display_cache(app: &mut App) {
     app.options_display.calls = calls;
     app.options_display.puts = puts;
 
-    let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
-    rebuild_options_table_rows(app, &rt);
+    rebuild_options_table_rows(app, app.theme_palette_for_render());
 }
 
 /// Default strike nearest to spot (union of calls/puts strikes).
@@ -435,7 +458,14 @@ pub fn canonical_strikes(chain: &OptionsChain) -> Vec<f64> {
 }
 
 /// Draws the Options tab (pure render; tables from [`OptionsDisplayCache`] — no row clones, §53.2).
-pub fn draw_options(f: &mut Frame, app: &mut App, area: Rect, rt: &ResolvedTheme) {
+pub fn draw_options(
+    f: &mut Frame,
+    app: &mut App,
+    area: Rect,
+    rt: &ResolvedTheme,
+    theme_stamp: ThemeStamp,
+) {
+    sync_options_display_theme(app, theme_stamp);
     let cache = &app.options_display;
     let block = Block::default()
         .borders(Borders::ALL)
@@ -498,6 +528,7 @@ pub fn draw_options(f: &mut Frame, app: &mut App, area: Rect, rt: &ResolvedTheme
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::styles::ThemeStamp;
     use crate::config::theme::{Theme, ThemePreset};
     use crate::models::options::{
         Expiration, OptionContract, OptionRight, OptionsChain, OptionsChainSlice,
@@ -712,14 +743,22 @@ mod tests {
         assert_eq!(canonical_strikes(&chain), vec![200.0, 210.0]);
     }
 
+    fn options_theme_for_draw(app: &App) -> (ResolvedTheme, ThemeStamp) {
+        let palette = app.theme_palette_for_render();
+        (
+            ResolvedTheme::from_palette(palette),
+            ThemeStamp::from_palette(&palette),
+        )
+    }
+
     fn buffer_contains_bg(app: &mut App, target: Color) -> bool {
         let backend = TestBackend::new(120, 40);
         let mut terminal = Terminal::new(backend).expect("test terminal");
         terminal
             .draw(|f| {
                 let area = Rect::new(0, 0, 120, 40);
-                let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
-                draw_options(f, app, area, &rt);
+                let (rt, stamp) = options_theme_for_draw(app);
+                draw_options(f, app, area, &rt, stamp);
             })
             .expect("draw options");
         let buf = terminal.backend().buffer();
@@ -752,6 +791,50 @@ mod tests {
 
         assert!(buffer_contains_bg(&mut app, light));
         assert!(!buffer_contains_bg(&mut app, dark));
+    }
+
+    #[test]
+    fn sync_options_display_theme_skips_rebuild_when_stamp_unchanged() {
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Dark));
+        app.options_chain = Some(sample_chain());
+        rebuild_options_display_cache(&mut app);
+
+        let stamp = app.options_display.baked_theme_stamp.expect("stamp after rebuild");
+        sync_options_display_theme(&mut app, stamp);
+        assert_eq!(app.options_display.baked_theme_stamp, Some(stamp));
+        sync_options_display_theme(&mut app, stamp);
+        assert_eq!(app.options_display.baked_theme_stamp, Some(stamp));
+    }
+
+    #[test]
+    fn sync_options_display_theme_rebuilds_when_stamp_changes() {
+        let dark = Color::Rgb(18, 18, 24);
+        let light = Color::Rgb(250, 250, 252);
+
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Dark));
+        app.options_chain = Some(sample_chain());
+        rebuild_options_display_cache(&mut app);
+
+        let dark_stamp = app.options_display.baked_theme_stamp;
+        assert!(buffer_contains_bg(&mut app, dark));
+
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Light));
+        let palette = app.theme_palette_for_render();
+        sync_options_display_theme(&mut app, ThemeStamp::from_palette(&palette));
+
+        assert_ne!(
+            app.options_display.baked_theme_stamp,
+            dark_stamp
+        );
+        assert_eq!(
+            app.options_display.baked_theme_stamp,
+            Some(ThemeStamp::from_palette(&app.theme_palette_for_render()))
+        );
+        assert!(buffer_contains_bg(&mut app, light));
     }
 
     #[test]
@@ -792,8 +875,8 @@ mod tests {
 
         let buf = render_to_buffer(SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT, |f| {
             let area = full_area(SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT);
-            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
-            draw_options(f, &mut app, area, &rt);
+            let (rt, stamp) = options_theme_for_draw(&app);
+            draw_options(f, &mut app, area, &rt, stamp);
         });
         insta::assert_snapshot!("options_tab_sample_chain", buffer_snapshot_string(&buf));
     }

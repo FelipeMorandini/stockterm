@@ -4,6 +4,37 @@ use ratatui::style::{Color, Style};
 
 use crate::config::theme::PaletteRgb;
 
+/// Cheap fingerprint of a resolved [`PaletteRgb`] for cache invalidation (Issues #195 / §61).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ThemeStamp(u64);
+
+impl ThemeStamp {
+    /// Deterministic FNV-1a hash of all eight RGB slots (24 bytes).
+    pub fn from_palette(p: &PaletteRgb) -> Self {
+        const FNV_OFFSET: u64 = 0xcbf29ce484222325;
+        const FNV_PRIME: u64 = 0x100000001b3;
+
+        let slots = [
+            p.background,
+            p.foreground,
+            p.accent,
+            p.positive,
+            p.negative,
+            p.border,
+            p.selection,
+            p.muted,
+        ];
+        let mut hash = FNV_OFFSET;
+        for slot in slots {
+            for byte in slot {
+                hash ^= u64::from(byte);
+                hash = hash.wrapping_mul(FNV_PRIME);
+            }
+        }
+        Self(hash)
+    }
+}
+
 /// Ratatui colors for one frame (derived from `Config.theme` + Settings preview).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ResolvedTheme {
@@ -83,5 +114,27 @@ impl ResolvedTheme {
 
     pub fn highlight_symbol(self) -> Style {
         Style::default().fg(self.border).bg(self.background)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::theme::ThemePreset;
+
+    #[test]
+    fn theme_stamp_from_palette_differs_by_preset() {
+        let dark = ThemePreset::Dark.base_rgb();
+        let light = ThemePreset::Light.base_rgb();
+        assert_ne!(
+            ThemeStamp::from_palette(&dark),
+            ThemeStamp::from_palette(&light)
+        );
+    }
+
+    #[test]
+    fn theme_stamp_from_palette_stable() {
+        let p = ThemePreset::Dark.base_rgb();
+        assert_eq!(ThemeStamp::from_palette(&p), ThemeStamp::from_palette(&p));
     }
 }
