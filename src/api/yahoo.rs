@@ -12,7 +12,7 @@ use tokio::task::JoinSet;
 use urlencoding::encode;
 
 use crate::api::error::{ProviderError, ProviderResult};
-use crate::api::historical_query::HistoricalQuery;
+use crate::api::historical_query::{normalize_bar_timestamp_to_ms, HistoricalQuery};
 use crate::api::provider::MarketDataProvider;
 use crate::api::retry::execute_get_text_with_retry;
 use crate::api::symbol::resolve_provider_symbol;
@@ -193,7 +193,7 @@ fn v7_item_to_ticker_response(q: &V7QuoteItem, requested: &str) -> ProviderResul
     let t_sec = q
         .regular_market_time
         .unwrap_or_else(|| Utc::now().timestamp());
-    let t_ms = (t_sec.max(0) as u64).saturating_mul(1000);
+    let t_ms = normalize_bar_timestamp_to_ms((t_sec.max(0) as u64).saturating_mul(1000));
 
     let ticker_name = q.symbol.clone().unwrap_or_else(|| requested.to_uppercase());
 
@@ -582,7 +582,7 @@ fn chart_to_ticker(env: &ChartEnvelope, requested: &str) -> ProviderResult<Ticke
     let t_sec = meta
         .regular_market_time
         .unwrap_or_else(|| Utc::now().timestamp());
-    let t_ms = (t_sec.max(0) as u64).saturating_mul(1000);
+    let t_ms = normalize_bar_timestamp_to_ms((t_sec.max(0) as u64).saturating_mul(1000));
 
     let ticker_name = meta
         .symbol
@@ -736,7 +736,7 @@ fn chart_to_historical(env: &ChartEnvelope, requested: &str) -> ProviderResult<H
             let l = lows.get(i).and_then(|x| *x).unwrap_or(c);
             let v = vols.get(i).and_then(|x| *x).unwrap_or(0.0);
             let vw = (o + h + l + c) / 4.0;
-            let t_ms = (t_sec.max(0) as u64).saturating_mul(1000);
+            let t_ms = normalize_bar_timestamp_to_ms((t_sec.max(0) as u64).saturating_mul(1000));
             out.push(HistoricalData {
                 o,
                 h,

@@ -1,6 +1,7 @@
 //! Shared Polygon REST pagination helpers (Issue #176 / SPEC §53.1).
 
 use crate::api::error::{ProviderError, ProviderResult};
+use crate::api::historical_query::normalize_bar_timestamp_to_ms;
 use crate::models::historical::{HistoricalData, HistoricalResponse};
 
 /// Maximum aggregate pages per historical fetch (Issue #176 / §53.1.2).
@@ -27,12 +28,16 @@ pub(crate) fn validate_polygon_next_url(next: &str) -> ProviderResult<String> {
     Ok(next.to_string())
 }
 
-/// Appends one aggregates page into `merged`.
+/// Appends one aggregates page into `merged`, normalizing timestamps (Issue #200 / §65).
 pub(crate) fn extend_historical_results(
     merged: &mut Vec<HistoricalData>,
     page: &HistoricalResponse,
 ) {
-    merged.extend_from_slice(&page.results);
+    for bar in &page.results {
+        let mut normalized = bar.clone();
+        normalized.t = normalize_bar_timestamp_to_ms(normalized.t);
+        merged.push(normalized);
+    }
 }
 
 /// Merges multiple pages into one envelope (used by fetch loop and unit tests).
@@ -116,5 +121,26 @@ mod tests {
         assert_eq!(merged.results.len(), 3);
         assert!(merged.next_url.is_none());
         assert_eq!(merged.results_count, 3);
+    }
+
+    #[test]
+    fn polygon_merge_normalizes_t() {
+        let bar_seconds = crate::models::historical::HistoricalData {
+            o: 100.0,
+            h: 101.0,
+            l: 99.0,
+            c: 100.5,
+            v: 1000.0,
+            t: 1_700_000_000, // seconds
+            vw: 100.0,
+            n: Some(10),
+        };
+        let page = HistoricalResponse {
+            results: vec![bar_seconds],
+            ..Default::default()
+        };
+        let merged = merge_historical_pages(&[page]);
+        assert_eq!(merged.results.len(), 1);
+        assert_eq!(merged.results[0].t, 1_700_000_000_000); // normalized to ms
     }
 }
