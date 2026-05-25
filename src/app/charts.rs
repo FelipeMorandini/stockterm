@@ -109,11 +109,7 @@ pub(crate) struct ChartCandleLayoutKey {
 /// Pure helper: computes the price pane Rect for candlestick drawing (Issue #199 / §64.2).
 ///
 /// Matches `draw_charts_inner`: bordered block **with** title, then optional RSI/MACD split.
-pub fn charts_price_area(
-    area: Rect,
-    block_title: &str,
-    indicators: ChartIndicatorToggles,
-) -> Rect {
+pub fn charts_price_area(area: Rect, block_title: &str, indicators: ChartIndicatorToggles) -> Rect {
     let inner = Block::default()
         .title(block_title)
         .borders(Borders::ALL)
@@ -843,9 +839,7 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
             x: inner.x,
             y: price_area.bottom(),
             width: inner.width,
-            height: inner
-                .bottom()
-                .saturating_sub(price_area.bottom()),
+            height: inner.bottom().saturating_sub(price_area.bottom()),
         };
         let sub_constraints = match (app.chart_indicators.rsi_14, app.chart_indicators.macd) {
             (true, true) => vec![Constraint::Ratio(1, 1), Constraint::Ratio(1, 1)],
@@ -1665,10 +1659,19 @@ mod tests {
         let k1 = candle_layout_key(area, vp, 20, TimeRange::Y1, 1);
         let k2 = candle_layout_key(area, vp, 20, TimeRange::Y1, 1);
         assert_eq!(k1, k2);
-        assert_ne!(k1, candle_layout_key(Rect { width: 120, ..area }, vp, 20, TimeRange::Y1, 1));
         assert_ne!(
             k1,
-            candle_layout_key(area, ChartViewport { start: 5, end: 15 }, 20, TimeRange::Y1, 1)
+            candle_layout_key(Rect { width: 120, ..area }, vp, 20, TimeRange::Y1, 1)
+        );
+        assert_ne!(
+            k1,
+            candle_layout_key(
+                area,
+                ChartViewport { start: 5, end: 15 },
+                20,
+                TimeRange::Y1,
+                1
+            )
         );
         assert_ne!(k1, candle_layout_key(area, vp, 15, TimeRange::Y1, 1));
         assert_ne!(k1, candle_layout_key(area, vp, 20, TimeRange::M1, 1));
@@ -1677,7 +1680,9 @@ mod tests {
 
     #[test]
     fn candle_layout_cache_hit_returns_same_slice() {
-        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+        use crate::app::app::{
+            test_candle_layout_build_count, test_reset_candle_layout_build_counter,
+        };
 
         test_reset_candle_layout_build_counter();
         assert_eq!(test_candle_layout_build_count(), 0);
@@ -1695,11 +1700,14 @@ mod tests {
 
     #[test]
     fn candle_layout_cache_invalidates_on_viewport_change() {
-        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+        use crate::app::app::{
+            test_candle_layout_build_count, test_reset_candle_layout_build_counter,
+        };
 
         test_reset_candle_layout_build_counter();
         let mut app = app_with_candle_hist(20);
-        let price_area = charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
+        let price_area =
+            charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
         app.prepare_charts_draw_cache(price_area);
         assert_eq!(test_candle_layout_build_count(), 1);
         app.chart_viewport = ChartViewport { start: 5, end: 15 };
@@ -1709,11 +1717,14 @@ mod tests {
 
     #[test]
     fn candle_layout_cache_invalidates_on_bars_len() {
-        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+        use crate::app::app::{
+            test_candle_layout_build_count, test_reset_candle_layout_build_counter,
+        };
 
         test_reset_candle_layout_build_counter();
         let mut app = app_with_candle_hist(20);
-        let price_area = charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
+        let price_area =
+            charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
         app.prepare_charts_draw_cache(price_area);
         assert_eq!(test_candle_layout_build_count(), 1);
         app.historical_data = Some(hist("AAPL", 25));
@@ -1724,11 +1735,14 @@ mod tests {
 
     #[test]
     fn candle_layout_cache_invalidates_on_time_range() {
-        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+        use crate::app::app::{
+            test_candle_layout_build_count, test_reset_candle_layout_build_counter,
+        };
 
         test_reset_candle_layout_build_counter();
         let mut app = app_with_candle_hist(20);
-        let price_area = charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
+        let price_area =
+            charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
         app.prepare_charts_draw_cache(price_area);
         assert_eq!(test_candle_layout_build_count(), 1);
         app.time_range = TimeRange::M1;
@@ -1738,14 +1752,18 @@ mod tests {
 
     #[test]
     fn candle_layout_cache_invalidates_on_area_resize() {
-        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+        use crate::app::app::{
+            test_candle_layout_build_count, test_reset_candle_layout_build_counter,
+        };
 
         test_reset_candle_layout_build_counter();
         let mut app = app_with_candle_hist(20);
-        let price_area_80 = charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
+        let price_area_80 =
+            charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
         app.prepare_charts_draw_cache(price_area_80);
         assert_eq!(test_candle_layout_build_count(), 1);
-        let price_area_120 = charts_price_area(chart_area(120), "AAPL", ChartIndicatorToggles::default());
+        let price_area_120 =
+            charts_price_area(chart_area(120), "AAPL", ChartIndicatorToggles::default());
         app.prepare_charts_draw_cache(price_area_120);
         assert_eq!(test_candle_layout_build_count(), 2);
     }

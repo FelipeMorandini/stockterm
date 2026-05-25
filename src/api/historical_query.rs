@@ -38,13 +38,22 @@ mod tests {
 
     #[test]
     fn normalize_bar_timestamp_to_ms_passthrough_for_ms() {
-        assert_eq!(normalize_bar_timestamp_to_ms(1_700_000_000_000), 1_700_000_000_000);
-        assert_eq!(normalize_bar_timestamp_to_ms(1_000_000_000_000), 1_000_000_000_000);
+        assert_eq!(
+            normalize_bar_timestamp_to_ms(1_700_000_000_000),
+            1_700_000_000_000
+        );
+        assert_eq!(
+            normalize_bar_timestamp_to_ms(1_000_000_000_000),
+            1_000_000_000_000
+        );
     }
 
     #[test]
     fn normalize_bar_timestamp_to_ms_upscales_seconds() {
-        assert_eq!(normalize_bar_timestamp_to_ms(1_700_000_000), 1_700_000_000_000);
+        assert_eq!(
+            normalize_bar_timestamp_to_ms(1_700_000_000),
+            1_700_000_000_000
+        );
         assert_eq!(normalize_bar_timestamp_to_ms(1), 1_000);
     }
 

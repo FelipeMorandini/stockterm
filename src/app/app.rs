@@ -2921,10 +2921,8 @@ impl App {
         let Some(historical_data) = &self.historical_data else {
             return;
         };
-        let slice = crate::app::charts::visible_slice(
-            &historical_data.results,
-            &self.chart_viewport,
-        );
+        let slice =
+            crate::app::charts::visible_slice(&historical_data.results, &self.chart_viewport);
         if slice.is_empty() {
             return;
         }
@@ -4373,7 +4371,10 @@ mod tests {
         );
     }
 
-    fn historical_response_with_t_stride(bars: usize, t_stride_ms: u64) -> crate::models::historical::HistoricalResponse {
+    fn historical_response_with_t_stride(
+        bars: usize,
+        t_stride_ms: u64,
+    ) -> crate::models::historical::HistoricalResponse {
         use crate::models::historical::{HistoricalData, HistoricalResponse};
         const TS_BASE: u64 = 1_700_000_000_000;
         HistoricalResponse {

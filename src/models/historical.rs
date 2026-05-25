@@ -71,11 +71,11 @@ mod tests {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct HistoricalData {
-    pub o: f64,         // Open
-    pub h: f64,         // High
-    pub l: f64,         // Low
-    pub c: f64,         // Close
-    pub v: f64,         // Volume (Polygon may return fractional values)
+    pub o: f64, // Open
+    pub h: f64, // High
+    pub l: f64, // Low
+    pub c: f64, // Close
+    pub v: f64, // Volume (Polygon may return fractional values)
     /// Bar timestamp in **Unix milliseconds (UTC)**, per `docs/SPEC.md` §65.
     ///
     /// Yahoo `chart_to_historical` multiplies `t_sec * 1_000`. Polygon `/v2/aggs/...`
