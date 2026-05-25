@@ -843,8 +843,7 @@ fn time_to_column(t: u64, t0: u64, t1: u64, left: u16, right: u16) -> u16 {
     let span = (t1 - t0) as f64;
     let frac = (t.saturating_sub(t0) as f64) / span;
     let x = f64::from(left) + frac * f64::from(right.saturating_sub(left));
-    x.round()
-        .clamp(f64::from(left), f64::from(right)) as u16
+    x.round().clamp(f64::from(left), f64::from(right)) as u16
 }
 
 /// Values at or above this are Unix **milliseconds** (same rule as line chart `t / 1000.0`).
@@ -861,7 +860,10 @@ fn median_bar_gap_secs(bars: &[HistoricalData]) -> u64 {
     if bars.len() < 2 {
         return 86_400;
     }
-    let mut gaps: Vec<u64> = bars.windows(2).map(|w| w[1].t.saturating_sub(w[0].t)).collect();
+    let mut gaps: Vec<u64> = bars
+        .windows(2)
+        .map(|w| w[1].t.saturating_sub(w[0].t))
+        .collect();
     gaps.sort_unstable();
     let median = gaps[gaps.len() / 2];
     if bar_timestamps_are_millis(bars) {
@@ -911,7 +913,12 @@ fn fit_candle_body_and_gap_time(width: u16, n: usize) -> (u16, u16, bool) {
     (1, 0, true)
 }
 
-fn layout_from_centers(centers: &[u16], body_w: u16, left: u16, right: u16) -> Vec<CandleBarLayout> {
+fn layout_from_centers(
+    centers: &[u16],
+    body_w: u16,
+    left: u16,
+    right: u16,
+) -> Vec<CandleBarLayout> {
     let half = (body_w.saturating_sub(1)) / 2;
     centers
         .iter()
@@ -968,11 +975,7 @@ fn layout_candles_index(area: Rect, n: usize, body_w: u16, gap: u16) -> Vec<Cand
 }
 
 /// Time-scaled centers with fixed body width; only resolve overlaps (preserves weekend gaps).
-fn layout_candles_time(
-    area: Rect,
-    bars: &[HistoricalData],
-    body_w: u16,
-) -> Vec<CandleBarLayout> {
+fn layout_candles_time(area: Rect, bars: &[HistoricalData], body_w: u16) -> Vec<CandleBarLayout> {
     let n = bars.len();
     let left = area.left();
     let right = area.right().saturating_sub(1);
