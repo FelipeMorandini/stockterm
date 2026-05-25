@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Cleared 2026-05-24 — §61–§62 ship (#195, #196). No deferred bullets; audit passed. -->
+<!-- Cleared 2026-05-25 — §63 / Issue #190 ship. Follow-ups filed as #199, #200. -->
