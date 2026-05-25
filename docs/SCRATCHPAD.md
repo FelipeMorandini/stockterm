@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Cleared 2026-05-25 — §63 / Issue #190 ship. Follow-ups filed as #199, #200. -->
+<!-- Cleared 2026-05-25 — §64 / §65 / Issues #199, #200 ship. -->

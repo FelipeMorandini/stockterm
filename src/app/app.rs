@@ -10,8 +10,8 @@ use crate::app::app_error::{
     ErrorPersistence, ErrorSourceDomain, LastFailedFetch, ERROR_TRANSIENT_TTL,
 };
 use crate::app::charts::{
-    viewport_zoom_in, viewport_zoom_out, ChartDisplayMode, ChartIndicatorCache,
-    ChartIndicatorToggles, ChartViewport,
+    viewport_zoom_in, viewport_zoom_out, ChartCandleLayoutCache, ChartDisplayMode,
+    ChartIndicatorCache, ChartIndicatorToggles, ChartViewport,
 };
 use crate::app::event::{join_event_thread, spawn_event_thread, Event};
 use crate::app::fetch_delivery::deliver_fetch_done;
@@ -392,6 +392,11 @@ pub struct App {
     pub chart_indicators: ChartIndicatorToggles,
     /// Precomputed indicators for `historical_data` (rebuilt on fetch/toggle).
     pub(crate) chart_indicator_cache: Option<ChartIndicatorCache>,
+    /// Issue #199 / §64 — precomputed candle body layout for the current Charts draw.
+    pub(crate) chart_candle_layout: Option<ChartCandleLayoutCache>,
+    /// Monotonically incremented on every successful `apply_stock_fetch_done` historical apply;
+    /// also bumped on `clear_active_symbol_data` so stale caches invalidate. Used as `series_stamp`.
+    pub historical_data_stamp: u64,
     /// Last backtest result (session-only; Issue #25 / §47.3).
     pub backtest_report: Option<crate::models::backtest::BacktestReport>,
     pub backtest_inflight: bool,
@@ -558,6 +563,22 @@ async fn run_stock_quote_batch(generation: u64, symbols: Vec<String>, config: Co
     }
 }
 
+#[cfg(test)]
+thread_local! {
+    static CANDLE_LAYOUT_BUILD_COUNTER: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Resets the per-test-thread layout rebuild counter (§64.6; parallel-safe).
+#[cfg(test)]
+pub(crate) fn test_reset_candle_layout_build_counter() {
+    CANDLE_LAYOUT_BUILD_COUNTER.with(|c| c.set(0));
+}
+
+#[cfg(test)]
+pub(crate) fn test_candle_layout_build_count() -> usize {
+    CANDLE_LAYOUT_BUILD_COUNTER.with(|c| c.get())
+}
+
 impl App {
     pub fn new() -> App {
         let (config, mut startup_error) = match Config::try_load() {
@@ -693,6 +714,8 @@ impl App {
             chart_mode,
             chart_indicators: ChartIndicatorToggles::default(),
             chart_indicator_cache: None,
+            chart_candle_layout: None,
+            historical_data_stamp: 0,
             backtest_report: None,
             backtest_inflight: false,
             backtest_inflight_since: None,
@@ -1280,6 +1303,7 @@ impl App {
                 true,
             );
             self.historical_data = None;
+            self.invalidate_candle_layout();
             return;
         }
 
@@ -1580,6 +1604,8 @@ impl App {
     /// Clear chart series when the active ticker changes (Issue #62 / SPEC §11.11.1).
     pub fn on_active_symbol_changed_for_charts(&mut self) {
         self.historical_data = None;
+        self.historical_data_stamp = self.historical_data_stamp.saturating_add(1);
+        self.invalidate_candle_layout();
         self.chart_viewport = ChartViewport::default();
         self.clear_charts_polygon_notice();
         self.chart_indicator_cache = None;
@@ -2249,6 +2275,8 @@ impl App {
                         self.sync_charts_polygon_notice_from_hist();
                         // Bars may differ on refresh (same symbol/range); drop stale BT report/hint.
                         crate::app::backtest_ui::clear_backtest_session(self);
+                        self.historical_data_stamp = self.historical_data_stamp.saturating_add(1);
+                        self.invalidate_candle_layout();
                         self.rebuild_chart_indicator_cache();
                         crate::app::backtest_ui::rebuild_backtest_params_cache(self);
                         if matches!(self.last_failed_fetch, LastFailedFetch::Historical) {
@@ -2811,6 +2839,7 @@ impl App {
             self.time_range = tr;
             self.historical_data = None;
             self.chart_indicator_cache = None;
+            self.invalidate_candle_layout();
             self.chart_viewport = ChartViewport::default();
             self.clear_charts_polygon_notice();
             crate::app::backtest_ui::clear_backtest_session(self);
@@ -2840,6 +2869,7 @@ impl App {
             return;
         };
         viewport_zoom_in(&mut self.chart_viewport, h.results.len());
+        self.invalidate_candle_layout();
     }
 
     pub fn charts_zoom_out(&mut self) {
@@ -2847,6 +2877,7 @@ impl App {
             return;
         };
         viewport_zoom_out(&mut self.chart_viewport, h.results.len());
+        self.invalidate_candle_layout();
     }
 
     pub fn charts_pan_left(&mut self) {
@@ -2854,6 +2885,7 @@ impl App {
             return;
         };
         crate::app::charts::viewport_pan_left(&mut self.chart_viewport, h.results.len());
+        self.invalidate_candle_layout();
     }
 
     pub fn charts_pan_right(&mut self) {
@@ -2861,6 +2893,7 @@ impl App {
             return;
         };
         crate::app::charts::viewport_pan_right(&mut self.chart_viewport, h.results.len());
+        self.invalidate_candle_layout();
     }
 
     pub fn charts_reset_viewport(&mut self) {
@@ -2868,11 +2901,53 @@ impl App {
             return;
         };
         self.chart_viewport = ChartViewport::full(h.results.len());
+        self.invalidate_candle_layout();
     }
 
     pub fn charts_toggle_mode(&mut self) {
         self.chart_mode = self.chart_mode.toggle();
         self.persist_session_to_disk();
+    }
+
+    /// Issue #199 / §64 — drop cached candle layout (called from Update phase).
+    pub(crate) fn invalidate_candle_layout(&mut self) {
+        self.chart_candle_layout = None;
+    }
+
+    /// Issue #199 / §64 — prepare candle layout cache for draw (called from UI draw path).
+    ///
+    /// Rebuilds cache only if key changed (viewport, bars, time_range, area, series_stamp).
+    pub(crate) fn prepare_charts_draw_cache(&mut self, price_area: ratatui::layout::Rect) {
+        let Some(historical_data) = &self.historical_data else {
+            return;
+        };
+        let slice = crate::app::charts::visible_slice(
+            &historical_data.results,
+            &self.chart_viewport,
+        );
+        if slice.is_empty() {
+            return;
+        }
+
+        let key = crate::app::charts::ChartCandleLayoutKey {
+            area: price_area,
+            viewport: self.chart_viewport,
+            bars_len: slice.len(),
+            time_range: self.time_range,
+            series_stamp: self.historical_data_stamp,
+        };
+
+        if let Some(cache) = &self.chart_candle_layout {
+            if cache.key == key {
+                return;
+            }
+        }
+
+        #[cfg(test)]
+        CANDLE_LAYOUT_BUILD_COUNTER.with(|c| c.set(c.get().saturating_add(1)));
+
+        let layouts = crate::app::charts::layout_candles(price_area, slice, self.time_range);
+        self.chart_candle_layout = Some(ChartCandleLayoutCache { key, layouts });
     }
 
     /// Toggle SMA(20) overlay on the Charts line chart (Issue #21).
@@ -3553,7 +3628,9 @@ pub(crate) fn search_result_matches_current(
 
 #[cfg(test)]
 mod tests {
-    use super::{data_poll_interval_secs, search_result_matches_current, App, ChartDisplayMode};
+    use super::{
+        data_poll_interval_secs, search_result_matches_current, App, ChartDisplayMode, FetchDone,
+    };
     use crate::app::app_error::{push_error_log, ErrorLogEntry, UiErrorCategory, ERROR_LOG_CAP};
     use crate::app::Tab;
     use crate::config::Config;
@@ -4294,5 +4371,51 @@ mod tests {
             app.options_display.baked_theme_stamp,
             Some(ThemeStamp::from_palette(&app.theme_palette_for_render()))
         );
+    }
+
+    fn historical_response_with_t_stride(bars: usize, t_stride_ms: u64) -> crate::models::historical::HistoricalResponse {
+        use crate::models::historical::{HistoricalData, HistoricalResponse};
+        const TS_BASE: u64 = 1_700_000_000_000;
+        HistoricalResponse {
+            ticker: "AAPL".into(),
+            results: (0..bars)
+                .map(|i| HistoricalData {
+                    o: 100.0,
+                    h: 101.0,
+                    l: 99.0,
+                    c: 100.5,
+                    v: 1.0,
+                    t: TS_BASE + i as u64 * t_stride_ms,
+                    vw: 100.0,
+                    n: None,
+                })
+                .collect(),
+            status: "OK".into(),
+            request_id: String::new(),
+            count: bars as u32,
+            ..Default::default()
+        }
+    }
+
+    /// Issue #199 / §64.6 — stamp bumps on each successful historical apply (same-length refetch).
+    #[test]
+    fn historical_data_stamp_bumps_on_apply() {
+        let mut app = App::new();
+        app.symbol = "AAPL".to_string();
+        app.time_range = TimeRange::Y1;
+        let stamp0 = app.historical_data_stamp;
+        app.apply_fetch_done(FetchDone::Historical {
+            symbol: "AAPL".to_string(),
+            time_range: TimeRange::Y1,
+            result: Ok(historical_response_with_t_stride(10, 86_400_000)),
+        });
+        let stamp1 = app.historical_data_stamp;
+        assert!(stamp1 > stamp0);
+        app.apply_fetch_done(FetchDone::Historical {
+            symbol: "AAPL".to_string(),
+            time_range: TimeRange::Y1,
+            result: Ok(historical_response_with_t_stride(10, 300_000)),
+        });
+        assert!(app.historical_data_stamp > stamp1);
     }
 }

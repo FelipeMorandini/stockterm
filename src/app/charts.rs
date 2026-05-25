@@ -89,6 +89,45 @@ impl ChartDisplayMode {
     }
 }
 
+/// Precomputed candlestick body layout (Issue #199 / §64).
+#[derive(Debug, Clone)]
+pub struct ChartCandleLayoutCache {
+    pub(crate) key: ChartCandleLayoutKey,
+    pub(crate) layouts: Vec<CandleBarLayout>,
+}
+
+/// Cache key for candlestick layout invalidation (Issue #199 / §64.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ChartCandleLayoutKey {
+    pub(crate) area: Rect,
+    pub(crate) viewport: ChartViewport,
+    pub(crate) bars_len: usize,
+    pub(crate) time_range: TimeRange,
+    pub(crate) series_stamp: u64,
+}
+
+/// Pure helper: computes the price pane Rect for candlestick drawing (Issue #199 / §64.2).
+///
+/// Matches `draw_charts_inner`: bordered block **with** title, then optional RSI/MACD split.
+pub fn charts_price_area(
+    area: Rect,
+    block_title: &str,
+    indicators: ChartIndicatorToggles,
+) -> Rect {
+    let inner = Block::default()
+        .title(block_title)
+        .borders(Borders::ALL)
+        .inner(area);
+    if !indicators.needs_subpane() {
+        return inner;
+    }
+    let panes = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(55), Constraint::Min(4)])
+        .split(inner);
+    panes[0]
+}
+
 /// Session-only indicator toggles (Issue #21 / SPEC §46.2).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ChartIndicatorToggles {
@@ -435,25 +474,38 @@ fn charts_block_title(app: &App, include_key_hints: bool) -> String {
 
 pub fn draw_charts(
     f: &mut Frame,
-    app: &App,
+    app: &mut App,
     area: Rect,
     theme: ResolvedTheme,
     layout: ResolvedLayout,
 ) {
-    if layout.charts_chart_pct >= 100 {
-        draw_charts_inner(f, app, area, theme, true);
-        return;
+    let full_title = layout.charts_chart_pct >= 100;
+    let (chart_area, chrome_area) = if full_title {
+        (area, None)
+    } else {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(layout.charts_chart_pct),
+                Constraint::Min(2),
+            ])
+            .split(area);
+        (chunks[0], Some(chunks[1]))
+    };
+
+    if matches!(app.chart_mode, ChartDisplayMode::Candlestick) {
+        let block_title = charts_block_title(app, full_title);
+        let price_area = charts_price_area(chart_area, &block_title, app.chart_indicators);
+        app.prepare_charts_draw_cache(price_area);
     }
 
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage(layout.charts_chart_pct),
-            Constraint::Min(2),
-        ])
-        .split(area);
-    draw_charts_inner(f, app, chunks[0], theme, false);
-    draw_charts_chrome_strip(f, app, chunks[1], theme);
+    match chrome_area {
+        None => draw_charts_inner(f, app, chart_area, theme, true),
+        Some(chrome) => {
+            draw_charts_inner(f, app, chart_area, theme, false);
+            draw_charts_chrome_strip(f, app, chrome, theme);
+        }
+    }
 }
 
 fn draw_charts_chrome_strip(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme) {
@@ -469,8 +521,9 @@ fn draw_charts_chrome_strip(f: &mut Frame, app: &App, area: Rect, theme: Resolve
 }
 
 fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme, full_title: bool) {
+    let block_title = charts_block_title(app, full_title);
     let block = Block::default()
-        .title(charts_block_title(app, full_title))
+        .title(block_title.as_str())
         .borders(Borders::ALL)
         .style(theme.canvas())
         .border_style(Style::default().fg(theme.border).bg(theme.background));
@@ -548,12 +601,17 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
                 f.render_widget(Paragraph::new(msg).style(theme.canvas()), price_area);
                 return;
             }
+            let layouts = app
+                .chart_candle_layout
+                .as_ref()
+                .map(|c| c.layouts.as_slice())
+                .unwrap_or(&[]);
             let chart = CandlestickChart {
                 data: slice,
+                layouts,
                 min_y: price_min,
                 max_y: price_max,
                 theme,
-                time_range: app.time_range,
             };
             f.render_widget(chart, price_area);
             if app.chart_indicators.overlay_enabled() {
@@ -776,13 +834,19 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
         f.render_widget(chart, macd_area);
     };
 
-    if app.chart_indicators.needs_subpane() {
-        let main_chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(55), Constraint::Min(4)])
-            .split(inner);
-        render_price(f, main_chunks[0]);
+    let price_area = charts_price_area(area, &block_title, app.chart_indicators);
 
+    if app.chart_indicators.needs_subpane() {
+        render_price(f, price_area);
+
+        let sub_area = Rect {
+            x: inner.x,
+            y: price_area.bottom(),
+            width: inner.width,
+            height: inner
+                .bottom()
+                .saturating_sub(price_area.bottom()),
+        };
         let sub_constraints = match (app.chart_indicators.rsi_14, app.chart_indicators.macd) {
             (true, true) => vec![Constraint::Ratio(1, 1), Constraint::Ratio(1, 1)],
             _ => vec![Constraint::Min(3)],
@@ -790,7 +854,7 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
         let sub_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints(sub_constraints)
-            .split(main_chunks[1]);
+            .split(sub_area);
         let mut idx = 0;
         if app.chart_indicators.rsi_14 {
             if cache.is_some() {
@@ -808,13 +872,13 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
             }
         }
     } else {
-        render_price(f, inner);
+        render_price(f, price_area);
     }
 }
 
 /// Fixed-width candle body span per bar (Issue #190 — layout rewrite).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct CandleBarLayout {
+pub(crate) struct CandleBarLayout {
     body_left: u16,
     body_right: u16,
 }
@@ -846,16 +910,7 @@ fn time_to_column(t: u64, t0: u64, t1: u64, left: u16, right: u16) -> u16 {
     x.round().clamp(f64::from(left), f64::from(right)) as u16
 }
 
-/// Values at or above this are Unix **milliseconds** (same rule as line chart `t / 1000.0`).
-const TIMESTAMP_MS_EPOCH_THRESHOLD: u64 = 1_000_000_000_000;
-
-/// True when bar timestamps are stored as Unix milliseconds (Yahoo/Polygon default).
-fn bar_timestamps_are_millis(bars: &[HistoricalData]) -> bool {
-    bars.first()
-        .is_some_and(|b| b.t >= TIMESTAMP_MS_EPOCH_THRESHOLD)
-}
-
-/// Median seconds between consecutive bar timestamps.
+/// Median seconds between consecutive bar timestamps (§65: `t` is always ms).
 fn median_bar_gap_secs(bars: &[HistoricalData]) -> u64 {
     if bars.len() < 2 {
         return 86_400;
@@ -865,12 +920,7 @@ fn median_bar_gap_secs(bars: &[HistoricalData]) -> u64 {
         .map(|w| w[1].t.saturating_sub(w[0].t))
         .collect();
     gaps.sort_unstable();
-    let median = gaps[gaps.len() / 2];
-    if bar_timestamps_are_millis(bars) {
-        median / 1000
-    } else {
-        median
-    }
+    gaps[gaps.len() / 2] / 1_000
 }
 
 /// Minimum median bar gap before **Y1** uses clock-time x (weekly+ bars only).
@@ -1007,7 +1057,7 @@ fn layout_candles_time(area: Rect, bars: &[HistoricalData], body_w: u16) -> Vec<
 }
 
 /// Compute per-bar layout for the visible OHLC slice (Issue #190 / §63).
-fn layout_candles(
+pub(crate) fn layout_candles(
     area: Rect,
     bars: &[HistoricalData],
     time_range: TimeRange,
@@ -1049,13 +1099,13 @@ fn layout_candles(
     }
 }
 
-/// Candlesticks in integer-width slots for column-stable density (Issues #7, #190).
+/// Candlesticks in integer-width slots for column-stable density (Issues #7, #190, #199).
 struct CandlestickChart<'a> {
     data: &'a [HistoricalData],
+    layouts: &'a [CandleBarLayout],
     min_y: f64,
     max_y: f64,
     theme: ResolvedTheme,
-    time_range: TimeRange,
 }
 
 impl CandlestickChart<'_> {
@@ -1092,14 +1142,13 @@ impl Widget for CandlestickChart<'_> {
                 cell.set_bg(bg);
             }
         }
-        let layouts = layout_candles(area, self.data, self.time_range);
         debug_assert_eq!(
-            layouts.len(),
+            self.layouts.len(),
             self.data.len(),
-            "layout_candles must return one layout per visible bar"
+            "layouts must match data length (precomputed in update phase)"
         );
 
-        for (bar, layout) in self.data.iter().zip(layouts.iter()) {
+        for (bar, layout) in self.data.iter().zip(self.layouts.iter()) {
             let Some(y_high) = self.price_to_row(area, bar.h) else {
                 continue;
             };
@@ -1448,12 +1497,10 @@ mod tests {
     }
 
     #[test]
-    fn median_bar_gap_secs_converts_millisecond_timestamps() {
+    fn charts_median_bar_gap_secs_only_path() {
         let bars = daily_bars_ms(5);
-        assert!(bar_timestamps_are_millis(&bars));
         assert_eq!(median_bar_gap_secs(&bars), DAY_SEC);
         let intraday = intraday_bars(5);
-        assert!(bar_timestamps_are_millis(&intraday));
         assert_eq!(median_bar_gap_secs(&intraday), 300);
     }
 
@@ -1553,12 +1600,13 @@ mod tests {
         let (min_y, max_y) = price_bounds(&data).expect("fixture bounds");
         let theme = ResolvedTheme::from_palette(ThemePreset::Dark.base_rgb());
         let area = Rect::new(0, 0, width, height);
+        let layouts = layout_candles(area, &data, TimeRange::M1);
         let chart = CandlestickChart {
             data: &data,
+            layouts: &layouts,
             min_y,
             max_y,
             theme,
-            time_range: TimeRange::M1,
         };
         let buf = render_to_buffer(width, height, |f| {
             f.render_widget(chart, area);
@@ -1582,5 +1630,170 @@ mod tests {
             "candlestick_density_120x40",
             render_candlestick_snapshot(120, 40, 40)
         );
+    }
+
+    fn candle_layout_key(
+        area: Rect,
+        viewport: ChartViewport,
+        bars_len: usize,
+        time_range: TimeRange,
+        series_stamp: u64,
+    ) -> ChartCandleLayoutKey {
+        ChartCandleLayoutKey {
+            area,
+            viewport,
+            bars_len,
+            time_range,
+            series_stamp,
+        }
+    }
+
+    fn app_with_candle_hist(bars: usize) -> App {
+        let mut app = App::new();
+        app.chart_mode = ChartDisplayMode::Candlestick;
+        app.symbol = "AAPL".to_string();
+        app.time_range = TimeRange::Y1;
+        app.historical_data = Some(hist("AAPL", bars));
+        app.chart_viewport = ChartViewport::full(bars);
+        app
+    }
+
+    #[test]
+    fn candle_layout_cache_key_eq() {
+        let area = chart_area(80);
+        let vp = ChartViewport::full(20);
+        let k1 = candle_layout_key(area, vp, 20, TimeRange::Y1, 1);
+        let k2 = candle_layout_key(area, vp, 20, TimeRange::Y1, 1);
+        assert_eq!(k1, k2);
+        assert_ne!(k1, candle_layout_key(Rect { width: 120, ..area }, vp, 20, TimeRange::Y1, 1));
+        assert_ne!(
+            k1,
+            candle_layout_key(area, ChartViewport { start: 5, end: 15 }, 20, TimeRange::Y1, 1)
+        );
+        assert_ne!(k1, candle_layout_key(area, vp, 15, TimeRange::Y1, 1));
+        assert_ne!(k1, candle_layout_key(area, vp, 20, TimeRange::M1, 1));
+        assert_ne!(k1, candle_layout_key(area, vp, 20, TimeRange::Y1, 2));
+    }
+
+    #[test]
+    fn candle_layout_cache_hit_returns_same_slice() {
+        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+
+        test_reset_candle_layout_build_counter();
+        assert_eq!(test_candle_layout_build_count(), 0);
+        let mut app = app_with_candle_hist(20);
+        let area = chart_area(80);
+        let price_area = charts_price_area(area, "AAPL Y1", ChartIndicatorToggles::default());
+        app.prepare_charts_draw_cache(price_area);
+        assert_eq!(test_candle_layout_build_count(), 1);
+        let ptr1 = app.chart_candle_layout.as_ref().unwrap().layouts.as_ptr();
+        app.prepare_charts_draw_cache(price_area);
+        assert_eq!(test_candle_layout_build_count(), 1);
+        let ptr2 = app.chart_candle_layout.as_ref().unwrap().layouts.as_ptr();
+        assert_eq!(ptr1, ptr2);
+    }
+
+    #[test]
+    fn candle_layout_cache_invalidates_on_viewport_change() {
+        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+
+        test_reset_candle_layout_build_counter();
+        let mut app = app_with_candle_hist(20);
+        let price_area = charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
+        app.prepare_charts_draw_cache(price_area);
+        assert_eq!(test_candle_layout_build_count(), 1);
+        app.chart_viewport = ChartViewport { start: 5, end: 15 };
+        app.prepare_charts_draw_cache(price_area);
+        assert_eq!(test_candle_layout_build_count(), 2);
+    }
+
+    #[test]
+    fn candle_layout_cache_invalidates_on_bars_len() {
+        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+
+        test_reset_candle_layout_build_counter();
+        let mut app = app_with_candle_hist(20);
+        let price_area = charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
+        app.prepare_charts_draw_cache(price_area);
+        assert_eq!(test_candle_layout_build_count(), 1);
+        app.historical_data = Some(hist("AAPL", 25));
+        app.chart_viewport = ChartViewport::full(25);
+        app.prepare_charts_draw_cache(price_area);
+        assert_eq!(test_candle_layout_build_count(), 2);
+    }
+
+    #[test]
+    fn candle_layout_cache_invalidates_on_time_range() {
+        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+
+        test_reset_candle_layout_build_counter();
+        let mut app = app_with_candle_hist(20);
+        let price_area = charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
+        app.prepare_charts_draw_cache(price_area);
+        assert_eq!(test_candle_layout_build_count(), 1);
+        app.time_range = TimeRange::M1;
+        app.prepare_charts_draw_cache(price_area);
+        assert_eq!(test_candle_layout_build_count(), 2);
+    }
+
+    #[test]
+    fn candle_layout_cache_invalidates_on_area_resize() {
+        use crate::app::app::{test_candle_layout_build_count, test_reset_candle_layout_build_counter};
+
+        test_reset_candle_layout_build_counter();
+        let mut app = app_with_candle_hist(20);
+        let price_area_80 = charts_price_area(chart_area(80), "AAPL", ChartIndicatorToggles::default());
+        app.prepare_charts_draw_cache(price_area_80);
+        assert_eq!(test_candle_layout_build_count(), 1);
+        let price_area_120 = charts_price_area(chart_area(120), "AAPL", ChartIndicatorToggles::default());
+        app.prepare_charts_draw_cache(price_area_120);
+        assert_eq!(test_candle_layout_build_count(), 2);
+    }
+
+    #[test]
+    fn charts_price_area_pure() {
+        let area = Rect::new(0, 0, 80, 24);
+        let title = "AAPL Y1 │ 1-4 c + - h l 0";
+        let cases = [
+            (ChartIndicatorToggles::default(), "off"),
+            (
+                ChartIndicatorToggles {
+                    rsi_14: true,
+                    ..ChartIndicatorToggles::default()
+                },
+                "rsi",
+            ),
+            (
+                ChartIndicatorToggles {
+                    macd: true,
+                    ..ChartIndicatorToggles::default()
+                },
+                "macd",
+            ),
+            (
+                ChartIndicatorToggles {
+                    rsi_14: true,
+                    macd: true,
+                    ..ChartIndicatorToggles::default()
+                },
+                "rsi+macd",
+            ),
+        ];
+        for (indicators, _label) in cases {
+            let got = charts_price_area(area, title, indicators);
+            let inner = Block::default()
+                .title(title)
+                .borders(Borders::ALL)
+                .inner(area);
+            let expected = if indicators.needs_subpane() {
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Percentage(55), Constraint::Min(4)])
+                    .split(inner)[0]
+            } else {
+                inner
+            };
+            assert_eq!(got, expected, "mismatch for {_label}");
+        }
     }
 }

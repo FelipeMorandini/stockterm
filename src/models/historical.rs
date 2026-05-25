@@ -76,7 +76,12 @@ pub struct HistoricalData {
     pub l: f64,         // Low
     pub c: f64,         // Close
     pub v: f64,         // Volume (Polygon may return fractional values)
-    pub t: u64,         // Timestamp
+    /// Bar timestamp in **Unix milliseconds (UTC)**, per `docs/SPEC.md` §65.
+    ///
+    /// Yahoo `chart_to_historical` multiplies `t_sec * 1_000`. Polygon `/v2/aggs/...`
+    /// returns ms natively. Consumers may divide by `1_000.0` for seconds-based axes
+    /// (e.g. ratatui `Chart::bounds`) but MUST NOT branch on the magnitude.
+    pub t: u64,
     pub vw: f64,        // Volume weighted average price
     pub n: Option<u64>, // Number of transactions
 }
