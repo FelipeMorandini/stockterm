@@ -952,3 +952,69 @@ mod notify_body_cap_tests {
         assert!(!out.contains("SYMBOL39"));
     }
 }
+
+/// Issue #196 / SPEC §62 — alerts draw tracks committed theme palette.
+#[cfg(test)]
+mod theme_tracking_tests {
+    use super::draw_alerts;
+    use crate::app::snapshot_test_util::{full_area, render_to_buffer};
+    use crate::app::styles::ResolvedTheme;
+    use crate::app::App;
+    use crate::config::theme::{Theme, ThemePreset};
+    use crate::models::alerts::{Alert, AlertCondition};
+    use crate::models::ticker::{TickerResponse, TickerResult};
+    use ratatui::buffer::Buffer;
+    use ratatui::style::Color;
+
+    fn sample_alerts_app() -> App {
+        let mut app = App::new();
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Dark));
+        app.alerts = vec![Alert::new("AAPL".into(), AlertCondition::Above, 200.0)];
+        let quote = TickerResponse {
+            ticker: "AAPL".into(),
+            results: vec![TickerResult {
+                o: 190.0,
+                h: 195.0,
+                l: 185.0,
+                c: 192.0,
+                v: 1000.0,
+                t: 1,
+            }],
+            status: "OK".into(),
+            error: None,
+        };
+        app.watchlist_quotes.insert("AAPL".into(), quote);
+        app
+    }
+
+    fn buffer_has_fg_color(buf: &Buffer, c: Color) -> bool {
+        for y in buf.area.y..buf.area.y + buf.area.height {
+            for x in buf.area.x..buf.area.x + buf.area.width {
+                if buf.get(x, y).fg == c {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn alerts_status_color_tracks_committed_theme() {
+        let mut app = sample_alerts_app();
+        let dark_armed = ResolvedTheme::from_palette(app.theme_palette_for_render()).border;
+        let buf_dark = render_to_buffer(120, 24, |f| {
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_alerts(f, &mut app, full_area(120, 24), rt);
+        });
+        assert!(buffer_has_fg_color(&buf_dark, dark_armed));
+
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Light));
+        let light_armed = ResolvedTheme::from_palette(app.theme_palette_for_render()).border;
+        let buf_light = render_to_buffer(120, 24, |f| {
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_alerts(f, &mut app, full_area(120, 24), rt);
+        });
+        assert!(buffer_has_fg_color(&buf_light, light_armed));
+        assert_ne!(dark_armed, light_armed);
+    }
+}

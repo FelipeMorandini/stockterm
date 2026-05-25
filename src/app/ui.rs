@@ -3,7 +3,7 @@ use crate::app::charts::draw_charts;
 use crate::app::format::{format_signed_usd_delta, format_usd_price, symbol_kind_label};
 use crate::app::layout::{centered_rect, shell_vertical_constraints};
 use crate::app::portfolio::draw_portfolio;
-use crate::app::styles::ResolvedTheme;
+use crate::app::styles::{ResolvedTheme, ThemeStamp};
 use crate::app::table_filter::filter_title_suffix;
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::MarketProviderKind;
@@ -42,7 +42,9 @@ fn watchlist_quote_for_symbol<'a>(
 
 pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<()> {
     terminal.draw(|f| {
-        let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+        let palette = app.theme_palette_for_render();
+        let rt = ResolvedTheme::from_palette(palette);
+        let theme_stamp = ThemeStamp::from_palette(&palette);
         let layout = app.layout_for_render();
         let size = f.size();
         // Paint theme background for the whole terminal; otherwise only `fg` is applied and
@@ -113,7 +115,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
             Tab::Charts => draw_charts(f, app, body, rt, layout),
             Tab::Settings => draw_settings(f, app, body, rt),
             Tab::Backtest => crate::app::backtest_ui::draw_backtest(f, app, body, rt),
-            Tab::Options => crate::app::options::draw_options(f, app, body, &rt),
+            Tab::Options => crate::app::options::draw_options(f, app, body, &rt, theme_stamp),
         }
 
         if layout.show_status_bar {
@@ -1059,6 +1061,70 @@ mod status_bar_tests {
         let mut app = App::new();
         app.stock_refresh_inflight = true;
         assert_eq!(status_bar_row_count(&app, 80), 1);
+    }
+}
+
+/// Issue #196 / SPEC §62 — watchlist draw tracks committed theme palette.
+#[cfg(test)]
+mod theme_tracking_tests {
+    use super::*;
+    use crate::app::snapshot_test_util::{full_area, render_to_buffer};
+    use crate::config::theme::{Theme, ThemePreset};
+    use crate::models::ticker::{TickerResponse, TickerResult};
+    use ratatui::buffer::Buffer;
+    use ratatui::style::Color;
+
+    fn sample_watchlist_app() -> App {
+        let mut app = App::new();
+        app.watchlist = vec!["AAPL".into()];
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Dark));
+        let quote = TickerResponse {
+            ticker: "AAPL".into(),
+            results: vec![TickerResult {
+                o: 100.0,
+                h: 110.0,
+                l: 99.0,
+                c: 105.0,
+                v: 1000.0,
+                t: 1,
+            }],
+            status: "OK".into(),
+            error: None,
+        };
+        app.watchlist_quotes.insert("AAPL".into(), quote);
+        app.watchlist_state.select(Some(0));
+        app
+    }
+
+    fn buffer_has_bg_color(buf: &Buffer, c: Color) -> bool {
+        for y in buf.area.y..buf.area.y + buf.area.height {
+            for x in buf.area.x..buf.area.x + buf.area.width {
+                if buf.get(x, y).bg == c {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn watchlist_table_bg_tracks_committed_theme() {
+        let mut app = sample_watchlist_app();
+        let dark_bg = ResolvedTheme::from_palette(app.theme_palette_for_render()).background;
+        let buf_dark = render_to_buffer(120, 30, |f| {
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_watchlist_table(f, &mut app, full_area(120, 30), rt);
+        });
+        assert!(buffer_has_bg_color(&buf_dark, dark_bg));
+
+        app.config.theme = Some(Theme::from_preset(ThemePreset::Light));
+        let light_bg = ResolvedTheme::from_palette(app.theme_palette_for_render()).background;
+        let buf_light = render_to_buffer(120, 30, |f| {
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_watchlist_table(f, &mut app, full_area(120, 30), rt);
+        });
+        assert!(buffer_has_bg_color(&buf_light, light_bg));
+        assert_ne!(dark_bg, light_bg);
     }
 }
 
