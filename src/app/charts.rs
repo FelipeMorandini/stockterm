@@ -553,6 +553,7 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
                 min_y: price_min,
                 max_y: price_max,
                 theme,
+                time_range: app.time_range,
             };
             f.render_widget(chart, price_area);
             if app.chart_indicators.overlay_enabled() {
@@ -811,44 +812,250 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
     }
 }
 
-/// Candlesticks in equal-width slots so bars sit closer than edge-to-edge indexing (Issue #7).
+/// Fixed-width candle body span per bar (Issue #190 — layout rewrite).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct CandleBarLayout {
+    body_left: u16,
+    body_right: u16,
+}
+
+impl CandleBarLayout {
+    /// Body width in terminal columns (inclusive span).
+    fn body_w(self) -> u16 {
+        self.body_right.saturating_sub(self.body_left) + 1
+    }
+
+    /// Wick column — geometric center of the body (`body_left + body_w / 2`, correct for even widths).
+    fn wick_x(self) -> u16 {
+        self.body_left + self.body_w() / 2
+    }
+}
+
+/// Max body width in terminal cells; gap between bodies when they fit.
+const CANDLE_BODY_W_MAX: u16 = 3;
+const CANDLE_GAP_MIN: u16 = 1;
+
+/// Map bar timestamp to a column in `[left, right]` (line-chart time scale).
+fn time_to_column(t: u64, t0: u64, t1: u64, left: u16, right: u16) -> u16 {
+    if t1 <= t0 {
+        return (left + right) / 2;
+    }
+    let span = (t1 - t0) as f64;
+    let frac = (t.saturating_sub(t0) as f64) / span;
+    let x = f64::from(left) + frac * f64::from(right.saturating_sub(left));
+    x.round()
+        .clamp(f64::from(left), f64::from(right)) as u16
+}
+
+/// Values at or above this are Unix **milliseconds** (same rule as line chart `t / 1000.0`).
+const TIMESTAMP_MS_EPOCH_THRESHOLD: u64 = 1_000_000_000_000;
+
+/// True when bar timestamps are stored as Unix milliseconds (Yahoo/Polygon default).
+fn bar_timestamps_are_millis(bars: &[HistoricalData]) -> bool {
+    bars.first()
+        .is_some_and(|b| b.t >= TIMESTAMP_MS_EPOCH_THRESHOLD)
+}
+
+/// Median seconds between consecutive bar timestamps.
+fn median_bar_gap_secs(bars: &[HistoricalData]) -> u64 {
+    if bars.len() < 2 {
+        return 86_400;
+    }
+    let mut gaps: Vec<u64> = bars.windows(2).map(|w| w[1].t.saturating_sub(w[0].t)).collect();
+    gaps.sort_unstable();
+    let median = gaps[gaps.len() / 2];
+    if bar_timestamps_are_millis(bars) {
+        median / 1000
+    } else {
+        median
+    }
+}
+
+/// Minimum median bar gap before **Y1** uses clock-time x (weekly+ bars only).
+const TIME_LAYOUT_MIN_GAP_SECS: u64 = 7 * 86_400;
+
+/// Pick `(body_w, gap)` for **index** layout (**1D** / **1W** / dense daily **M1**).
+///
+/// Always uses at least [`CANDLE_GAP_MIN`] between bodies when not dense.
+fn fit_candle_body_and_gap_index(width: u16, n: usize) -> (u16, u16, bool) {
+    let n = n as u16;
+    if n == 0 {
+        return (1, 0, true);
+    }
+    for body_w in (1..=CANDLE_BODY_W_MAX).rev() {
+        let gap = CANDLE_GAP_MIN;
+        let stride = body_w + gap;
+        let total = n.saturating_mul(stride).saturating_sub(gap);
+        if total <= width {
+            return (body_w, gap, false);
+        }
+    }
+    (1, 0, true)
+}
+
+/// Pick `(body_w, gap)` for **time** layout (**Y1** weekly+ series).
+fn fit_candle_body_and_gap_time(width: u16, n: usize) -> (u16, u16, bool) {
+    let n = n as u16;
+    if n == 0 {
+        return (1, 0, true);
+    }
+    for body_w in (1..=CANDLE_BODY_W_MAX).rev() {
+        for gap in (0..=CANDLE_GAP_MIN).rev() {
+            let stride = body_w + gap;
+            let total = n.saturating_mul(stride).saturating_sub(gap);
+            if total <= width {
+                return (body_w, gap, false);
+            }
+        }
+    }
+    (1, 0, true)
+}
+
+fn layout_from_centers(centers: &[u16], body_w: u16, left: u16, right: u16) -> Vec<CandleBarLayout> {
+    let half = (body_w.saturating_sub(1)) / 2;
+    centers
+        .iter()
+        .map(|&cx| {
+            let bl = cx.saturating_sub(half).max(left);
+            let br = (bl + body_w.saturating_sub(1)).min(right);
+            CandleBarLayout {
+                body_left: bl,
+                body_right: br,
+            }
+        })
+        .collect()
+}
+
+/// One column per bar when `n > width` (intraday full-range view).
+fn layout_candles_dense(area: Rect, n: usize) -> Vec<CandleBarLayout> {
+    let w = area.width.max(1);
+    let left = area.left();
+    let right = area.right().saturating_sub(1);
+    (0..n)
+        .map(|i| {
+            let x0 = left.saturating_add(((i as u32 * u32::from(w)) / n as u32) as u16);
+            let x1_ex = left.saturating_add((((i + 1) as u32 * u32::from(w)) / n as u32) as u16);
+            let x1 = if x1_ex > x0 {
+                x1_ex.saturating_sub(1).min(right)
+            } else {
+                x0.min(right)
+            };
+            CandleBarLayout {
+                body_left: x0,
+                body_right: x1,
+            }
+        })
+        .collect()
+}
+
+/// Evenly spaced fixed-width bodies with mandatory gap ( **1D** / **1W** / daily **M1** ).
+fn layout_candles_index(area: Rect, n: usize, body_w: u16, gap: u16) -> Vec<CandleBarLayout> {
+    let left = area.left();
+    let right = area.right().saturating_sub(1);
+    let w = area.width.max(1);
+    let stride = body_w + gap;
+    let total = (n as u16).saturating_mul(stride).saturating_sub(gap);
+    let start = left + (w.saturating_sub(total)) / 2;
+    (0..n)
+        .map(|i| {
+            let bl = start.saturating_add(stride.saturating_mul(i as u16));
+            CandleBarLayout {
+                body_left: bl,
+                body_right: (bl + body_w.saturating_sub(1)).min(right),
+            }
+        })
+        .collect()
+}
+
+/// Time-scaled centers with fixed body width; only resolve overlaps (preserves weekend gaps).
+fn layout_candles_time(
+    area: Rect,
+    bars: &[HistoricalData],
+    body_w: u16,
+) -> Vec<CandleBarLayout> {
+    let n = bars.len();
+    let left = area.left();
+    let right = area.right().saturating_sub(1);
+    let t0 = bars.first().map(|b| b.t).unwrap_or(0);
+    let t1 = bars.last().map(|b| b.t).unwrap_or(t0);
+    let mut centers: Vec<u16> = bars
+        .iter()
+        .map(|b| time_to_column(b.t, t0, t1, left, right))
+        .collect();
+
+    for i in 1..n {
+        let min_cx = centers[i - 1].saturating_add(body_w);
+        if centers[i] < min_cx {
+            centers[i] = min_cx;
+        }
+    }
+    let half = (body_w.saturating_sub(1)) / 2;
+    let max_cx = right.saturating_sub(half);
+    if let Some(&last) = centers.last() {
+        if last > max_cx {
+            let shift = last - max_cx;
+            for c in &mut centers {
+                *c = c.saturating_sub(shift).max(left.saturating_add(half));
+            }
+        }
+    }
+
+    layout_from_centers(&centers, body_w, left, right)
+}
+
+/// Compute per-bar layout for the visible OHLC slice (Issue #190 / §63).
+fn layout_candles(
+    area: Rect,
+    bars: &[HistoricalData],
+    time_range: TimeRange,
+) -> Vec<CandleBarLayout> {
+    let n = bars.len();
+    if n == 0 {
+        return Vec::new();
+    }
+    let left = area.left();
+    let right = area.right().saturating_sub(1);
+    let w = area.width.max(1);
+
+    if n == 1 {
+        let body_w = w.clamp(1, CANDLE_BODY_W_MAX);
+        let x0 = left + (w.saturating_sub(body_w)) / 2;
+        return vec![CandleBarLayout {
+            body_left: x0,
+            body_right: (x0 + body_w.saturating_sub(1)).min(right),
+        }];
+    }
+
+    // **Y1** weekly+ bars: clock-time x. **M1** daily bars: even index (see `median_bar_gap_secs`).
+    let use_time = matches!(time_range, TimeRange::Y1)
+        && median_bar_gap_secs(bars) >= TIME_LAYOUT_MIN_GAP_SECS;
+
+    let (body_w, gap, dense) = if use_time {
+        fit_candle_body_and_gap_time(w, n)
+    } else {
+        fit_candle_body_and_gap_index(w, n)
+    };
+    if dense {
+        return layout_candles_dense(area, n);
+    }
+
+    if use_time {
+        layout_candles_time(area, bars, body_w)
+    } else {
+        layout_candles_index(area, n, body_w, gap)
+    }
+}
+
+/// Candlesticks in integer-width slots for column-stable density (Issues #7, #190).
 struct CandlestickChart<'a> {
     data: &'a [HistoricalData],
     min_y: f64,
     max_y: f64,
     theme: ResolvedTheme,
+    time_range: TimeRange,
 }
 
 impl CandlestickChart<'_> {
-    /// Center of bar `i` in slot `i` of `n` equal columns (tighter than edge-to-edge `i/(n-1)`).
-    fn slot_center_x(&self, area: Rect, i: usize, n: usize) -> u16 {
-        let w = area.width.max(1);
-        if n == 0 {
-            return area.left();
-        }
-        if n == 1 {
-            return area.left() + w / 2;
-        }
-        let slot = f64::from(w) / n as f64;
-        let cx = f64::from(area.left()) + slot * (i as f64 + 0.5);
-        cx.round().clamp(
-            f64::from(area.left()),
-            f64::from(area.right().saturating_sub(1)),
-        ) as u16
-    }
-
-    fn body_width_cells(&self, area: Rect, n: usize) -> u16 {
-        if n == 0 {
-            return 1;
-        }
-        let slot = f64::from(area.width.max(1)) / n as f64;
-        if slot >= 4.0 {
-            2
-        } else {
-            1
-        }
-    }
-
     fn price_to_row(&self, area: Rect, price: f64) -> Option<u16> {
         let h = area.height;
         if h < 2 {
@@ -882,12 +1089,14 @@ impl Widget for CandlestickChart<'_> {
                 cell.set_bg(bg);
             }
         }
-        let n = self.data.len();
+        let layouts = layout_candles(area, self.data, self.time_range);
+        debug_assert_eq!(
+            layouts.len(),
+            self.data.len(),
+            "layout_candles must return one layout per visible bar"
+        );
 
-        for (i, bar) in self.data.iter().enumerate() {
-            let cx = self.slot_center_x(area, i, n);
-            let bw = self.body_width_cells(area, n);
-            let x0 = cx.saturating_sub(bw / 2);
+        for (bar, layout) in self.data.iter().zip(layouts.iter()) {
             let Some(y_high) = self.price_to_row(area, bar.h) else {
                 continue;
             };
@@ -910,22 +1119,24 @@ impl Widget for CandlestickChart<'_> {
 
             let y_wick_top = y_high.min(y_low);
             let y_wick_bot = y_high.max(y_low);
-            for y in y_wick_top..=y_wick_bot {
-                let cell = buf.get_mut(cx, y);
-                cell.set_symbol(symbols::line::VERTICAL);
-                cell.set_fg(color);
-                cell.set_bg(bg);
-            }
 
             let body_top = y_open.min(y_close);
             let mut body_bot = y_open.max(y_close);
             if body_top == body_bot {
                 body_bot = (body_bot + 1).min(area.bottom().saturating_sub(1));
             }
+
+            let wick_x = layout.wick_x();
+            for y in y_wick_top..=y_wick_bot {
+                let cell = buf.get_mut(wick_x, y);
+                cell.set_symbol(symbols::line::VERTICAL);
+                cell.set_fg(color);
+                cell.set_bg(bg);
+            }
+
             for y in body_top..=body_bot {
-                for dx in 0..bw {
-                    let xx = x0.saturating_add(dx).min(area.right().saturating_sub(1));
-                    let cell = buf.get_mut(xx, y);
+                for x in layout.body_left..=layout.body_right {
+                    let cell = buf.get_mut(x, y);
                     cell.set_symbol("█");
                     cell.set_fg(color);
                     cell.set_bg(bg);
@@ -1107,5 +1318,266 @@ mod tests {
     fn format_time_axis_epoch_is_stable() {
         let label = format_time_axis(0.0, false);
         assert!(!label.is_empty());
+    }
+
+    fn chart_area(width: u16) -> Rect {
+        Rect::new(0, 0, width, 20)
+    }
+
+    const DAY_SEC: u64 = 86_400;
+    const TS_BASE: u64 = 1_700_000_000_000;
+
+    fn daily_bars(count: usize, day_stride: u64) -> Vec<HistoricalData> {
+        (0..count)
+            .map(|i| {
+                let t = TS_BASE + i as u64 * day_stride * DAY_SEC * 1000;
+                let base = 100.0 + f64::from(i as u32);
+                bar(t, base, base + 2.0, base - 0.5, base + 1.0)
+            })
+            .collect()
+    }
+
+    fn daily_bars_ms(count: usize) -> Vec<HistoricalData> {
+        daily_bars(count, 1)
+    }
+
+    fn intraday_bars(count: usize) -> Vec<HistoricalData> {
+        const FIVE_MIN_MS: u64 = 300_000;
+        (0..count)
+            .map(|i| {
+                let t = TS_BASE + i as u64 * FIVE_MIN_MS;
+                let base = 100.0 + f64::from(i as u32) * 0.01;
+                bar(t, base, base + 0.5, base - 0.2, base + 0.1)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn layout_candles_partition_80_20() {
+        let area = chart_area(60);
+        let bars = daily_bars(20, 1);
+        let layouts = layout_candles(area, &bars, TimeRange::M1);
+        assert_eq!(layouts.len(), 20);
+        assert_index_candle_layout_invariants(&layouts, area);
+    }
+
+    #[test]
+    fn layout_candles_single_bar() {
+        let area = chart_area(60);
+        let bars = [bar(TS_BASE, 100.0, 102.0, 99.0, 101.0)];
+        let layouts = layout_candles(area, &bars, TimeRange::M1);
+        assert_eq!(layouts.len(), 1);
+        assert_eq!(layouts[0].body_left, area.left() + 28);
+        assert_eq!(layouts[0].body_right, layouts[0].body_left + 2);
+    }
+
+    #[test]
+    fn layout_candles_fit_body_and_gap() {
+        let (body_w, gap, dense) = fit_candle_body_and_gap_index(60, 20);
+        assert_eq!((body_w, gap, dense), (2, 1, false));
+        let (body_w, gap, dense) = fit_candle_body_and_gap_index(80, 40);
+        assert_eq!((body_w, gap, dense), (1, 1, false));
+        let (body_w, gap, dense) = fit_candle_body_and_gap_index(10, 25);
+        assert_eq!((body_w, gap, dense), (1, 0, true));
+    }
+
+    #[test]
+    fn layout_candles_wick_centered_on_even_width_body() {
+        let layout = CandleBarLayout {
+            body_left: 10,
+            body_right: 11,
+        };
+        assert_eq!(layout.wick_x(), 11);
+        assert!(layout.wick_x() >= layout.body_left);
+        assert!(layout.wick_x() <= layout.body_right);
+    }
+
+    #[test]
+    fn layout_candles_d1_bodies_do_not_touch() {
+        let area = chart_area(80);
+        let bars = intraday_bars(40);
+        let layouts = layout_candles(area, &bars, TimeRange::D1);
+        for pair in layouts.windows(2) {
+            assert!(pair[1].body_left > pair[0].body_right);
+        }
+    }
+
+    /// **Y1** weekly+: irregular timestamp gaps widen time-mapped x more than uniform steps.
+    #[test]
+    fn layout_candles_time_irregular_gap_spread() {
+        let area = chart_area(80);
+        let right = area.right().saturating_sub(1);
+        let bars = vec![
+            bar(TS_BASE, 100.0, 102.0, 99.0, 101.0),
+            bar(TS_BASE + DAY_SEC * 7 * 1000, 101.0, 103.0, 100.0, 102.0),
+            bar(TS_BASE + DAY_SEC * 14 * 1000, 102.0, 104.0, 101.0, 103.0),
+            bar(TS_BASE + DAY_SEC * 28 * 1000, 103.0, 105.0, 102.0, 104.0),
+        ];
+        assert!(median_bar_gap_secs(&bars) >= TIME_LAYOUT_MIN_GAP_SECS);
+        let t0 = bars[0].t;
+        let t1 = bars[3].t;
+        let centers: Vec<u16> = bars
+            .iter()
+            .map(|b| time_to_column(b.t, t0, t1, area.left(), right))
+            .collect();
+        let adjacent = centers[2] - centers[1];
+        let wide = centers[3] - centers[2];
+        assert!(wide > adjacent, "wide={wide} adjacent={adjacent}");
+        let layouts = layout_candles(area, &bars, TimeRange::Y1);
+        assert_eq!(layouts.len(), 4);
+        assert_index_candle_layout_invariants(&layouts, area);
+        assert!(layouts[3].body_left > layouts[2].body_right);
+    }
+
+    #[test]
+    fn m1_daily_bars_use_index_not_time_layout() {
+        let bars = daily_bars_ms(22);
+        assert_eq!(median_bar_gap_secs(&bars), DAY_SEC);
+        assert!(median_bar_gap_secs(&bars) < TIME_LAYOUT_MIN_GAP_SECS);
+        let area = chart_area(80);
+        let layouts = layout_candles(area, &bars, TimeRange::M1);
+        let (body_w, gap, _) = fit_candle_body_and_gap_index(area.width, bars.len());
+        let stride = body_w + gap;
+        assert_eq!(layouts[1].body_left - layouts[0].body_left, stride);
+        for pair in layouts.windows(2) {
+            assert_eq!(pair[1].body_left, pair[0].body_right + gap + 1);
+        }
+    }
+
+    #[test]
+    fn median_bar_gap_secs_converts_millisecond_timestamps() {
+        let bars = daily_bars_ms(5);
+        assert!(bar_timestamps_are_millis(&bars));
+        assert_eq!(median_bar_gap_secs(&bars), DAY_SEC);
+        let intraday = intraday_bars(5);
+        assert!(bar_timestamps_are_millis(&intraday));
+        assert_eq!(median_bar_gap_secs(&intraday), 300);
+    }
+
+    #[test]
+    fn m1_intraday_fallback_uses_index_stride() {
+        let bars = intraday_bars(30);
+        assert!(median_bar_gap_secs(&bars) < TIME_LAYOUT_MIN_GAP_SECS);
+        let area = chart_area(80);
+        let layouts = layout_candles(area, &bars, TimeRange::M1);
+        let (body_w, gap, _) = fit_candle_body_and_gap_index(area.width, bars.len());
+        let stride = body_w + gap;
+        assert_eq!(layouts[1].body_left - layouts[0].body_left, stride);
+    }
+
+    /// **1D** / **1W** use equal index spacing with fixed body width + gap.
+    #[test]
+    fn layout_candles_d1_index_stride() {
+        let area = chart_area(80);
+        let bars = intraday_bars(40);
+        let layouts = layout_candles(area, &bars, TimeRange::D1);
+        assert_eq!(layouts.len(), 40);
+        let (body_w, gap, _) = fit_candle_body_and_gap_index(area.width, bars.len());
+        let stride = body_w + gap;
+        assert_index_candle_layout_invariants(&layouts, area);
+        for pair in layouts.windows(2) {
+            assert_eq!(pair[1].body_left, pair[0].body_left + stride);
+        }
+    }
+
+    #[test]
+    fn layout_candles_monotonic() {
+        let cases = [
+            (60u16, 20usize, TimeRange::M1),
+            (80, 22, TimeRange::M1),
+            (120, 40, TimeRange::Y1),
+        ];
+        for (w, n, tr) in cases {
+            let area = chart_area(w);
+            let bars = daily_bars(n, 1);
+            let layouts = layout_candles(area, &bars, tr);
+            assert_eq!(layouts.len(), n);
+            assert_index_candle_layout_invariants(&layouts, area);
+            for pair in layouts.windows(2) {
+                assert!(pair[1].body_left > pair[0].body_left);
+            }
+        }
+    }
+
+    #[test]
+    fn layout_candles_dense_when_more_bars_than_width() {
+        let w = 10u16;
+        let area = chart_area(w);
+        let bars = intraday_bars(25);
+        let layouts = layout_candles(area, &bars, TimeRange::D1);
+        assert_eq!(layouts.len(), 25);
+        assert_dense_candle_layout_invariants(&layouts, area);
+    }
+
+    fn assert_candle_layout_bounds_and_wick(layouts: &[CandleBarLayout], area: Rect) {
+        let left = area.left();
+        let right = area.right().saturating_sub(1);
+        for layout in layouts {
+            assert!(layout.body_left <= layout.wick_x());
+            assert!(layout.wick_x() <= layout.body_right);
+            assert_eq!(layout.wick_x(), layout.body_left + layout.body_w() / 2);
+            assert!(layout.body_left >= left && layout.body_right <= right);
+        }
+        if !layouts.is_empty() {
+            assert!(layouts[0].body_left >= left);
+            assert!(layouts.last().expect("non-empty").body_right <= right);
+        }
+    }
+
+    fn assert_index_candle_layout_invariants(layouts: &[CandleBarLayout], area: Rect) {
+        assert_candle_layout_bounds_and_wick(layouts, area);
+        for layout in layouts {
+            assert!((1..=CANDLE_BODY_W_MAX).contains(&layout.body_w()));
+        }
+    }
+
+    fn assert_dense_candle_layout_invariants(layouts: &[CandleBarLayout], area: Rect) {
+        assert_candle_layout_bounds_and_wick(layouts, area);
+        for layout in layouts {
+            assert!(layout.body_w() >= 1);
+        }
+    }
+
+    fn candle_fixture_bars(n: usize) -> Vec<HistoricalData> {
+        daily_bars(n, 1)
+    }
+
+    fn render_candlestick_snapshot(width: u16, height: u16, bars: usize) -> String {
+        use crate::app::snapshot_test_util::{buffer_snapshot_string, render_to_buffer};
+        use crate::config::theme::ThemePreset;
+
+        let data = candle_fixture_bars(bars);
+        let (min_y, max_y) = price_bounds(&data).expect("fixture bounds");
+        let theme = ResolvedTheme::from_palette(ThemePreset::Dark.base_rgb());
+        let area = Rect::new(0, 0, width, height);
+        let chart = CandlestickChart {
+            data: &data,
+            min_y,
+            max_y,
+            theme,
+            time_range: TimeRange::M1,
+        };
+        let buf = render_to_buffer(width, height, |f| {
+            f.render_widget(chart, area);
+        });
+        buffer_snapshot_string(&buf)
+    }
+
+    /// Issue #190 / SPEC §63.5 — candlestick density at 80×24.
+    #[test]
+    fn candlestick_density_80x24() {
+        insta::assert_snapshot!(
+            "candlestick_density_80x24",
+            render_candlestick_snapshot(80, 24, 20)
+        );
+    }
+
+    /// Issue #190 / SPEC §63.5 — candlestick density at 120×40.
+    #[test]
+    fn candlestick_density_120x40() {
+        insta::assert_snapshot!(
+            "candlestick_density_120x40",
+            render_candlestick_snapshot(120, 40, 40)
+        );
     }
 }
