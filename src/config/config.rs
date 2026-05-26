@@ -181,9 +181,18 @@ impl Config {
         load_config_from_path(&path)
     }
 
-    /// Persist config. Errors are dropped (TUI has no logger); use [`try_save`](Self::try_save) to handle them.
+    /// Persist config to `~/.stockterm.json`.
+    ///
+    /// **Deprecated** — prefer [`try_save`](Self::try_save). On failure, logs via
+    /// `tracing::error!` and does not surface in the TUI (Issue #192 / SPEC §66).
+    #[deprecated(
+        since = "0.1.0",
+        note = "use Config::try_save; errors are logged via tracing"
+    )]
     pub fn save(&self) {
-        let _ = self.try_save();
+        if let Err(e) = self.try_save() {
+            tracing::error!(error = %e, "Config::save failed");
+        }
     }
 
     pub fn try_save(&self) -> Result<(), ConfigError> {
@@ -314,6 +323,55 @@ mod tests {
             c.keymap.as_ref().unwrap().get("colon").map(String::as_str),
             Some("Quit")
         );
+    }
+
+    /// Issue #192 / SPEC §66 — `try_save` propagates I/O errors (Unix read-only file).
+    #[cfg(unix)]
+    #[test]
+    fn try_save_permission_denied_returns_io_err() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let _lock = ENV_TEST_LOCK.lock().expect("env test lock");
+        let dir =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/_stockterm_readonly_cfg_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join(".stockterm.json");
+        fs::write(&path, "{}").expect("write config");
+        let mut perms = fs::metadata(&path).expect("meta").permissions();
+        perms.set_mode(0o444);
+        fs::set_permissions(&path, perms).expect("chmod ro");
+        let _home = EnvVarGuard::set("HOME", dir.to_str().expect("utf8 home"));
+        let res = Config::default().try_save();
+        let _ = fs::remove_dir_all(&dir);
+        assert!(
+            matches!(res, Err(ConfigError::Io(_))),
+            "expected Io error on read-only config, got {res:?}"
+        );
+    }
+
+    /// Issue #192 / SPEC §66 — deprecated `save` does not panic when `try_save` fails.
+    #[cfg(unix)]
+    #[test]
+    #[allow(deprecated)]
+    fn config_save_does_not_panic_on_try_save_failure() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let _lock = ENV_TEST_LOCK.lock().expect("env test lock");
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target/_stockterm_readonly_cfg_save_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join(".stockterm.json");
+        fs::write(&path, "{}").expect("write config");
+        let mut perms = fs::metadata(&path).expect("meta").permissions();
+        perms.set_mode(0o444);
+        fs::set_permissions(&path, perms).expect("chmod ro");
+        let _home = EnvVarGuard::set("HOME", dir.to_str().expect("utf8 home"));
+        let cfg = Config::default();
+        assert!(matches!(cfg.try_save(), Err(ConfigError::Io(_))));
+        cfg.save();
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
