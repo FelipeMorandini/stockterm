@@ -443,6 +443,24 @@ pub struct App {
     pub filter_query: String,
     /// Issue #16 — true after `/` until Enter (commit) or Esc (clear).
     pub filter_input_mode: bool,
+    /// Issue #194 / §69 — when true, `filter_query` is a regex pattern.
+    pub filter_regex_mode: bool,
+    /// Issue #194 — compile error for the active regex pattern (display only).
+    pub filter_regex_error: Option<String>,
+    /// Issue #194 — compiled regex for the active query (rebuilt off the draw path).
+    pub filter_compiled: crate::app::table_filter::CompiledTableFilter,
+    /// Issue #194 — precomputed watchlist row indices for draw (§69.3.4).
+    pub watchlist_filter_indices_cache: Vec<usize>,
+    /// Issue #194 — precomputed portfolio row indices for draw.
+    pub portfolio_filter_indices_cache: Vec<usize>,
+    /// Issue #194 — index into `config.saved_filters` for recall/delete cycling.
+    pub saved_filter_cycle_index: usize,
+    /// Issue #194 — one-line save-as name entry.
+    pub filter_save_name_buffer: String,
+    /// Issue #194 — `FilterSaveNamed` opened the save-as prompt.
+    pub filter_save_prompt: bool,
+    /// Issue #194 — first `ctrl+d` armed; second step is `y`.
+    pub filter_delete_armed: bool,
 }
 
 const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
@@ -742,6 +760,18 @@ impl App {
             settings_layout_draft,
             filter_query: String::new(),
             filter_input_mode: false,
+            filter_regex_mode: false,
+            filter_regex_error: None,
+            filter_compiled: crate::app::table_filter::CompiledTableFilter {
+                compiled_regex: None,
+                regex_error: None,
+            },
+            watchlist_filter_indices_cache: Vec::new(),
+            portfolio_filter_indices_cache: Vec::new(),
+            saved_filter_cycle_index: 0,
+            filter_save_name_buffer: String::new(),
+            filter_save_prompt: false,
+            filter_delete_armed: false,
         };
 
         if !app.portfolio.is_empty() {
@@ -753,6 +783,7 @@ impl App {
 
         crate::app::backtest_ui::rebuild_backtest_params_cache(&mut app);
         crate::app::options::sync_options_chrome(&mut app);
+        app.rebuild_table_filter_caches();
         app
     }
 
@@ -1037,22 +1068,175 @@ impl App {
         self.portfolio_remove_armed = false;
     }
 
-    /// Issue #16 / SPEC §23 — reset filter on any tab change.
+    /// Issue #16 / SPEC §23 — reset filter on any tab change (§69.5 extends).
     fn clear_table_filter(&mut self) {
         self.filter_query.clear();
         self.filter_input_mode = false;
+        self.filter_regex_mode = false;
+        self.filter_regex_error = None;
+        self.filter_compiled = crate::app::table_filter::compile_active_filter("", false);
+        self.filter_save_prompt = false;
+        self.filter_save_name_buffer.clear();
+        self.filter_delete_armed = false;
+        self.saved_filter_cycle_index = 0;
+        self.rebuild_table_filter_caches();
+    }
+
+    /// Recompile regex (if needed) and refresh filtered row caches (§69.3.4).
+    pub(crate) fn rebuild_table_filter_caches(&mut self) {
+        self.filter_compiled = crate::app::table_filter::compile_active_filter(
+            &self.filter_query,
+            self.filter_regex_mode,
+        );
+        self.filter_regex_error = self.filter_compiled.regex_error.clone();
+        self.watchlist_filter_indices_cache =
+            crate::app::table_filter::filter_symbol_indices_with_mode(
+                &self.watchlist,
+                &self.filter_query,
+                self.filter_regex_mode,
+                &self.filter_compiled,
+            );
+        self.portfolio_filter_indices_cache =
+            crate::app::table_filter::filter_row_indices_with_mode(
+                self.portfolio.len(),
+                |i| self.portfolio[i].symbol.as_str(),
+                &self.filter_query,
+                self.filter_regex_mode,
+                &self.filter_compiled,
+            );
     }
 
     pub(crate) fn watchlist_filter_indices(&self) -> Vec<usize> {
-        crate::app::table_filter::filter_symbol_indices(&self.watchlist, &self.filter_query)
+        self.watchlist_filter_indices_cache.clone()
     }
 
     pub(crate) fn portfolio_filter_indices(&self) -> Vec<usize> {
-        crate::app::table_filter::filter_row_indices(
-            self.portfolio.len(),
-            |i| self.portfolio[i].symbol.as_str(),
-            &self.filter_query,
-        )
+        self.portfolio_filter_indices_cache.clone()
+    }
+
+    /// Status-line hint while filter input mode is active (§69.3.1).
+    pub(crate) fn filter_status_line(&self) -> Option<String> {
+        if !self.filter_input_mode {
+            return None;
+        }
+        if self.filter_save_prompt {
+            return Some(format!(
+                "Save filter as: {}{}",
+                self.filter_save_name_buffer,
+                if self.filter_save_name_buffer.is_empty() {
+                    "_"
+                } else {
+                    ""
+                }
+            ));
+        }
+        if self.filter_delete_armed {
+            return Some("Delete saved filter? press y to confirm · Esc cancels".to_string());
+        }
+        let mode = if self.filter_regex_mode {
+            "regex"
+        } else {
+            "substring"
+        };
+        let mut line = format!("[{mode}] /{}/", self.filter_query);
+        if let Some(err) = &self.filter_regex_error {
+            line.push_str(" · ");
+            line.push_str(err);
+        }
+        line.push_str(" · r mode · ^S save · ^N/^P recall · ^D del");
+        Some(line)
+    }
+
+    fn filter_recall_saved(&mut self, delta: isize) {
+        let n = self.config.saved_filters.len();
+        if n == 0 {
+            return;
+        }
+        let next = if self.filter_query.is_empty() {
+            if delta >= 0 {
+                0
+            } else {
+                n - 1
+            }
+        } else if delta >= 0 {
+            (self.saved_filter_cycle_index + 1) % n
+        } else {
+            (self.saved_filter_cycle_index + n - 1) % n
+        };
+        self.saved_filter_cycle_index = next;
+        let entry = self.config.saved_filters[next].clone();
+        self.filter_query = entry.pattern;
+        self.filter_regex_mode = entry.regex;
+        self.filter_delete_armed = false;
+        self.filter_save_prompt = false;
+        self.rebuild_table_filter_caches();
+        self.clamp_both_filter_selections();
+    }
+
+    fn filter_commit_save_named(&mut self) {
+        use crate::models::saved_filter::{
+            SavedFilter, MAX_SAVED_FILTERS, MAX_SAVED_FILTER_NAME_LEN,
+        };
+
+        let name: String = self
+            .filter_save_name_buffer
+            .trim()
+            .chars()
+            .take(MAX_SAVED_FILTER_NAME_LEN)
+            .collect();
+        if name.is_empty() {
+            return;
+        }
+        let pattern: String = self
+            .filter_query
+            .chars()
+            .take(crate::app::table_filter::MAX_FILTER_QUERY_LEN)
+            .collect();
+        if pattern.is_empty() {
+            return;
+        }
+        let entry = SavedFilter {
+            name: name.clone(),
+            pattern,
+            regex: self.filter_regex_mode,
+        };
+        if let Some(pos) = self
+            .config
+            .saved_filters
+            .iter()
+            .position(|f| f.name == name)
+        {
+            self.config.saved_filters[pos] = entry;
+            self.saved_filter_cycle_index = pos;
+        } else {
+            self.config.saved_filters.push(entry);
+            if self.config.saved_filters.len() > MAX_SAVED_FILTERS {
+                self.config.saved_filters.remove(0);
+            }
+            self.saved_filter_cycle_index = self.config.saved_filters.len().saturating_sub(1);
+        }
+        self.filter_save_prompt = false;
+        self.filter_save_name_buffer.clear();
+        let tab = self.active_tab;
+        let _ = self.persist_config_interactive(tab, ErrorSourceDomain::Other, "saved filters");
+    }
+
+    fn filter_confirm_delete_saved(&mut self) {
+        let n = self.config.saved_filters.len();
+        if n == 0 {
+            self.filter_delete_armed = false;
+            return;
+        }
+        let idx = self.saved_filter_cycle_index.min(n - 1);
+        self.config.saved_filters.remove(idx);
+        if self.config.saved_filters.is_empty() {
+            self.saved_filter_cycle_index = 0;
+        } else {
+            self.saved_filter_cycle_index = idx.min(self.config.saved_filters.len() - 1);
+        }
+        self.filter_delete_armed = false;
+        let tab = self.active_tab;
+        let _ = self.persist_config_interactive(tab, ErrorSourceDomain::Other, "saved filters");
     }
 
     pub(crate) fn clamp_portfolio_filter_selection(&mut self) {
@@ -1090,8 +1274,8 @@ impl App {
         self.clamp_watchlist_filter_selection();
     }
 
-    /// Issue #16 / #137 — while `filter_input_mode`, resolves [`BindingLayer::FilterInput`]
-    /// (SPEC §28); returns true when mode is active (swallows unmapped keys).
+    /// Issue #16 / #137 / #194 — while `filter_input_mode`, resolves [`BindingLayer::FilterInput`]
+    /// (SPEC §28 / §69); returns true when mode is active (swallows unmapped keys).
     pub(crate) fn consume_filter_input_key(&mut self, key: &crossterm::event::KeyEvent) -> bool {
         use crossterm::event::{KeyCode, KeyModifiers};
         use Action::*;
@@ -1100,34 +1284,127 @@ impl App {
             return false;
         }
 
-        let Some(action) = self.resolved_keymap.action(BindingLayer::FilterInput, key) else {
-            return true;
-        };
-
-        if key.modifiers != KeyModifiers::NONE {
+        if self.filter_delete_armed {
+            if key.modifiers == KeyModifiers::NONE {
+                if let KeyCode::Char('y') | KeyCode::Char('Y') = key.code {
+                    self.filter_confirm_delete_saved();
+                    self.clamp_both_filter_selections();
+                    return true;
+                }
+                if matches!(key.code, KeyCode::Esc) {
+                    self.filter_delete_armed = false;
+                    return true;
+                }
+            }
+            self.clamp_both_filter_selections();
             return true;
         }
 
-        match action {
-            FilterClear => {
-                self.filter_query.clear();
-                self.filter_input_mode = false;
+        if self.filter_save_prompt {
+            match key.code {
+                KeyCode::Esc if key.modifiers == KeyModifiers::NONE => {
+                    self.filter_save_prompt = false;
+                    self.filter_save_name_buffer.clear();
+                }
+                KeyCode::Enter if key.modifiers == KeyModifiers::NONE => {
+                    self.filter_commit_save_named();
+                }
+                KeyCode::Backspace if key.modifiers == KeyModifiers::NONE => {
+                    self.filter_save_name_buffer.pop();
+                }
+                KeyCode::Char(c) if key.modifiers == KeyModifiers::NONE => {
+                    use crate::models::saved_filter::MAX_SAVED_FILTER_NAME_LEN;
+                    if (c.is_alphanumeric() || c == '-' || c == '_' || c == ' ')
+                        && self.filter_save_name_buffer.len() < MAX_SAVED_FILTER_NAME_LEN
+                    {
+                        self.filter_save_name_buffer.push(c);
+                    }
+                }
+                _ => {}
             }
-            FilterCommit => {
-                self.filter_input_mode = false;
-            }
-            FilterBackspace => {
-                self.filter_query.pop();
-            }
-            FilterSlash if self.filter_query.is_empty() => {
-                self.filter_input_mode = false;
-            }
-            FilterQueryChar => {
+            self.clamp_both_filter_selections();
+            return true;
+        }
+
+        let Some(action) = self.resolved_keymap.action(BindingLayer::FilterInput, key) else {
+            if key.modifiers == KeyModifiers::NONE {
                 if let KeyCode::Char(c) = key.code {
-                    if (c.is_alphabetic() || c.is_ascii_digit() || c == '-' || c == '.' || c == '=')
-                        && self.filter_query.len() < crate::app::table_filter::MAX_FILTER_QUERY_LEN
+                    if crate::app::table_filter::filter_query_char_allowed(
+                        c,
+                        self.filter_regex_mode,
+                    ) && self.filter_query.len() < crate::app::table_filter::MAX_FILTER_QUERY_LEN
                     {
                         self.filter_query.push(c);
+                        self.rebuild_table_filter_caches();
+                    }
+                }
+            }
+            self.clamp_both_filter_selections();
+            return true;
+        };
+
+        match action {
+            FilterClear if key.modifiers == KeyModifiers::NONE => {
+                self.filter_query.clear();
+                self.filter_input_mode = false;
+                self.filter_regex_mode = false;
+                self.filter_delete_armed = false;
+                self.filter_save_prompt = false;
+                self.filter_save_name_buffer.clear();
+                self.rebuild_table_filter_caches();
+            }
+            FilterCommit if key.modifiers == KeyModifiers::NONE => {
+                self.filter_input_mode = false;
+                self.filter_delete_armed = false;
+                self.filter_save_prompt = false;
+            }
+            FilterBackspace if key.modifiers == KeyModifiers::NONE => {
+                self.filter_query.pop();
+                self.rebuild_table_filter_caches();
+            }
+            FilterSlash if key.modifiers == KeyModifiers::NONE && self.filter_query.is_empty() => {
+                self.filter_input_mode = false;
+            }
+            FilterRegexToggle if key.modifiers == KeyModifiers::NONE => {
+                self.filter_regex_mode = !self.filter_regex_mode;
+                self.rebuild_table_filter_caches();
+            }
+            FilterSaveNamed => {
+                self.filter_save_prompt = true;
+                self.filter_delete_armed = false;
+                self.filter_save_name_buffer = self
+                    .config
+                    .saved_filters
+                    .get(self.saved_filter_cycle_index)
+                    .map(|f| f.name.clone())
+                    .or_else(|| self.config.saved_filters.last().map(|f| f.name.clone()))
+                    .unwrap_or_default();
+            }
+            FilterRecallNext => {
+                self.filter_recall_saved(1);
+            }
+            FilterRecallPrev => {
+                self.filter_recall_saved(-1);
+            }
+            FilterDeleteSaved => {
+                if self.config.saved_filters.is_empty() {
+                    // no-op
+                } else if self.filter_delete_armed {
+                    self.filter_delete_armed = false;
+                } else {
+                    self.filter_delete_armed = true;
+                    self.filter_save_prompt = false;
+                }
+            }
+            FilterQueryChar if key.modifiers == KeyModifiers::NONE => {
+                if let KeyCode::Char(c) = key.code {
+                    if crate::app::table_filter::filter_query_char_allowed(
+                        c,
+                        self.filter_regex_mode,
+                    ) && self.filter_query.len() < crate::app::table_filter::MAX_FILTER_QUERY_LEN
+                    {
+                        self.filter_query.push(c);
+                        self.rebuild_table_filter_caches();
                     }
                 }
             }
@@ -2724,6 +3001,7 @@ impl App {
         }
         let same_ticker_case_only = symbols_equivalent(&prev_effective, &sym);
         self.watchlist.push(sym.clone());
+        self.rebuild_table_filter_caches();
         self.symbol = sym;
         self.config.watchlist = self.watchlist.clone();
         if let Err(e) = self.try_save_config_with_session() {
@@ -2769,6 +3047,7 @@ impl App {
             return;
         }
         self.watchlist.remove(actual);
+        self.rebuild_table_filter_caches();
         self.watchlist_quotes
             .retain(|k, _| self.watchlist.iter().any(|w| symbols_equivalent(w, k)));
         self.symbol_kind_cache
@@ -3515,6 +3794,7 @@ impl App {
             self.portfolio
                 .push(PortfolioItem::new(sym.clone(), shares, purchase_price));
         }
+        self.rebuild_table_filter_caches();
 
         self.config.portfolio = self.portfolio.clone();
         match self.try_save_config_with_session() {
@@ -3555,6 +3835,7 @@ impl App {
 
         let backup = self.portfolio.clone();
         self.portfolio.remove(index);
+        self.rebuild_table_filter_caches();
         self.config.portfolio = self.portfolio.clone();
         match self.try_save_config_with_session() {
             Ok(()) => {
@@ -4047,6 +4328,7 @@ mod tests {
     fn sync_watchlist_selection_matches_equivalent_casing() {
         let mut app = App::new();
         app.watchlist = vec!["AAPL".into()];
+        app.rebuild_table_filter_caches();
         app.symbol = "aapl".to_string();
         app.sync_watchlist_selection_to_symbol();
         assert_eq!(app.watchlist_state.selected(), Some(0));

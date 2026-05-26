@@ -6200,3 +6200,90 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 | Unit/integration: superseded batch | | | |
 | Manual: §16 delay smoke | | | |
 | Manual: overlap cancel (if mode B) | | | |
+
+---
+
+## Issue #194 — Saved named filters + optional regex mode (§69)
+
+**Scope:**
+
+- [GitHub Issue #194](https://github.com/FelipeMorandini/stockterm/issues/194) — Extend §23 table filtering on **Portfolio** holdings and **Stock View** watchlist with (1) opt-in **regex** mode (`r` toggle in filter input mode, invalid pattern → inline error, no panic, all rows visible until valid) and (2) **saved named filters** in `~/.stockterm.json` (save / recall / delete from filter input mode; survive restart). Substring mode remains the default.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §69.
+
+**Prerequisite:** §23 / Issue #16 behavior unchanged when regex mode is off and no saved filter is applied.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo build --release
+   cargo clippy -- -D warnings
+   cargo test
+   ```
+
+   **Pass:** All exit 0; unit tests cover regex match, invalid-regex → all rows, and `SavedFilter` / config load per §69.7.
+
+### Manual — Regex mode (Portfolio)
+
+**Prep:** `~/.stockterm.json` **`portfolio`** has **AAPL**, **MSFT**, **GOOGL**. Restart **`cargo run --release`**.
+
+1. **Portfolio** → **`/`** → type **`^MS`** → press **`r`** (regex toggle per README / default keymap).  
+   **Pass:** Only **MSFT** remains (regex `^MS` matches); title or status indicates **regex** mode.
+
+2. Press **`r`** again (back to substring) with query **`^MS`**.  
+   **Pass:** Substring mode: any symbol **containing** the literal `^MS` (likely none) — behavior differs from step 1; mode indicator shows **substring**.
+
+3. **`/`** → **`r`** → type **`[`** (incomplete character class).  
+   **Pass:** Inline **invalid regex** message; **all** holdings still listed (no panic, no empty crash).
+
+4. Fix pattern to **`^A`** → **Enter** to commit input mode. Press **`j`**/**`k`**.  
+   **Pass:** Navigation only on filtered rows (**AAPL** only for `^A`).
+
+5. **Esc** → full list returns; regex mode cleared per §69.5.
+
+### Manual — Regex mode (Stock View)
+
+1. **Stock View** with watchlist **AAPL**, **MSFT**, **BTC-USD** → **`/`** → **`r`** → pattern **`USD$`**.  
+   **Pass:** **BTC-USD** matches; others hidden.
+
+2. **Tab** away and back to **Stock View**.  
+   **Pass:** Active filter cleared (§69.5); full watchlist visible.
+
+### Manual — Saved filters (persistence)
+
+1. **Portfolio** → **`/`** → type **`aa`** (substring) → **`Ctrl+s`** → name **`contains-a`** → confirm save.  
+   **Pass:** Status OK; quit app.
+
+2. Inspect `~/.stockterm.json` — **`saved_filters`** contains **`contains-a`** with **`"regex": false`** and pattern **`aa`**.  
+   **Pass:** JSON matches §69.3.2 shape.
+
+3. Relaunch → **Portfolio** → **`/`** → **`Ctrl+n`** (or **`Ctrl+p`**) until **`contains-a`** loads.  
+   **Pass:** Filter applies without retyping; **AAPL**-style rows visible.
+
+4. **`Ctrl+d`** then **`y`** (delete saved filter per §69.3.2) → save config → restart.  
+   **Pass:** Entry removed from JSON; recall no longer finds it.
+
+5. **Regression §23.7:** With an active saved/regex filter, wait one quote refresh cycle.  
+   **Pass:** Symbols **not** in the filtered view still receive quotes when filter is cleared (view-only filter).
+
+### Manual — Keymap / README
+
+1. Open **README** filter / keymap section.  
+   **Pass:** Documents **`r`** (regex toggle), **`Ctrl+s` / `Ctrl+n` / `Ctrl+p` / `Ctrl+d`** (or remapped equivalents), and **`saved_filters`** config field.
+
+2. (Optional) Remap **`FilterRegexToggle`** in **`keymap`** JSON; retest toggle.  
+   **Pass:** Regex toggle follows remapped chord on **`FilterInput`** layer only.
+
+### Sign-off — Issue #194
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated build / clippy / tests | maintainer | 2026-05-26 | Pass |
+| Portfolio: regex toggle + match | maintainer | 2026-05-26 | Pass |
+| Portfolio: invalid regex safe UX | maintainer | 2026-05-26 | Pass |
+| Stock View: regex + tab clear | maintainer | 2026-05-26 | Pass |
+| Saved filter: save / JSON / recall / delete | maintainer | 2026-05-26 | Pass |
+| Quote batch full symbol set (§23.7 regression) | maintainer | 2026-05-26 | Pass |
+| README / keymap docs | maintainer | 2026-05-26 | Pass |

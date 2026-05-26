@@ -4,6 +4,7 @@ pub mod historical;
 pub mod news;
 pub mod options;
 pub mod portfolio;
+pub mod saved_filter;
 pub mod search;
 pub mod symbol;
 pub mod ticker;

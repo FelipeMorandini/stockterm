@@ -9,6 +9,7 @@ use super::theme::Theme;
 use crate::models::alerts::Alert;
 use crate::models::backtest::{BacktestConfig, BacktestStrategyParams};
 use crate::models::portfolio::PortfolioItem;
+use crate::models::saved_filter::{sanitize_saved_filters, SavedFilter};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -40,6 +41,7 @@ pub enum MarketProviderKind {
 /// | `last_chart_mode` | Last Charts display mode (`line`, `candles`). Default: omitted. |
 /// | `keymap` | Optional chord → action overrides (see **README** “Keymap” and [`keymap`](crate::config::keymap)). Default: omitted → built-in defaults. |
 /// | `layout` | Shell chrome + pane splits (see §31 / [`layout`](crate::config::layout)). Default: omitted → built-in defaults. |
+/// | `saved_filters` | Named table filters for Stock View / Portfolio (Issue #194 / §69). Default: empty. |
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
@@ -87,6 +89,9 @@ pub struct Config {
     /// Active backtest strategy and periods (Issue #25 / §47).
     #[serde(default)]
     pub backtest_strategy: BacktestStrategyParams,
+    /// Named substring/regex filters (Issue #194 / §69).
+    #[serde(default)]
+    pub saved_filters: Vec<SavedFilter>,
 }
 
 fn default_notifications_enabled() -> bool {
@@ -113,6 +118,7 @@ impl Default for Config {
             layout: Layout::default(),
             backtest: BacktestConfig::default(),
             backtest_strategy: BacktestStrategyParams::default(),
+            saved_filters: Vec::new(),
         }
     }
 }
@@ -132,7 +138,11 @@ fn load_config_from_path(path: &Path) -> Result<Config, ConfigError> {
     match fs::read_to_string(path) {
         Err(e) if e.kind() == ErrorKind::NotFound => Ok(Config::default()),
         Err(e) => Err(ConfigError::Io(e)),
-        Ok(s) => serde_json::from_str(&s).map_err(ConfigError::Serde),
+        Ok(s) => {
+            let mut cfg: Config = serde_json::from_str(&s).map_err(ConfigError::Serde)?;
+            sanitize_saved_filters(&mut cfg.saved_filters);
+            Ok(cfg)
+        }
     }
 }
 

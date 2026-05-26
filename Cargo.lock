@@ -2094,6 +2094,7 @@ dependencies = [
  "insta",
  "notify-rust",
  "ratatui",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
