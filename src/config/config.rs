@@ -332,8 +332,8 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
 
         let _lock = ENV_TEST_LOCK.lock().expect("env test lock");
-        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("target/_stockterm_readonly_cfg_test");
+        let dir =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/_stockterm_readonly_cfg_test");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("mkdir");
         let path = dir.join(".stockterm.json");

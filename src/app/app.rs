@@ -4238,8 +4238,8 @@ mod tests {
         }
 
         let _lock = HOME_TEST_LOCK.lock().expect("home test lock");
-        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("target/_stockterm_cfg_save_ok_test");
+        let dir =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/_stockterm_cfg_save_ok_test");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("mkdir");
         let _home = HomeGuard::set(dir.to_str().expect("utf8 home"));
