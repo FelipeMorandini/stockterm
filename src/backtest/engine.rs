@@ -68,7 +68,7 @@ pub fn verify_historical_symbol(
     symbol: &str,
 ) -> Result<(), BacktestError> {
     let t = hist.ticker.trim();
-    if t.is_empty() || t.eq_ignore_ascii_case(symbol) {
+    if t.is_empty() || crate::models::symbol::symbols_equivalent(t, symbol) {
         return Ok(());
     }
     Err(BacktestError::SymbolMismatch {

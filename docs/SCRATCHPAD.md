@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Cleared 2026-05-25 — §64 / §65 / Issues #199, #200 ship. -->
+<!-- Cleared 2026-05-25 — §67 / [#79](https://github.com/FelipeMorandini/stockterm/issues/79) ship; follow-up filed as [#204](https://github.com/FelipeMorandini/stockterm/issues/204). -->

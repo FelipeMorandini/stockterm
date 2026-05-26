@@ -472,7 +472,7 @@ fn inflight_stale_after() -> Duration {
         .unwrap_or(INFLIGHT_STALE_AFTER)
 }
 
-pub use crate::models::symbol::normalize_symbol;
+pub use crate::models::symbol::{normalize_symbol, symbols_equivalent};
 
 fn quote_error_digest_for_merge(err: &AppError) -> String {
     match err {
@@ -1124,7 +1124,7 @@ impl App {
             }
             FilterQueryChar => {
                 if let KeyCode::Char(c) = key.code {
-                    if (c.is_ascii_alphanumeric() || c == '-' || c == '.')
+                    if (c.is_alphabetic() || c.is_ascii_digit() || c == '-' || c == '.' || c == '=')
                         && self.filter_query.len() < crate::app::table_filter::MAX_FILTER_QUERY_LEN
                     {
                         self.filter_query.push(c);
@@ -2671,7 +2671,7 @@ impl App {
         }
     }
 
-    /// Aligns watchlist table selection with [`Self::symbol`] (compares via [`normalize_symbol`]).
+    /// Aligns watchlist table selection with [`Self::symbol`] (compares via [`symbols_equivalent`]).
     ///
     /// When `symbol` is not on the watchlist (or hidden by the active filter), clears the row
     /// highlight and **does not** change `symbol` (detail pane keeps a typed ticker off-list).
@@ -2685,7 +2685,7 @@ impl App {
         if let Some(full_idx) = self
             .watchlist
             .iter()
-            .position(|s| normalize_symbol(s).as_deref() == Some(active))
+            .position(|s| symbols_equivalent(s, active))
         {
             if let Some(sel) = f.iter().position(|&i| i == full_idx) {
                 self.watchlist_state.select(Some(sel));
@@ -2703,7 +2703,7 @@ impl App {
         let Some(sym) = normalize_symbol(&self.symbol) else {
             return;
         };
-        let symbol_changed = self.symbol != sym;
+        let symbol_changed = !symbols_equivalent(&self.symbol, &sym);
         self.symbol = sym;
         self.sync_watchlist_selection_to_symbol();
         if symbol_changed {
@@ -2719,10 +2719,10 @@ impl App {
         let Some(sym) = normalize_symbol(&self.symbol) else {
             return;
         };
-        if self.watchlist.iter().any(|s| s == &sym) {
+        if self.watchlist.iter().any(|s| symbols_equivalent(s, &sym)) {
             return;
         }
-        let same_ticker_case_only = prev_effective.eq_ignore_ascii_case(&sym);
+        let same_ticker_case_only = symbols_equivalent(&prev_effective, &sym);
         self.watchlist.push(sym.clone());
         self.symbol = sym;
         self.config.watchlist = self.watchlist.clone();
@@ -2770,12 +2770,9 @@ impl App {
         }
         self.watchlist.remove(actual);
         self.watchlist_quotes
-            .retain(|k, _| self.watchlist.contains(k));
-        self.symbol_kind_cache.retain(|k, _| {
-            self.watchlist
-                .iter()
-                .any(|w| normalize_symbol(w).as_deref() == Some(k.as_str()))
-        });
+            .retain(|k, _| self.watchlist.iter().any(|w| symbols_equivalent(w, k)));
+        self.symbol_kind_cache
+            .retain(|k, _| self.watchlist.iter().any(|w| symbols_equivalent(w, k)));
         self.config.watchlist = self.watchlist.clone();
         if let Err(e) = self.try_save_config_with_session() {
             self.surface_runtime_error(
@@ -3065,11 +3062,9 @@ impl App {
     }
 
     fn options_chain_matches_symbol(&self) -> bool {
-        self.options_chain.as_ref().is_some_and(|c| {
-            c.slice
-                .underlying
-                .eq_ignore_ascii_case(self.symbol.as_str())
-        })
+        self.options_chain
+            .as_ref()
+            .is_some_and(|c| symbols_equivalent(&c.slice.underlying, self.symbol.as_str()))
     }
 
     /// Fetches options chain off the UI thread (Issue #22 / §48.3).
@@ -3509,7 +3504,7 @@ impl App {
         if let Some(item) = self
             .portfolio
             .iter_mut()
-            .find(|i| normalize_symbol(&i.symbol).as_deref() == Some(sym.as_str()))
+            .find(|i| symbols_equivalent(&i.symbol, &sym))
         {
             item.shares += shares;
             let total_shares = item.shares;
@@ -3529,10 +3524,7 @@ impl App {
                     if !f.is_empty() {
                         let pos = f
                             .iter()
-                            .position(|&i| {
-                                normalize_symbol(&self.portfolio[i].symbol).as_deref()
-                                    == Some(sym.as_str())
-                            })
+                            .position(|&i| symbols_equivalent(&self.portfolio[i].symbol, &sym))
                             .unwrap_or(f.len().saturating_sub(1));
                         self.portfolio_state.select(Some(pos));
                     }
@@ -4022,6 +4014,42 @@ mod tests {
         app.commit_stock_symbol_from_input();
         assert_eq!(app.symbol, "ETH-USD");
         assert!(app.watchlist_state.selected().is_none());
+    }
+
+    #[test]
+    fn commit_stock_symbol_from_input_case_only_keeps_historical_data() {
+        use crate::models::historical::{HistoricalData, HistoricalResponse};
+
+        let mut app = App::new();
+        app.symbol = "aapl".to_string();
+        app.historical_data = Some(HistoricalResponse {
+            ticker: "AAPL".into(),
+            results: vec![HistoricalData {
+                o: 1.0,
+                h: 2.0,
+                l: 0.5,
+                c: 1.5,
+                v: 100.0,
+                t: 1,
+                vw: 1.0,
+                n: None,
+            }],
+            ..Default::default()
+        });
+        let stamp_before = app.historical_data_stamp;
+        app.commit_stock_symbol_from_input();
+        assert_eq!(app.symbol, "AAPL");
+        assert!(app.historical_data.is_some());
+        assert_eq!(app.historical_data_stamp, stamp_before);
+    }
+
+    #[test]
+    fn sync_watchlist_selection_matches_equivalent_casing() {
+        let mut app = App::new();
+        app.watchlist = vec!["AAPL".into()];
+        app.symbol = "aapl".to_string();
+        app.sync_watchlist_selection_to_symbol();
+        assert_eq!(app.watchlist_state.selected(), Some(0));
     }
 
     #[test]

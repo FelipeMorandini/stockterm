@@ -794,7 +794,7 @@ impl App {
         if let Some(portfolio_item) = self
             .portfolio
             .iter()
-            .find(|item| item.symbol.eq_ignore_ascii_case(symbol))
+            .find(|item| crate::models::symbol::symbols_equivalent(&item.symbol, symbol))
         {
             return portfolio_item.current_price;
         }

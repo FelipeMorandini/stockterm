@@ -6074,3 +6074,129 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 | Manual: session debounce + RO session error | Maintainer | 2026-05-25 | Pass |
 | Manual: quit-path log line | Maintainer | 2026-05-25 | Pass |
 | Manual: watchlist / alerts smoke | Maintainer | 2026-05-25 | Pass |
+
+## Issue #79 — Unicode / full case-folding for ticker normalization (§67)
+
+**Scope:**
+
+- [GitHub Issue #79](https://github.com/FelipeMorandini/stockterm/issues/79) — Unicode-aware **`normalize_symbol`**, **`symbols_equivalent`**, and migration of ticker **`eq_ignore_ascii_case`** call sites per [`docs/SPEC.md`](SPEC.md) §67.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §67.
+
+**Status:** **Shipped** (2026-05-25) — manual sign-off complete.
+
+**Prerequisite:** §11.12.4 / Issue **#74** shipped (case-only watchlist add skip). Example Unicode test symbols agreed in the issue before manual QA.
+
+### Automated (local) — required when implementing
+
+1. Full test + lint:
+
+   ```bash
+   cargo test symbol
+   cargo test normalize_symbol
+   cargo clippy -- -D warnings
+   ```
+
+   **Pass:** Both exit 0; new §67 unit tests green.
+
+2. Regression — ASCII paths unchanged:
+
+   ```bash
+   cargo test normalize_symbol_trims
+   cargo test classify_symbol
+   ```
+
+   **Pass:** §43 crypto / equity classification tests still pass.
+
+### Manual — watchlist / chart case equivalence (§11.12.4 extension)
+
+**Prep:** `cargo build --release`. Use maintainer-provided Unicode ticker examples (provider must return quotes for them). Backup `~/.stockterm.json`.
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Enter a Unicode ticker that case-folds to an existing watchlist key (per §67 test matrix) | Normalizes to canonical stored form; no duplicate row for equivalent symbols. |
+| 2 | Press **`w`** (add to watchlist) when only casing/script variant differs from active symbol | Chart series **does not** clear (same effective ticker as §11.12.4). |
+| 3 | Change to a **different** Unicode ticker | Chart clears and reloads (§11.11.1 regression). |
+| 4 | Relaunch app | Watchlist persists canonical normalized symbols. |
+
+### Manual — quotes / alerts / portfolio lookup
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Hold Unicode symbol in watchlist; wait for quote refresh | Stock View + watchlist row show price (or documented provider error — not silent empty due to key mismatch). |
+| 2 | Add portfolio row + alert for same Unicode symbol | **`get_current_price`** / alert evaluation find cached quote (§41.1 alignment). |
+
+### Manual — filter (if §67.4.4 ships in same PR)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Stock View **`/`** filter; type Unicode substring from ticker | Filter narrows rows; **Esc** clears. |
+
+### Sign-off — Issue #79
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo test` + clippy | Maintainer | 2026-05-25 | Pass |
+| Unit: Unicode fold / NFC tests | Maintainer | 2026-05-25 | Pass |
+| Manual: watchlist dedup + chart skip | Maintainer | 2026-05-25 | Pass |
+| Manual: quote cache key alignment | Maintainer | 2026-05-25 | Pass |
+| Manual: filter (if in scope) | Maintainer | 2026-05-25 | Pass |
+
+---
+
+## Issue #191 — Optional CancellationToken for superseded quote batches (§68)
+
+**Scope:**
+
+- [GitHub Issue #191](https://github.com/FelipeMorandini/stockterm/issues/191) — Cooperative cancellation for **`run_stock_quote_batch`** when overlapping quote batches are allowed; stale **`FetchDone::Stock`** must not mutate **`watchlist_quotes`**.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §68.
+
+**Status:** **Deferred** — run this section only after maintainer approval of §68 **and** a §68.2 product trigger (overlapping quote batches). **If single-flight remains the only mode,** verify doc-only: generation ignore + §16 smoke still pass; skip overlap-specific steps.
+
+**Prerequisite:** §16 shipped ([#17](https://github.com/FelipeMorandini/stockterm/issues/17), [#46](https://github.com/FelipeMorandini/stockterm/issues/46), [#77](https://github.com/FelipeMorandini/stockterm/issues/77)). For overlap tests, feature flag or build that enables **`allow_overlapping_quote_batches`** (per §68.4.5) must be documented in the PR.
+
+### Automated (local) — required when implementing
+
+1. Full test + lint:
+
+   ```bash
+   cargo test stock_fetch
+   cargo test quote_batch
+   cargo clippy -- -D warnings
+   ```
+
+   **Pass:** Both exit 0; §68 supersede/cancel tests green.
+
+2. §16 regression (always):
+
+   ```bash
+   cargo test
+   ```
+
+   **Pass:** No regressions in inflight recovery / generation ignore tests.
+
+### Manual — single-flight baseline (always run before merge)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | `STOCKTERM_DEBUG_HTTP_DELAY_MS=5000 cargo run --release` | During delay, tab switch / **`j`/`k`** / typing remain responsive (§16.1 smoke). |
+| 2 | Rapid **`Enter`** on symbol change 3× during inflight refresh | Status **Refreshing quotes…**; final quotes match last symbol; no panic. |
+
+### Manual — overlap + cancel (only when §68 mode B enabled)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Start large watchlist refresh (many symbols or debug delay) | Batch in flight. |
+| 2 | Trigger product-defined “priority” refresh (per PR README — e.g. immediate active-symbol-only batch) | Prior HTTP work cancelled or ignored; UI shows quotes for **latest** user intent only. |
+| 3 | Tail log file (`tracing`, not stderr) | **`quote batch cancelled`** at **debug** level may appear; **no** `println!` in terminal. |
+| 4 | Confirm superseded symbol’s stale price does not flash on screen | **`watchlist_quotes`** reflect newest generation only. |
+
+### Sign-off — Issue #191
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo test` + clippy | | | |
+| Unit/integration: superseded batch | | | |
+| Manual: §16 delay smoke | | | |
+| Manual: overlap cancel (if mode B) | | | |
