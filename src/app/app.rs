@@ -862,6 +862,45 @@ impl App {
         }
     }
 
+    /// Interactive persist: surface `[cfg]` on disk failure; clear same-domain sticky
+    /// cfg error on success (Issue #192 / SPEC §66).
+    ///
+    /// Returns `true` when the write succeeded.
+    pub(crate) fn persist_config_interactive(
+        &mut self,
+        tab: Tab,
+        domain: ErrorSourceDomain,
+        context: &str,
+    ) -> bool {
+        match self.try_save_config_with_session() {
+            Ok(()) => {
+                if self.active_runtime_error.as_ref().is_some_and(|a| {
+                    a.source_domain == domain && matches!(a.error, AppError::ConfigSave(_))
+                }) {
+                    self.active_runtime_error = None;
+                }
+                true
+            }
+            Err(e) => {
+                self.surface_runtime_error(
+                    tab,
+                    domain,
+                    AppError::ConfigSave(format!("Failed to save {context}: {e}")),
+                    true,
+                );
+                false
+            }
+        }
+    }
+
+    /// Final persist on quit or abnormal shutdown; log only (Issue #192 / SPEC §66).
+    fn persist_config_on_shutdown(&mut self) {
+        self.session_persist_deadline = None;
+        if let Err(e) = self.try_save_config_with_session() {
+            tracing::error!(error = %e, "final config persist failed on shutdown");
+        }
+    }
+
     /// Issue #120 / #121 / SPEC §20.15.1 — clamp [`Self::error_log_scroll`]
     /// against the most recently rendered visible-row count and the current
     /// [`Self::error_log`] length. Idempotent; safe to call from input
@@ -2020,20 +2059,11 @@ impl App {
     }
 
     fn settings_save_backtest_row(&mut self) {
-        if let Err(e) = self.try_save_config_with_session() {
-            self.surface_runtime_error(
-                Tab::Settings,
-                ErrorSourceDomain::Settings,
-                AppError::ConfigSave(format!("Failed to save backtest settings: {e}")),
-                true,
-            );
-        } else if self
-            .active_runtime_error
-            .as_ref()
-            .is_some_and(|a| a.source_domain == ErrorSourceDomain::Settings)
-        {
-            self.active_runtime_error = None;
-        }
+        let _ = self.persist_config_interactive(
+            Tab::Settings,
+            ErrorSourceDomain::Settings,
+            "backtest settings",
+        );
         crate::app::backtest_ui::rebuild_backtest_params_cache(self);
         self.settings_saved_flash_until = Some(Instant::now() + SETTINGS_SAVED_FLASH);
     }
@@ -2540,8 +2570,7 @@ impl App {
             draw(terminal, self)?;
 
             if self.should_quit {
-                self.session_persist_deadline = None;
-                let _ = self.try_save_config_with_session();
+                self.persist_config_on_shutdown();
                 break Ok(());
             }
 
@@ -2558,8 +2587,7 @@ impl App {
                         Some(Event::Tick) => self.on_background_tick(),
                         None => {
                             // Event sender dropped (abnormal); best-effort persist like quit path.
-                            self.session_persist_deadline = None;
-                            let _ = self.try_save_config_with_session();
+                            self.persist_config_on_shutdown();
                             break Ok(());
                         }
                     }
@@ -3299,11 +3327,18 @@ impl App {
     /// Does not auto-rerun; operator presses **Enter** / **`r`** on the Backtest tab.
     pub fn backtest_cycle_strategy(&mut self) {
         use crate::models::backtest::BacktestStrategyKind;
-        self.config.backtest_strategy.kind = match self.config.backtest_strategy.kind {
+        let previous = self.config.backtest_strategy.kind;
+        self.config.backtest_strategy.kind = match previous {
             BacktestStrategyKind::SmaCrossover => BacktestStrategyKind::RsiMeanReversion,
             BacktestStrategyKind::RsiMeanReversion => BacktestStrategyKind::SmaCrossover,
         };
-        let _ = self.try_save_config_with_session();
+        if !self.persist_config_interactive(
+            Tab::Backtest,
+            ErrorSourceDomain::Backtest,
+            "backtest settings",
+        ) {
+            self.config.backtest_strategy.kind = previous;
+        }
         crate::app::backtest_ui::rebuild_backtest_params_cache(self);
     }
 
@@ -4087,6 +4122,164 @@ mod tests {
         let syms = app.collect_symbols_for_quote_fetch();
         assert!(syms.contains(&"AAPL".to_string()));
         assert!(syms.contains(&"IBM".to_string()));
+    }
+
+    /// Issue #192 / SPEC §66 — Backtest strategy toggle surfaces config I/O failure.
+    #[cfg(unix)]
+    #[test]
+    fn backtest_cycle_strategy_surfaces_config_save_error() {
+        use crate::app::app_error::{AppError, ErrorSourceDomain};
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+        use std::path::PathBuf;
+        use std::sync::Mutex;
+
+        static HOME_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+        struct HomeGuard {
+            prev: Option<String>,
+        }
+
+        impl HomeGuard {
+            fn set(home: &str) -> Self {
+                let prev = std::env::var("HOME").ok();
+                // SAFETY: held under HOME_TEST_LOCK for the test duration.
+                unsafe { std::env::set_var("HOME", home) };
+                Self { prev }
+            }
+        }
+
+        impl Drop for HomeGuard {
+            fn drop(&mut self) {
+                match &self.prev {
+                    Some(v) => unsafe { std::env::set_var("HOME", v) },
+                    None => unsafe { std::env::remove_var("HOME") },
+                }
+            }
+        }
+
+        let _lock = HOME_TEST_LOCK.lock().expect("home test lock");
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target/_stockterm_backtest_cfg_ro_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join(".stockterm.json");
+        fs::write(&path, "{}").expect("write config");
+        let mut perms = fs::metadata(&path).expect("meta").permissions();
+        perms.set_mode(0o444);
+        fs::set_permissions(&path, perms).expect("chmod ro");
+        let _home = HomeGuard::set(dir.to_str().expect("utf8 home"));
+
+        let mut app = App::new();
+        app.active_tab = Tab::Backtest;
+        app.active_runtime_error = None;
+        let kind_before = app.config.backtest_strategy.kind;
+        app.backtest_cycle_strategy();
+
+        assert_eq!(
+            app.config.backtest_strategy.kind, kind_before,
+            "strategy kind must revert when persist fails"
+        );
+        let err = app
+            .active_runtime_error
+            .as_ref()
+            .expect("expected runtime error");
+        assert_eq!(err.source_domain, ErrorSourceDomain::Backtest);
+        match &err.error {
+            AppError::ConfigSave(msg) => {
+                assert!(
+                    msg.contains("backtest settings"),
+                    "expected backtest context in message: {msg}"
+                );
+            }
+            other => panic!("expected ConfigSave, got {other:?}"),
+        }
+        assert!(
+            !app.error_log.is_empty(),
+            "cfg save failure should appear in the error log"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Issue #192 / §66 — successful cfg save must not clear unrelated Backtest `Internal` errors.
+    #[cfg(unix)]
+    #[test]
+    fn persist_config_interactive_clears_only_config_save_in_domain() {
+        use crate::app::app_error::{
+            ActiveErrorState, AppError, ErrorPersistence, ErrorSourceDomain,
+        };
+        use std::fs;
+        use std::path::PathBuf;
+        use std::sync::Mutex;
+        use std::time::Instant;
+
+        static HOME_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+        struct HomeGuard {
+            prev: Option<String>,
+        }
+
+        impl HomeGuard {
+            fn set(home: &str) -> Self {
+                let prev = std::env::var("HOME").ok();
+                // SAFETY: held under HOME_TEST_LOCK for the test duration.
+                unsafe { std::env::set_var("HOME", home) };
+                Self { prev }
+            }
+        }
+
+        impl Drop for HomeGuard {
+            fn drop(&mut self) {
+                match &self.prev {
+                    Some(v) => unsafe { std::env::set_var("HOME", v) },
+                    None => unsafe { std::env::remove_var("HOME") },
+                }
+            }
+        }
+
+        let _lock = HOME_TEST_LOCK.lock().expect("home test lock");
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target/_stockterm_cfg_save_ok_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("mkdir");
+        let _home = HomeGuard::set(dir.to_str().expect("utf8 home"));
+
+        let mut app = App::new();
+        app.active_runtime_error = Some(ActiveErrorState::new(
+            AppError::Internal("Load chart data first.".into()),
+            ErrorPersistence::Sticky,
+            Instant::now(),
+            ErrorSourceDomain::Backtest,
+        ));
+        assert!(app.persist_config_interactive(
+            Tab::Backtest,
+            ErrorSourceDomain::Backtest,
+            "backtest settings",
+        ));
+        assert!(
+            matches!(
+                app.active_runtime_error.as_ref().map(|a| &a.error),
+                Some(AppError::Internal(_))
+            ),
+            "Internal backtest error must survive a successful cfg save"
+        );
+
+        app.active_runtime_error = Some(ActiveErrorState::new(
+            AppError::ConfigSave("Failed to save backtest settings: simulated".into()),
+            ErrorPersistence::Sticky,
+            Instant::now(),
+            ErrorSourceDomain::Backtest,
+        ));
+        assert!(app.persist_config_interactive(
+            Tab::Backtest,
+            ErrorSourceDomain::Backtest,
+            "backtest settings",
+        ));
+        assert!(
+            app.active_runtime_error.is_none(),
+            "prior ConfigSave in the same domain should clear on success"
+        );
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// Issue #83 / SPEC §36.3 — `add_to_portfolio` false without runtime error ⇒ `inline_error`.
