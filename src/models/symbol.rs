@@ -1,4 +1,6 @@
-//! Symbol normalization and classification (Issue #23 / SPEC §43; metadata §44.2).
+//! Symbol normalization and classification (Issue #23 / SPEC §43; metadata §44.2; Unicode §67 / #79).
+
+use unicode_normalization::UnicodeNormalization;
 
 /// Map Unicode dash characters to ASCII `-` (Yahoo `BTC-USD` chart paths).
 fn normalize_symbol_dash(c: char) -> char {
@@ -8,12 +10,23 @@ fn normalize_symbol_dash(c: char) -> char {
     }
 }
 
-/// Trim, drop whitespace, normalize dashes, and uppercase ticker input.
-///
-/// Yahoo chart URLs return **404** when the path contains spaces (e.g. `BTC - USD`);
-/// compacting to `BTC-USD` avoids that class of failures. Used by the app layer and
-/// [`crate::api::symbol::resolve_provider_symbol`] for Yahoo HTTP paths.
-pub fn normalize_symbol(s: &str) -> Option<String> {
+/// Allowed in user/config ticker strings after NFC compaction (§67.4.2).
+fn is_allowed_symbol_char(c: char) -> bool {
+    c.is_alphabetic() || c.is_ascii_digit() || c == '-' || c == '.' || c == '='
+}
+
+fn symbol_nfc_compact(s: &str) -> Option<String> {
+    let compact = symbol_compact_input(s)?;
+    let nfc: String = compact.nfc().collect();
+    if nfc.is_empty() {
+        None
+    } else {
+        Some(nfc)
+    }
+}
+
+/// Trim, drop whitespace, normalize dashes — shared by [`normalize_symbol`] and [`symbols_equivalent`].
+fn symbol_compact_input(s: &str) -> Option<String> {
     let t = s.trim();
     if t.is_empty() {
         return None;
@@ -24,9 +37,53 @@ pub fn normalize_symbol(s: &str) -> Option<String> {
         .map(normalize_symbol_dash)
         .collect();
     if compact.is_empty() {
+        None
+    } else {
+        Some(compact)
+    }
+}
+
+fn symbol_case_fold_key(nfc_compact: &str) -> String {
+    let mut out = String::with_capacity(nfc_compact.len());
+    for c in nfc_compact.chars() {
+        match c {
+            // Rust `to_lowercase` keeps ß; Unicode default case fold maps ß → ss (§67).
+            '\u{00DF}' | '\u{1E9E}' => out.push_str("ss"),
+            _ => out.extend(c.to_lowercase()),
+        }
+    }
+    out
+}
+
+/// True when two ticker strings denote the same instrument under §67 rules.
+pub fn symbols_equivalent(a: &str, b: &str) -> bool {
+    let (Some(ca), Some(cb)) = (symbol_nfc_compact(a), symbol_nfc_compact(b)) else {
+        return false;
+    };
+    if !ca.chars().all(is_allowed_symbol_char) || !cb.chars().all(is_allowed_symbol_char) {
+        return false;
+    }
+    symbol_case_fold_key(&ca) == symbol_case_fold_key(&cb)
+}
+
+/// Trim, drop whitespace, normalize dashes, NFC, and uppercase ticker input.
+///
+/// Yahoo chart URLs return **404** when the path contains spaces (e.g. `BTC - USD`);
+/// compacting to `BTC-USD` avoids that class of failures. Used by the app layer and
+/// [`crate::api::symbol::resolve_provider_symbol`] for Yahoo HTTP paths.
+///
+/// Rejects symbols containing characters outside Unicode letters, digits, `-`, `.`, or `=`.
+pub fn normalize_symbol(s: &str) -> Option<String> {
+    let nfc = symbol_nfc_compact(s)?;
+    if !nfc.chars().all(is_allowed_symbol_char) {
         return None;
     }
-    Some(compact.to_ascii_uppercase())
+    let canonical: String = nfc.chars().flat_map(char::to_uppercase).collect();
+    if canonical.is_empty() {
+        None
+    } else {
+        Some(canonical)
+    }
 }
 
 /// Asset class inferred from a normalized ticker string.
@@ -132,7 +189,7 @@ pub fn classify_symbol_with_hint(sym: &str, instrument_type: Option<&str>) -> Sy
 mod tests {
     use super::{
         classify_from_instrument_type, classify_symbol, classify_symbol_with_hint,
-        normalize_symbol, SymbolKind,
+        normalize_symbol, symbols_equivalent, SymbolKind,
     };
 
     #[test]
@@ -146,6 +203,37 @@ mod tests {
     fn normalize_symbol_compacts_crypto_pair_whitespace() {
         assert_eq!(normalize_symbol("btc - usd").as_deref(), Some("BTC-USD"));
         assert_eq!(normalize_symbol("  BTC-USD  ").as_deref(), Some("BTC-USD"));
+    }
+
+    #[test]
+    fn symbols_equivalent_ascii_case() {
+        assert!(symbols_equivalent("aapl", "AAPL"));
+        assert!(symbols_equivalent("  msft ", "MSFT"));
+        assert!(!symbols_equivalent("AAPL", "MSFT"));
+    }
+
+    #[test]
+    fn symbols_equivalent_unicode_fold_german_eszett() {
+        // Case fold maps ß → ss; canonical normalize uppercases to STRASSE.
+        let eszett = "stra\u{00df}e";
+        assert!(symbols_equivalent(eszett, "STRASSE"));
+        assert_eq!(normalize_symbol(eszett).as_deref(), Some("STRASSE"));
+    }
+
+    #[test]
+    fn normalize_symbol_rejects_control_chars() {
+        assert_eq!(normalize_symbol("AA\u{0000}PL"), None);
+    }
+
+    #[test]
+    fn normalize_symbol_nfc_composes() {
+        let decomposed = "A\u{0301}PL"; // A + combining acute
+        let composed = "ÁPL";
+        assert_eq!(
+            normalize_symbol(decomposed).as_deref(),
+            normalize_symbol(composed).as_deref()
+        );
+        assert!(symbols_equivalent(decomposed, composed));
     }
 
     #[test]

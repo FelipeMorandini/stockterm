@@ -242,9 +242,10 @@ pub fn chart_viewport_after_refresh(
     let Some(prev) = previous_series else {
         return ChartViewport::full(new_len);
     };
-    if !effective_series_ticker(prev, requested_symbol)
-        .eq_ignore_ascii_case(effective_series_ticker(new_data, requested_symbol))
-    {
+    if !crate::models::symbol::symbols_equivalent(
+        effective_series_ticker(prev, requested_symbol),
+        effective_series_ticker(new_data, requested_symbol),
+    ) {
         return ChartViewport::full(new_len);
     }
     let old_len = prev.results.len();

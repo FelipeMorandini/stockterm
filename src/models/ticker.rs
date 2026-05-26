@@ -1,3 +1,5 @@
+use crate::models::symbol::symbols_equivalent;
+
 use serde::Deserialize;
 
 /// Polygon `/v2/aggs/ticker/.../range/...` body. The `ticker` field is omitted on some responses
@@ -59,7 +61,7 @@ impl TickerResponse {
 /// [`ticker_response_matches_symbol_for_session`] when `resp` is the active-session
 /// `App::ticker_data` pane (empty ticker must not apply to other alert symbols).
 pub fn ticker_response_matches_symbol(resp: &TickerResponse, requested: &str) -> bool {
-    resp.ticker.is_empty() || resp.ticker.eq_ignore_ascii_case(requested)
+    resp.ticker.is_empty() || symbols_equivalent(&resp.ticker, requested)
 }
 
 /// Session-scoped matcher for `App::ticker_data` and Stock View `resolve_quote`.
@@ -71,9 +73,9 @@ pub fn ticker_response_matches_symbol_for_session(
     active_symbol: &str,
 ) -> bool {
     if resp.ticker.is_empty() {
-        requested.eq_ignore_ascii_case(active_symbol)
+        symbols_equivalent(requested, active_symbol)
     } else {
-        resp.ticker.eq_ignore_ascii_case(requested)
+        symbols_equivalent(&resp.ticker, requested)
     }
 }
 
