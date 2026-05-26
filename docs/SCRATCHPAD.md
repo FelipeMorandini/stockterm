@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Cleared 2026-05-26 — §69 / [#194](https://github.com/FelipeMorandini/stockterm/issues/194) ship (saved/regex filters); PR pending. -->
+<!-- Cleared 2026-05-26 — §69 / [#194](https://github.com/FelipeMorandini/stockterm/issues/194) ship (saved/regex filters); [PR #206](https://github.com/FelipeMorandini/stockterm/pull/206). -->
