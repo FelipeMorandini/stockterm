@@ -351,13 +351,17 @@ mod tests {
 
     #[test]
     fn snapshot_dashboard_chart_pane_80x24() {
-        use crate::app::charts::draw_chart_pane_in;
+        use crate::app::charts::{draw_chart_pane_in, ChartDisplayMode};
         use crate::models::dashboard::{
             DashboardDefinition, DashboardPane, DashboardPaneKind, DashboardPaneOptions,
         };
+        use crate::models::time_range::TimeRange;
 
         let mut app = App::new();
         app.symbol = "AAPL".into();
+        // Pin session chart state so snapshots match CI (no `~/.stockterm.json` dependency).
+        app.time_range = TimeRange::Y1;
+        app.chart_mode = ChartDisplayMode::Candlestick;
         app.config.active_dashboard = Some("chart_only".into());
         app.config.dashboards = vec![DashboardDefinition {
             name: "chart_only".into(),
