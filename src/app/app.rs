@@ -455,7 +455,8 @@ pub struct App {
     /// Issue #194 — precomputed watchlist row indices for draw (§69.3.4).
     pub watchlist_filter_indices_cache: Vec<usize>,
     /// Precomputed watchlist table cells (Issue #24 / §70 audit).
-    pub(crate) watchlist_display_rows_cache: Vec<crate::app::watchlist_display::WatchlistDisplayRow>,
+    pub(crate) watchlist_display_rows_cache:
+        Vec<crate::app::watchlist_display::WatchlistDisplayRow>,
     /// Cached dashboard pane layout (Issue #24 / §70 audit).
     pub(crate) dashboard_layout_cache: Option<crate::app::dashboard::DashboardLayoutCache>,
     /// Issue #194 — precomputed portfolio row indices for draw.

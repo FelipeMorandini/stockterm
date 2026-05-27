@@ -90,18 +90,15 @@ fn split_pane_body_footer(area: Rect, reserve_footer: bool) -> (Rect, Option<Rec
 }
 
 fn draw_stub_pane(f: &mut Frame, area: Rect, rt: ResolvedTheme, pane: &DashboardPane, msg: &str) {
-    let title = pane
-        .title
-        .as_deref()
-        .unwrap_or(match pane.kind {
-            DashboardPaneKind::StockDetail => "Detail",
-            DashboardPaneKind::Chart => "Chart",
-            DashboardPaneKind::News => "News",
-            DashboardPaneKind::Portfolio => "Portfolio",
-            DashboardPaneKind::AlertsList => "Alerts",
-            DashboardPaneKind::IndicatorSummary => "Indicators",
-            DashboardPaneKind::Watchlist => "Watchlist",
-        });
+    let title = pane.title.as_deref().unwrap_or(match pane.kind {
+        DashboardPaneKind::StockDetail => "Detail",
+        DashboardPaneKind::Chart => "Chart",
+        DashboardPaneKind::News => "News",
+        DashboardPaneKind::Portfolio => "Portfolio",
+        DashboardPaneKind::AlertsList => "Alerts",
+        DashboardPaneKind::IndicatorSummary => "Indicators",
+        DashboardPaneKind::Watchlist => "Watchlist",
+    });
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)

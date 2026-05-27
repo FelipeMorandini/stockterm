@@ -88,7 +88,12 @@ fn quote_cells_for_symbol(
     }
 }
 
-fn trend_color(trend: WatchlistPriceTrend, positive: Color, negative: Color, muted: Color) -> Color {
+fn trend_color(
+    trend: WatchlistPriceTrend,
+    positive: Color,
+    negative: Color,
+    muted: Color,
+) -> Color {
     match trend {
         WatchlistPriceTrend::Up => positive,
         WatchlistPriceTrend::Down => negative,
@@ -112,14 +117,11 @@ pub fn watchlist_display_rows_to_ratatui(
             let chg_color = trend_color(r.trend, positive, negative, muted);
             let mut cells = vec![Cell::from(r.sym.as_str())];
             if show_kind {
-                cells.push(
-                    Cell::from(r.kind.as_str())
-                        .style(if r.kind.is_empty() {
-                            row_style
-                        } else {
-                            row_style.fg(muted)
-                        }),
-                );
+                cells.push(Cell::from(r.kind.as_str()).style(if r.kind.is_empty() {
+                    row_style
+                } else {
+                    row_style.fg(muted)
+                }));
             }
             cells.extend([
                 Cell::from(r.last_s.as_str()),

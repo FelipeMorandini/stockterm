@@ -142,7 +142,11 @@ pub fn dashboard_grid_chunks(def: &DashboardDefinition, area: Rect) -> HashMap<S
     out
 }
 
-fn dashboard_layout_key(def: &DashboardDefinition, area: Rect, active_name: &str) -> DashboardLayoutKey {
+fn dashboard_layout_key(
+    def: &DashboardDefinition,
+    area: Rect,
+    active_name: &str,
+) -> DashboardLayoutKey {
     DashboardLayoutKey {
         active_name: active_name.to_string(),
         area_x: area.x,
@@ -192,12 +196,19 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedThem
                 f,
                 area,
                 rt,
-                &format!("Unknown dashboard \"{name}\" — check active_dashboard in ~/.stockterm.json"),
+                &format!(
+                    "Unknown dashboard \"{name}\" — check active_dashboard in ~/.stockterm.json"
+                ),
             );
         }
         ActiveDashboardResolve::Ready(def) => {
             if def.panes.is_empty() {
-                draw_dashboard_message(f, area, rt, "Dashboard has no panes after config normalization");
+                draw_dashboard_message(
+                    f,
+                    area,
+                    rt,
+                    "Dashboard has no panes after config normalization",
+                );
                 return;
             }
             if area.width < 4 || area.height < 4 {

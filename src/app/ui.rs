@@ -2,11 +2,11 @@ use crate::app::alerts::draw_alerts;
 use crate::app::charts::draw_charts;
 use crate::app::dashboard::draw_dashboard;
 use crate::app::format::{format_signed_usd_delta, format_usd_price};
-use crate::app::watchlist_display::watchlist_display_rows_to_ratatui;
 use crate::app::layout::{centered_rect, shell_vertical_constraints};
 use crate::app::portfolio::draw_portfolio;
 use crate::app::styles::{ResolvedTheme, ThemeStamp};
 use crate::app::table_filter::filter_title_suffix;
+use crate::app::watchlist_display::watchlist_display_rows_to_ratatui;
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::MarketProviderKind;
 use crate::config::ResolvedLayout;
@@ -444,15 +444,13 @@ pub(crate) fn draw_watchlist_pane_readonly(
         ]
     };
 
-    let table = Table::new(rows, constraints)
-        .header(header)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(block_title)
-                .style(rt.canvas())
-                .border_style(Style::default().fg(rt.border).bg(rt.background)),
-        );
+    let table = Table::new(rows, constraints).header(header).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(block_title)
+            .style(rt.canvas())
+            .border_style(Style::default().fg(rt.border).bg(rt.background)),
+    );
 
     f.render_widget(table, area);
 }
