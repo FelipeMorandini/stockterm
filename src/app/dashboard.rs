@@ -272,8 +272,10 @@ mod tests {
 
     #[test]
     fn resolve_unknown_dashboard_name() {
-        let mut cfg = crate::config::Config::default();
-        cfg.active_dashboard = Some("missing".into());
+        let cfg = crate::config::Config {
+            active_dashboard: Some("missing".into()),
+            ..Default::default()
+        };
         assert_eq!(
             resolve_active_dashboard(&cfg),
             ActiveDashboardResolve::Unknown {
