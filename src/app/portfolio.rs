@@ -181,10 +181,7 @@ pub(crate) fn draw_portfolio_table_in(
             .borders(Borders::ALL)
             .style(theme.canvas())
             .border_style(border_st);
-        let no_data_text = Line::from(vec![Span::styled(
-            "Portfolio is empty",
-            theme.fg_border(),
-        )]);
+        let no_data_text = Line::from(vec![Span::styled("Portfolio is empty", theme.fg_border())]);
         let paragraph = Paragraph::new(no_data_text)
             .wrap(Wrap { trim: true })
             .block(block);
@@ -262,7 +259,13 @@ pub(crate) fn draw_portfolio_table_in(
         ]
     } else {
         &[
-            "Symbol", "Shares", "Avg Price", "Current", "Value", "P/L", "P/L %",
+            "Symbol",
+            "Shares",
+            "Avg Price",
+            "Current",
+            "Value",
+            "P/L",
+            "P/L %",
         ]
     };
     let header_cells = header_labels
@@ -359,24 +362,20 @@ pub(crate) fn draw_portfolio_table_in(
         ]
     };
 
-    let table = Table::new(rows, constraints)
-        .header(header)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(holdings_title)
-                .style(theme.canvas())
-                .border_style(border_st),
-        );
+    let table = Table::new(rows, constraints).header(header).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(holdings_title)
+            .style(theme.canvas())
+            .border_style(border_st),
+    );
 
     if interactive {
         let selected_style = Style::default()
             .bg(theme.selection)
             .fg(theme.foreground)
             .add_modifier(Modifier::BOLD);
-        let table = table
-            .highlight_style(selected_style)
-            .highlight_symbol("> ");
+        let table = table.highlight_style(selected_style).highlight_symbol("> ");
         f.render_stateful_widget(table, table_chunk, &mut app.portfolio_state);
     } else {
         f.render_widget(table, table_chunk);

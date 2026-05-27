@@ -518,7 +518,13 @@ fn draw_charts_chrome_strip(f: &mut Frame, app: &App, area: Rect, theme: Resolve
     f.render_widget(Paragraph::new(line).block(block), area);
 }
 
-fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme, block_title: &str) {
+fn draw_charts_inner(
+    f: &mut Frame,
+    app: &App,
+    area: Rect,
+    theme: ResolvedTheme,
+    block_title: &str,
+) {
     let block = Block::default()
         .title(block_title)
         .borders(Borders::ALL)
@@ -952,7 +958,11 @@ pub(crate) fn draw_chart_pane_in(
 }
 
 fn last_finite_indicator_value(series: &[Option<f64>]) -> Option<f64> {
-    series.iter().rev().find_map(|v| *v).filter(|x| x.is_finite())
+    series
+        .iter()
+        .rev()
+        .find_map(|v| *v)
+        .filter(|x| x.is_finite())
 }
 
 /// Read-only indicator summary for Dashboard (Issue #24 / §70.9.2).

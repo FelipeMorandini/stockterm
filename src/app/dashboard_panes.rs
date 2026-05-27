@@ -5,7 +5,9 @@ use crate::app::charts::{draw_chart_pane_in, draw_indicator_summary_pane_in};
 use crate::app::dashboard_display::DashboardPaneDrawEntry;
 use crate::app::portfolio::draw_portfolio_table_in;
 use crate::app::styles::ResolvedTheme;
-use crate::app::ui::{draw_news_list_in, draw_stock_detail_in, draw_watchlist_pane_readonly, truncate_visual};
+use crate::app::ui::{
+    draw_news_list_in, draw_stock_detail_in, draw_watchlist_pane_readonly, truncate_visual,
+};
 use crate::app::App;
 use crate::models::dashboard::{DashboardPane, DashboardPaneKind};
 use ratatui::{

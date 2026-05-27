@@ -36,8 +36,7 @@ pub fn rebuild_dashboard_display_strings(app: &mut App) {
 
     for pane in &def.panes {
         let entry = pane_draw_entry(app, pane);
-        app.dashboard_pane_draw_cache
-            .insert(pane.id.clone(), entry);
+        app.dashboard_pane_draw_cache.insert(pane.id.clone(), entry);
     }
 }
 
@@ -83,8 +82,7 @@ fn resolve_pane_detail_symbol(app: &App, pane: &DashboardPane) -> String {
     if let Some(ref raw) = pane.options.symbol {
         let trimmed = raw.trim();
         if !trimmed.is_empty() {
-            return crate::app::normalize_symbol(trimmed)
-                .unwrap_or_else(|| trimmed.to_uppercase());
+            return crate::app::normalize_symbol(trimmed).unwrap_or_else(|| trimmed.to_uppercase());
         }
     }
     app.symbol.clone()
@@ -119,7 +117,10 @@ mod tests {
             }],
         }];
         rebuild_dashboard_display_strings(&mut app);
-        let entry = app.dashboard_pane_draw_cache.get("news").expect("news pane");
+        let entry = app
+            .dashboard_pane_draw_cache
+            .get("news")
+            .expect("news pane");
         assert!(entry.block_title.contains("AAPL"));
     }
 

@@ -460,14 +460,7 @@ pub(crate) fn draw_watchlist_pane_readonly(
 }
 
 fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
-    draw_stock_detail_in(
-        f,
-        app,
-        area,
-        rt,
-        &app.stock_detail_title_cache,
-        &app.symbol,
-    );
+    draw_stock_detail_in(f, app, area, rt, &app.stock_detail_title_cache, &app.symbol);
 }
 
 /// Read-only stock detail pane for Dashboard (Issue #24 / §70.9.1).
@@ -695,10 +688,7 @@ fn draw_search(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
 }
 
 fn draw_news(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
-    let title = format!(
-        "News — {} (j/k · Enter open · c copy)",
-        app.symbol
-    );
+    let title = format!("News — {} (j/k · Enter open · c copy)", app.symbol);
     draw_news_list_in(f, app, area, rt, None, &title, true);
 }
 

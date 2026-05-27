@@ -235,9 +235,7 @@ pub(crate) fn draw_alerts_table_in(
             .bg(theme.selection)
             .fg(theme.foreground)
             .add_modifier(Modifier::BOLD);
-        let table = table
-            .highlight_style(selected_style)
-            .highlight_symbol("> ");
+        let table = table.highlight_style(selected_style).highlight_symbol("> ");
         f.render_stateful_widget(table, area, &mut app.alerts_state);
     } else {
         f.render_widget(table, area);
