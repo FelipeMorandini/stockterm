@@ -6298,7 +6298,7 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
 **Spec:** [`docs/SPEC.md`](SPEC.md) §70.
 
-**Status:** **Ready for manual QA** — Phase A (watchlist panes + `dual_watchlist` config) shipped 2026-05-26. Phases B–C (other pane kinds) not required for this sign-off unless included in the same PR.
+**Status:** **Ready for manual QA** — Phase A (watchlist panes + `dual_watchlist` config) shipped 2026-05-26. Phases B–C (other pane kinds) not required for this sign-off unless included in the same PR. **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207).
 
 **Prerequisite:** §3 watchlist, §31 layout, §23 filters (if watchlist panes use filtered rows), §58 `insta` patterns for optional dashboard snapshots.
 
