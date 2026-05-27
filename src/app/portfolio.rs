@@ -165,6 +165,223 @@ fn disarm_portfolio_dialog_commit(app: &mut App) {
     }
 }
 
+/// Holdings table + summary for Dashboard (read-only, Issue #24 / §70.9.1).
+pub(crate) fn draw_portfolio_table_in(
+    f: &mut Frame,
+    app: &mut App,
+    area: Rect,
+    theme: ResolvedTheme,
+    block_title: &str,
+    interactive: bool,
+) {
+    let border_st = Style::default().fg(theme.border).bg(theme.background);
+    if app.portfolio.is_empty() {
+        let block = Block::default()
+            .title(block_title)
+            .borders(Borders::ALL)
+            .style(theme.canvas())
+            .border_style(border_st);
+        let no_data_text = Line::from(vec![Span::styled("Portfolio is empty", theme.fg_border())]);
+        let paragraph = Paragraph::new(no_data_text)
+            .wrap(Wrap { trim: true })
+            .block(block);
+        f.render_widget(paragraph, area);
+        return;
+    }
+
+    let block = Block::default()
+        .title(block_title)
+        .borders(Borders::ALL)
+        .style(theme.canvas())
+        .border_style(border_st);
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(0)])
+        .split(inner);
+
+    let total_value = app.calculate_portfolio_value();
+    let total_cost = app.calculate_portfolio_cost();
+    let total_profit_loss = total_value - total_cost;
+    let profit_loss_percent = if total_cost > 0.0 {
+        (total_profit_loss / total_cost) * 100.0
+    } else {
+        0.0
+    };
+
+    let pl_color = if total_profit_loss >= 0.0 {
+        theme.positive
+    } else {
+        theme.negative
+    };
+
+    let summary_text = vec![Line::from(vec![
+        Span::styled("Total Value: ", theme.canvas()),
+        Span::styled(format_usd_price(total_value), theme.fg_accent()),
+        Span::styled("  |  Cost Basis: ", theme.canvas()),
+        Span::styled(format_usd_price(total_cost), theme.fg_foreground()),
+        Span::styled("  |  P/L: ", theme.canvas()),
+        Span::styled(
+            format!(
+                "{} ({:.2}%)",
+                format_usd_price(total_profit_loss),
+                profit_loss_percent
+            ),
+            theme.fg_color(pl_color),
+        ),
+    ])];
+
+    let summary = Paragraph::new(summary_text).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Summary")
+            .style(theme.canvas())
+            .border_style(border_st),
+    );
+
+    f.render_widget(summary, chunks[0]);
+
+    let table_chunk = chunks[1];
+    let show_kind = table_chunk.width >= PORTFOLIO_KIND_COLUMN_MIN_WIDTH;
+    let header_labels: &[&str] = if show_kind {
+        &[
+            "Symbol",
+            "Kind",
+            "Shares",
+            "Avg Price",
+            "Current",
+            "Value",
+            "P/L",
+            "P/L %",
+        ]
+    } else {
+        &[
+            "Symbol",
+            "Shares",
+            "Avg Price",
+            "Current",
+            "Value",
+            "P/L",
+            "P/L %",
+        ]
+    };
+    let header_cells = header_labels
+        .iter()
+        .map(|h| Cell::from(*h).style(theme.fg_foreground()));
+    let header = Row::new(header_cells)
+        .style(theme.canvas().add_modifier(Modifier::BOLD))
+        .height(1);
+
+    let holdings_title = format!(
+        "Holdings{}",
+        filter_title_suffix(
+            &app.filter_query,
+            app.filter_regex_mode,
+            app.filter_regex_error.as_deref(),
+        )
+    );
+
+    let filtered_idx = &app.portfolio_filter_indices_cache;
+    if filtered_idx.is_empty() {
+        let empty = Line::from(vec![Span::styled(
+            "No symbols match filter",
+            theme.fg_border(),
+        )]);
+        let table = Paragraph::new(empty).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(holdings_title)
+                .style(theme.canvas())
+                .border_style(border_st),
+        );
+        f.render_widget(table, table_chunk);
+        return;
+    }
+
+    let rows = filtered_idx.iter().map(|&idx| {
+        let item = &app.portfolio[idx];
+        let current_price = item.current_price.unwrap_or(0.0);
+        let market_value = current_price * item.shares;
+        let profit_loss = market_value - (item.purchase_price * item.shares);
+        let pl_percent = if item.purchase_price > 0.0 {
+            (profit_loss / (item.purchase_price * item.shares)) * 100.0
+        } else {
+            0.0
+        };
+
+        let pl_color = if profit_loss >= 0.0 {
+            theme.positive
+        } else {
+            theme.negative
+        };
+
+        let kind = symbol_kind_label(app.symbol_kind_for_display(&item.symbol));
+        let mut cells = vec![Cell::from(item.symbol.clone())];
+        if show_kind {
+            cells.push(Cell::from(kind).style(if kind.is_empty() {
+                theme.canvas()
+            } else {
+                theme.fg_color(theme.muted)
+            }));
+        }
+        cells.extend([
+            Cell::from(format!("{:.2}", item.shares)),
+            Cell::from(format_usd_price(item.purchase_price)),
+            Cell::from(format_usd_price(current_price)),
+            Cell::from(format_usd_price(market_value)),
+            Cell::from(format_usd_price(profit_loss)).style(theme.fg_color(pl_color)),
+            Cell::from(format!("{:.2}%", pl_percent)).style(theme.fg_color(pl_color)),
+        ]);
+
+        Row::new(cells).height(1).style(theme.canvas())
+    });
+
+    let constraints: Vec<Constraint> = if show_kind {
+        vec![
+            Constraint::Length(8),
+            Constraint::Length(6),
+            Constraint::Length(8),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+        ]
+    } else {
+        vec![
+            Constraint::Length(8),
+            Constraint::Length(8),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+        ]
+    };
+
+    let table = Table::new(rows, constraints).header(header).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(holdings_title)
+            .style(theme.canvas())
+            .border_style(border_st),
+    );
+
+    if interactive {
+        let selected_style = Style::default()
+            .bg(theme.selection)
+            .fg(theme.foreground)
+            .add_modifier(Modifier::BOLD);
+        let table = table.highlight_style(selected_style).highlight_symbol("> ");
+        f.render_stateful_widget(table, table_chunk, &mut app.portfolio_state);
+    } else {
+        f.render_widget(table, table_chunk);
+    }
+}
+
 pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedTheme) {
     let border_st = Style::default().fg(theme.border).bg(theme.background);
     if app.portfolio.is_empty() {
@@ -181,6 +398,8 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
             .wrap(Wrap { trim: true })
             .block(block);
         f.render_widget(paragraph, area);
+    } else if !app.portfolio_remove_armed {
+        draw_portfolio_table_in(f, app, area, theme, "Portfolio", true);
     } else {
         let block = Block::default()
             .title("Portfolio")

@@ -147,6 +147,101 @@ fn spawn_desktop_alert_notifications_batch(summary: String, body_lines: Vec<Stri
     });
 }
 
+/// Alerts table for Dashboard (read-only) or Alerts tab (Issue #24 / §70.9.1).
+pub(crate) fn draw_alerts_table_in(
+    f: &mut Frame,
+    app: &mut App,
+    area: Rect,
+    theme: ResolvedTheme,
+    block_title: &str,
+    interactive: bool,
+) {
+    let border_st = Style::default().fg(theme.border).bg(theme.background);
+    if app.alerts.is_empty() {
+        let block = Block::default()
+            .title(block_title)
+            .borders(Borders::ALL)
+            .style(theme.canvas())
+            .border_style(border_st);
+        let msg = if interactive {
+            "No alerts configured. Add with a or A (Shift+a works)."
+        } else {
+            "No alerts configured"
+        };
+        let no_data_text = Line::from(vec![Span::styled(msg, theme.fg_border())]);
+        let paragraph = Paragraph::new(no_data_text).block(block);
+        f.render_widget(paragraph, area);
+        return;
+    }
+
+    let header_cells = ["Symbol", "Condition", "Price", "Current", "Status"]
+        .iter()
+        .map(|h| Cell::from(*h).style(theme.fg_foreground()));
+    let header = Row::new(header_cells)
+        .style(theme.canvas().add_modifier(Modifier::BOLD))
+        .height(1);
+
+    let rows = app.alerts.iter().map(|alert| {
+        let current_opt = app.get_current_price(&alert.symbol);
+        let current_cell = current_opt
+            .map(format_usd_price)
+            .unwrap_or_else(|| "—".to_string());
+
+        let condition_text = match alert.condition {
+            AlertCondition::Above => "Above",
+            AlertCondition::Below => "Below",
+        };
+
+        let (status_text, status_color) = if alert.triggered {
+            ("TRIGGERED", theme.negative)
+        } else if current_opt.is_some() {
+            ("Armed", theme.border)
+        } else {
+            ("No quote", theme.muted)
+        };
+
+        let cells = [
+            Cell::from(alert.symbol.clone()),
+            Cell::from(condition_text),
+            Cell::from(format_usd_price(alert.price)),
+            Cell::from(current_cell),
+            Cell::from(status_text).style(theme.fg_color(status_color)),
+        ];
+
+        Row::new(cells).height(1).style(theme.canvas())
+    });
+
+    let table = Table::new(
+        rows,
+        [
+            Constraint::Min(6),
+            Constraint::Length(10),
+            Constraint::Length(11),
+            Constraint::Length(11),
+            Constraint::Min(10),
+        ],
+    )
+    .header(header)
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(block_title)
+            .style(theme.canvas())
+            .border_style(border_st),
+    );
+
+    if interactive {
+        let selected_style = Style::default()
+            .bg(theme.selection)
+            .fg(theme.foreground)
+            .add_modifier(Modifier::BOLD);
+        let table = table.highlight_style(selected_style).highlight_symbol("> ");
+        f.render_stateful_widget(table, area, &mut app.alerts_state);
+    } else {
+        f.render_widget(table, area);
+    }
+}
+
 pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedTheme) {
     let border_st = Style::default().fg(theme.border).bg(theme.background);
     let show_banner = alerts_tab_banner_active(app);
@@ -185,99 +280,11 @@ pub fn draw_alerts(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedThem
     }
 
     if app.alerts.is_empty() && app.alert_add_dialog.is_none() {
-        let block = Block::default()
-            .title("Price Alerts")
-            .borders(Borders::ALL)
-            .style(theme.canvas())
-            .border_style(border_st);
-        let no_data_text = Line::from(vec![Span::styled(
-            "No alerts configured. Add with a or A (Shift+a works).",
-            theme.fg_border(),
-        )]);
-        let paragraph = Paragraph::new(no_data_text).block(block);
-        f.render_widget(paragraph, main);
+        draw_alerts_table_in(f, app, main, theme, "Price Alerts", true);
         return;
     }
 
-    if app.alerts.is_empty() {
-        let block = Block::default()
-            .title("Price Alerts")
-            .borders(Borders::ALL)
-            .style(theme.canvas())
-            .border_style(border_st);
-        let no_data_text = Line::from(vec![Span::styled(
-            "No alerts configured. Add with a or A (Shift+a works).",
-            theme.fg_border(),
-        )]);
-        let paragraph = Paragraph::new(no_data_text).block(block);
-        f.render_widget(paragraph, main);
-    } else {
-        let selected_style = Style::default()
-            .bg(theme.selection)
-            .fg(theme.foreground)
-            .add_modifier(Modifier::BOLD);
-
-        let header_cells = ["Symbol", "Condition", "Price", "Current", "Status"]
-            .iter()
-            .map(|h| Cell::from(*h).style(theme.fg_foreground()));
-
-        let header = Row::new(header_cells)
-            .style(theme.canvas().add_modifier(Modifier::BOLD))
-            .height(1);
-
-        let rows = app.alerts.iter().map(|alert| {
-            let current_opt = app.get_current_price(&alert.symbol);
-            let current_cell = current_opt
-                .map(format_usd_price)
-                .unwrap_or_else(|| "—".to_string());
-
-            let condition_text = match alert.condition {
-                AlertCondition::Above => "Above",
-                AlertCondition::Below => "Below",
-            };
-
-            let (status_text, status_color) = if alert.triggered {
-                ("TRIGGERED", theme.negative)
-            } else if current_opt.is_some() {
-                ("Armed", theme.border)
-            } else {
-                ("No quote", theme.muted)
-            };
-
-            let cells = [
-                Cell::from(alert.symbol.clone()),
-                Cell::from(condition_text),
-                Cell::from(format_usd_price(alert.price)),
-                Cell::from(current_cell),
-                Cell::from(status_text).style(theme.fg_color(status_color)),
-            ];
-
-            Row::new(cells).height(1).style(theme.canvas())
-        });
-
-        let table = Table::new(
-            rows,
-            [
-                Constraint::Min(6),
-                Constraint::Length(10),
-                Constraint::Length(11),
-                Constraint::Length(11),
-                Constraint::Min(10),
-            ],
-        )
-        .header(header)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Price Alerts")
-                .style(theme.canvas())
-                .border_style(border_st),
-        )
-        .highlight_style(selected_style)
-        .highlight_symbol("> ");
-
-        f.render_stateful_widget(table, main, &mut app.alerts_state);
-    }
+    draw_alerts_table_in(f, app, main, theme, "Price Alerts", true);
 
     if app.alert_add_dialog.is_some() {
         draw_alert_add_overlay(f, app, area, theme);

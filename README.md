@@ -60,7 +60,7 @@ On **Settings** row **6. Layout**, use **←/→** or **h**/**l** to preview pre
 
 #### `dashboards` / `active_dashboard` (Issue #24 / §70)
 
-Pane `kind` values: `watchlist`, `stock_detail`, `chart`, `news`, `portfolio`, `alerts_list`, `indicator_summary`. Phase A implements **`watchlist`** only; other kinds show a placeholder until later phases.
+Pane `kind` values: `watchlist`, `stock_detail`, `chart`, `news`, `portfolio`, `alerts_list`, `indicator_summary`. All kinds render read-only data from existing `App` state (restart after JSON edits). Chart panes use the **active symbol** only — `options.symbol` override shows a placeholder until a future release.
 
 **Example — dual watchlist (acceptance fixture):**
 
@@ -94,6 +94,8 @@ Pane `kind` values: `watchlist`, `stock_detail`, `chart`, `news`, `portfolio`, `
   }
 ]
 ```
+
+**Example — market overview (2×2):** set `"active_dashboard": "market_overview"` and copy the `preset_market_overview()` layout from [`src/models/dashboard.rs`](src/models/dashboard.rs) (`watchlist`, `detail`, `news`, `portfolio` panes).
 
 Restart StockTerm after editing; open the **Dashboard** tab. Config changes take effect on next launch (no in-app editor in v1).
 

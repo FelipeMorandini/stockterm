@@ -459,6 +459,15 @@ pub struct App {
         Vec<crate::app::watchlist_display::WatchlistDisplayRow>,
     /// Cached dashboard pane layout (Issue #24 / §70 audit).
     pub(crate) dashboard_layout_cache: Option<crate::app::dashboard::DashboardLayoutCache>,
+    /// Precomputed pane titles/symbols for dashboard draw (Issue #24 / §70 audit).
+    pub(crate) dashboard_pane_draw_cache:
+        std::collections::HashMap<String, crate::app::dashboard_display::DashboardPaneDrawEntry>,
+    /// Stock View / dashboard stock-detail block title (off draw path).
+    pub(crate) stock_detail_title_cache: String,
+    /// Dashboard chart pane footer line (`D1 · candles`).
+    pub(crate) dashboard_chart_footer_cache: String,
+    /// Default dashboard chart block title when pane has no custom title.
+    pub(crate) dashboard_chart_block_title_cache: String,
     /// Issue #194 — precomputed portfolio row indices for draw.
     pub portfolio_filter_indices_cache: Vec<usize>,
     /// Issue #194 — index into `config.saved_filters` for recall/delete cycling.
@@ -777,6 +786,10 @@ impl App {
             watchlist_filter_indices_cache: Vec::new(),
             watchlist_display_rows_cache: Vec::new(),
             dashboard_layout_cache: None,
+            dashboard_pane_draw_cache: std::collections::HashMap::new(),
+            stock_detail_title_cache: String::new(),
+            dashboard_chart_footer_cache: String::new(),
+            dashboard_chart_block_title_cache: String::new(),
             portfolio_filter_indices_cache: Vec::new(),
             saved_filter_cycle_index: 0,
             filter_save_name_buffer: String::new(),
@@ -794,6 +807,7 @@ impl App {
         crate::app::backtest_ui::rebuild_backtest_params_cache(&mut app);
         crate::app::options::sync_options_chrome(&mut app);
         app.rebuild_table_filter_caches();
+        crate::app::dashboard_display::rebuild_dashboard_display_strings(&mut app);
         app
     }
 
@@ -1115,6 +1129,7 @@ impl App {
                 &self.filter_compiled,
             );
         crate::app::watchlist_display::rebuild_watchlist_display_rows(self);
+        crate::app::dashboard_display::rebuild_dashboard_display_strings(self);
     }
 
     pub(crate) fn watchlist_filter_indices(&self) -> Vec<usize> {
@@ -1534,6 +1549,7 @@ impl App {
 
         self.ticker_data = self.watchlist_quotes.get(&self.symbol).cloned();
         crate::app::watchlist_display::rebuild_watchlist_display_rows(self);
+        crate::app::dashboard_display::rebuild_dashboard_display_strings(self);
 
         if !errors.is_empty() {
             self.last_failed_fetch = LastFailedFetch::StockQuoteBatch;
@@ -1731,6 +1747,10 @@ impl App {
             Tab::Search => self.try_spawn_search_tick(),
             Tab::Options => self.try_spawn_options_fetch(),
             _ => {}
+        }
+        if self.active_tab == Tab::Dashboard {
+            self.try_spawn_historical_fetch();
+            self.try_spawn_news_fetch();
         }
         self.tick_runtime_error_ttl();
         self.flush_session_persist_if_due();
@@ -1942,6 +1962,7 @@ impl App {
         crate::app::backtest_ui::rebuild_backtest_params_cache(self);
         crate::app::options::clear_options_session(self);
         self.last_options_network_poll = None;
+        crate::app::dashboard_display::rebuild_dashboard_display_strings(self);
     }
 
     /// Rebuild indicator cache from the current historical close series (Issue #21 / §46.2).
@@ -3172,6 +3193,7 @@ impl App {
         if !changed {
             self.charts_reset_viewport();
         }
+        crate::app::dashboard_display::rebuild_dashboard_display_strings(self);
         self.persist_session_to_disk();
     }
 
@@ -3222,6 +3244,7 @@ impl App {
 
     pub fn charts_toggle_mode(&mut self) {
         self.chart_mode = self.chart_mode.toggle();
+        crate::app::dashboard_display::rebuild_dashboard_display_strings(self);
         self.persist_session_to_disk();
     }
 
