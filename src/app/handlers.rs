@@ -89,6 +89,7 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             Tab::Charts => {
                 handle_charts_events(app, key);
             }
+            Tab::Dashboard => {}
             Tab::Backtest => {
                 handle_backtest_events(app, key);
             }

@@ -8,6 +8,7 @@ use super::layout::Layout;
 use super::theme::Theme;
 use crate::models::alerts::Alert;
 use crate::models::backtest::{BacktestConfig, BacktestStrategyParams};
+use crate::models::dashboard::{normalize_dashboards, DashboardDefinition};
 use crate::models::portfolio::PortfolioItem;
 use crate::models::saved_filter::{sanitize_saved_filters, SavedFilter};
 use std::collections::HashMap;
@@ -42,6 +43,8 @@ pub enum MarketProviderKind {
 /// | `keymap` | Optional chord → action overrides (see **README** “Keymap” and [`keymap`](crate::config::keymap)). Default: omitted → built-in defaults. |
 /// | `layout` | Shell chrome + pane splits (see §31 / [`layout`](crate::config::layout)). Default: omitted → built-in defaults. |
 /// | `saved_filters` | Named table filters for Stock View / Portfolio (Issue #194 / §69). Default: empty. |
+/// | `dashboards` | Composable dashboard layouts (Issue #24 / §70). Default: empty. |
+/// | `active_dashboard` | Name of dashboard to show on **Dashboard** tab. Default: omitted. |
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
@@ -92,6 +95,12 @@ pub struct Config {
     /// Named substring/regex filters (Issue #194 / §69).
     #[serde(default)]
     pub saved_filters: Vec<SavedFilter>,
+    /// User-defined dashboard layouts (Issue #24 / §70).
+    #[serde(default)]
+    pub dashboards: Vec<DashboardDefinition>,
+    /// Active dashboard name; must match an entry in [`Self::dashboards`].
+    #[serde(default)]
+    pub active_dashboard: Option<String>,
 }
 
 fn default_notifications_enabled() -> bool {
@@ -119,6 +128,8 @@ impl Default for Config {
             backtest: BacktestConfig::default(),
             backtest_strategy: BacktestStrategyParams::default(),
             saved_filters: Vec::new(),
+            dashboards: Vec::new(),
+            active_dashboard: None,
         }
     }
 }
@@ -141,6 +152,7 @@ fn load_config_from_path(path: &Path) -> Result<Config, ConfigError> {
         Ok(s) => {
             let mut cfg: Config = serde_json::from_str(&s).map_err(ConfigError::Serde)?;
             sanitize_saved_filters(&mut cfg.saved_filters);
+            normalize_dashboards(&mut cfg.dashboards);
             Ok(cfg)
         }
     }
@@ -398,5 +410,24 @@ mod tests {
             matches!(res, Err(ConfigError::Serde(_))),
             "expected Serde error, got {res:?}"
         );
+    }
+
+    #[test]
+    fn serde_dashboards_and_active_dashboard_roundtrip() {
+        let j = r#"{
+            "portfolio":[],"watchlist":[],"refresh_rate":0,"api_key":"","alerts":[],"default_symbol":"","provider":"yahoo",
+            "active_dashboard":"dual_watchlist",
+            "dashboards":[{
+                "name":"dual_watchlist","rows":1,"cols":2,
+                "panes":[
+                    {"id":"wl_left","kind":"watchlist","row":0,"col":0,"row_span":1,"col_span":1},
+                    {"id":"wl_right","kind":"watchlist","row":0,"col":1,"row_span":1,"col_span":1}
+                ]
+            }]
+        }"#;
+        let c: Config = serde_json::from_str(j).expect("parse");
+        assert_eq!(c.active_dashboard.as_deref(), Some("dual_watchlist"));
+        assert_eq!(c.dashboards.len(), 1);
+        assert_eq!(c.dashboards[0].panes.len(), 2);
     }
 }

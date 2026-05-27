@@ -1,0 +1,28 @@
+---
+source: src/app/dashboard.rs
+expression: buffer_snapshot_string(&buf)
+---
+·Watchlist (left)························Watchlist (right)······················
+·Symbol Last    Change %Chg    Volume  ··Symbol Last    Change %Chg    Volume  ·
+·AAPL   ·       ·      ·       ·       ··AAPL   ·       ·      ·       ·       ·
+·MSFT   ·       ·      ·       ·       ··MSFT   ·       ·      ·       ·       ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+·                                      ··                                      ·
+················································································

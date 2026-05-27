@@ -6287,3 +6287,69 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 | Saved filter: save / JSON / recall / delete | maintainer | 2026-05-26 | Pass |
 | Quote batch full symbol set (§23.7 regression) | maintainer | 2026-05-26 | Pass |
 | README / keymap docs | maintainer | 2026-05-26 | Pass |
+
+---
+
+## Issue #24 — Custom dashboard panes (§70)
+
+**Scope:**
+
+- [GitHub Issue #24](https://github.com/FelipeMorandini/stockterm/issues/24) — User-defined dashboard layouts: multiple pane types (watchlist, chart, news, portfolio, alerts) composed in one **Dashboard** tab from `~/.stockterm.json`. v1 is config-driven (edit JSON, restart); in-app editor is out of scope.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §70.
+
+**Status:** **Ready for manual QA** — Phase A (watchlist panes + `dual_watchlist` config) shipped 2026-05-26. Phases B–C (other pane kinds) not required for this sign-off unless included in the same PR.
+
+**Prerequisite:** §3 watchlist, §31 layout, §23 filters (if watchlist panes use filtered rows), §58 `insta` patterns for optional dashboard snapshots.
+
+### Automated (local) — required when implementing
+
+1. From the repo root:
+
+   ```bash
+   cargo test dashboard
+   cargo test
+   cargo clippy -- -D warnings
+   ```
+
+   **Pass:** All exit 0; grid/config unit tests green.
+
+2. If `insta` snapshots added (§70.10):
+
+   ```bash
+   cargo test dashboard_snapshot
+   ```
+
+   **Pass:** Snapshots committed or reviewed via `insta review`.
+
+### Manual — config + dual watchlist (Phase A / Issue #24 AC)
+
+**Setup:** Stop StockTerm. Edit `~/.stockterm.json` (backup first). Set `active_dashboard` and a `dashboards` entry per §70.5 / README example `dual_watchlist` (1×2 grid, two `watchlist` panes). Relaunch.
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | `cargo run --release` | App starts; no config parse panic. |
+| 2 | Switch to **Dashboard** tab (tab bar label visible) | Body shows **two** watchlist panes side-by-side (or stacked if terminal narrow per §70.6.4). |
+| 3 | Compare pane content to **Stock View** watchlist | Same symbols and quote columns (or same empty-state message). |
+| 4 | Empty watchlist test (optional copy of config) | Both panes show graceful empty placeholder; no panic. |
+| 5 | Trigger quote fetch error (e.g. invalid symbol + provider) | Panes show degraded cells / footer hint; other panes still render. |
+| 6 | Remove one pane from JSON, restart | Layout updates; no stale pane ghost. |
+| 7 | Regression: **Stock View**, **Portfolio**, **Charts** tabs | Unchanged behavior vs pre-§70 build (§31 splits, chart candles, filters). |
+
+### Manual — additional pane kinds (Phase B/C, if shipped in same PR)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Preset with `news` + `portfolio` panes | Headlines and holdings visible; read-only (no add dialog from dashboard). |
+| 2 | `chart` pane (if enabled) | Shows active symbol series; documents limitation if symbol override not implemented. |
+
+### Sign-off — Issue #24
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo test` + clippy | | | |
+| Config: dual watchlist JSON | | | |
+| Manual: two watchlist panes | | | |
+| Manual: config add/remove on restart | | | |
+| Manual: empty/error degradation | | | |
+| Regression: core tabs | | | |

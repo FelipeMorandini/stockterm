@@ -1,5 +1,6 @@
 pub mod alerts;
 pub mod backtest;
+pub mod dashboard;
 pub mod historical;
 pub mod news;
 pub mod options;
