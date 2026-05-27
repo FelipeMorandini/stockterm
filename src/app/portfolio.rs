@@ -285,9 +285,16 @@ pub fn draw_portfolio(f: &mut Frame, app: &mut App, area: Rect, theme: ResolvedT
             .style(theme.canvas().add_modifier(Modifier::BOLD))
             .height(1);
 
-        let holdings_title = format!("Holdings{}", filter_title_suffix(&app.filter_query));
+        let holdings_title = format!(
+            "Holdings{}",
+            filter_title_suffix(
+                &app.filter_query,
+                app.filter_regex_mode,
+                app.filter_regex_error.as_deref(),
+            )
+        );
 
-        let filtered_idx = app.portfolio_filter_indices();
+        let filtered_idx = &app.portfolio_filter_indices_cache;
         if filtered_idx.is_empty() {
             let empty = Line::from(vec![Span::styled(
                 "No symbols match filter — press Esc to clear.",

@@ -164,6 +164,16 @@ pub enum Action {
     FilterSlash,
     /// Filter mode: append ASCII alnum to query (`char:0`–`9`, `char:a`–`z` defaults).
     FilterQueryChar,
+    /// Filter mode: toggle substring vs regex (default `r`; Issue #194 / §69).
+    FilterRegexToggle,
+    /// Filter mode: save current query as a named filter (default `ctrl+s`).
+    FilterSaveNamed,
+    /// Filter mode: recall next saved filter (default `ctrl+n`).
+    FilterRecallNext,
+    /// Filter mode: recall previous saved filter (default `ctrl+p`).
+    FilterRecallPrev,
+    /// Filter mode: arm delete of current saved filter (default `ctrl+d`).
+    FilterDeleteSaved,
     /// Run backtest on loaded historical data (Issue #25).
     BacktestRun,
     /// Export last backtest to `~/.stockterm/backtest_*.{csv,json}`.
@@ -242,9 +252,9 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         | AlertDialogSymbolChar
         | AlertDialogConditionAbove
         | AlertDialogConditionBelow => BindingLayer::AlertDialog,
-        FilterClear | FilterCommit | FilterBackspace | FilterSlash | FilterQueryChar => {
-            BindingLayer::FilterInput
-        }
+        FilterClear | FilterCommit | FilterBackspace | FilterSlash | FilterQueryChar
+        | FilterRegexToggle | FilterSaveNamed | FilterRecallNext | FilterRecallPrev
+        | FilterDeleteSaved => BindingLayer::FilterInput,
         BacktestRun | BacktestExport | BacktestStrategyNext | BacktestScrollUp
         | BacktestScrollDown => BindingLayer::Backtest,
         OptionsRefresh
@@ -621,6 +631,11 @@ const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = {
         (FilterInput, "enter", FilterCommit),
         (FilterInput, "backspace", FilterBackspace),
         (FilterInput, "slash", FilterSlash),
+        (FilterInput, "char:r", FilterRegexToggle),
+        (FilterInput, "ctrl+s", FilterSaveNamed),
+        (FilterInput, "ctrl+n", FilterRecallNext),
+        (FilterInput, "ctrl+p", FilterRecallPrev),
+        (FilterInput, "ctrl+d", FilterDeleteSaved),
         (PortfolioDialog, "char:.", PortfolioDialogDigitOrDot),
         (AlertDialog, "char:.", AlertDialogDigitOrDot),
         (AlertDialog, "char:a", AlertDialogConditionAbove),
@@ -735,7 +750,6 @@ const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = {
         (FilterInput, "char:o", FilterQueryChar),
         (FilterInput, "char:p", FilterQueryChar),
         (FilterInput, "char:q", FilterQueryChar),
-        (FilterInput, "char:r", FilterQueryChar),
         (FilterInput, "char:s", FilterQueryChar),
         (FilterInput, "char:t", FilterQueryChar),
         (FilterInput, "char:u", FilterQueryChar),
@@ -1068,7 +1082,7 @@ mod tests {
                 layer == BindingLayer::FilterInput && a == Action::FilterQueryChar
             })
             .count();
-        assert_eq!(n, 36);
+        assert_eq!(n, 35);
     }
 
     #[test]
@@ -1172,7 +1186,7 @@ mod tests {
 
     #[test]
     fn default_bindings_total_row_count() {
-        assert_eq!(default_bindings().len(), 247);
+        assert_eq!(default_bindings().len(), 251);
     }
 
     #[test]

@@ -280,10 +280,14 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
 
     let wl_title = format!(
         "Watchlist (w add, x/D remove, j/k navigate){}",
-        filter_title_suffix(&app.filter_query)
+        filter_title_suffix(
+            &app.filter_query,
+            app.filter_regex_mode,
+            app.filter_regex_error.as_deref(),
+        )
     );
 
-    let filtered_idx = app.watchlist_filter_indices();
+    let filtered_idx = &app.watchlist_filter_indices_cache;
     if filtered_idx.is_empty() {
         let text = vec![Line::from(vec![Span::styled(
             "No symbols match filter — Esc clears filter.",
@@ -981,6 +985,17 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
                 rt.canvas(),
             )])]
         }
+    } else if app.filter_input_mode
+        && (app.active_tab == Tab::StockView || app.active_tab == Tab::Portfolio)
+    {
+        if let Some(hint) = app.filter_status_line() {
+            vec![Line::from(vec![Span::styled(hint, rt.fg_accent())])]
+        } else {
+            vec![Line::from(vec![Span::styled(
+                "Filter input",
+                rt.fg_accent(),
+            )])]
+        }
     } else if app.active_tab == Tab::StockView && stock_view_status_is_hint_mode(app) {
         stock_view_status_lines(area.width.max(1), rt)
     } else {
@@ -1093,6 +1108,7 @@ mod theme_tracking_tests {
         };
         app.watchlist_quotes.insert("AAPL".into(), quote);
         app.watchlist_state.select(Some(0));
+        app.rebuild_table_filter_caches();
         app
     }
 
