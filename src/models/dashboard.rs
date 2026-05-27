@@ -13,7 +13,7 @@ pub enum DashboardPaneKind {
     News,
     Portfolio,
     AlertsList,
-    /// Charts-tab indicator summary (§46); stub until Phase C.
+    /// Charts-tab indicator summary (§46).
     IndicatorSummary,
 }
 
@@ -88,6 +88,60 @@ pub fn preset_dual_watchlist() -> DashboardDefinition {
                 row_span: 1,
                 col_span: 1,
                 title: Some("Watchlist (right)".to_string()),
+                options: DashboardPaneOptions::default(),
+            },
+        ],
+    }
+}
+
+/// 2×2 market overview preset (Issue #24 Phase B).
+pub fn preset_market_overview() -> DashboardDefinition {
+    DashboardDefinition {
+        name: "market_overview".to_string(),
+        rows: 2,
+        cols: 2,
+        panes: vec![
+            DashboardPane {
+                id: "watchlist".to_string(),
+                kind: DashboardPaneKind::Watchlist,
+                row: 0,
+                col: 0,
+                row_span: 1,
+                col_span: 1,
+                title: Some("Watchlist".to_string()),
+                options: DashboardPaneOptions::default(),
+            },
+            DashboardPane {
+                id: "detail".to_string(),
+                kind: DashboardPaneKind::StockDetail,
+                row: 0,
+                col: 1,
+                row_span: 1,
+                col_span: 1,
+                title: Some("Detail".to_string()),
+                options: DashboardPaneOptions::default(),
+            },
+            DashboardPane {
+                id: "news".to_string(),
+                kind: DashboardPaneKind::News,
+                row: 1,
+                col: 0,
+                row_span: 1,
+                col_span: 1,
+                title: Some("News".to_string()),
+                options: DashboardPaneOptions {
+                    max_rows: Some(8),
+                    ..DashboardPaneOptions::default()
+                },
+            },
+            DashboardPane {
+                id: "portfolio".to_string(),
+                kind: DashboardPaneKind::Portfolio,
+                row: 1,
+                col: 1,
+                row_span: 1,
+                col_span: 1,
+                title: Some("Portfolio".to_string()),
                 options: DashboardPaneOptions::default(),
             },
         ],
@@ -223,6 +277,14 @@ mod tests {
         normalize_dashboard_definition(&mut def);
         assert_eq!(def.panes.len(), 1);
         assert_eq!(def.panes[0].id, "a");
+    }
+
+    #[test]
+    fn preset_market_overview_has_four_panes() {
+        let def = preset_market_overview();
+        assert_eq!(def.rows, 2);
+        assert_eq!(def.cols, 2);
+        assert_eq!(def.panes.len(), 4);
     }
 
     #[test]

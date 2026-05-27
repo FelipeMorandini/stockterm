@@ -496,10 +496,11 @@ pub fn draw_charts(
         app.prepare_charts_draw_cache(price_area);
     }
 
+    let block_title = charts_block_title(app, chrome_area.is_none());
     match chrome_area {
-        None => draw_charts_inner(f, app, chart_area, theme, true),
+        None => draw_charts_inner(f, app, chart_area, theme, &block_title),
         Some(chrome) => {
-            draw_charts_inner(f, app, chart_area, theme, false);
+            draw_charts_inner(f, app, chart_area, theme, &block_title);
             draw_charts_chrome_strip(f, app, chrome, theme);
         }
     }
@@ -517,10 +518,9 @@ fn draw_charts_chrome_strip(f: &mut Frame, app: &App, area: Rect, theme: Resolve
     f.render_widget(Paragraph::new(line).block(block), area);
 }
 
-fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme, full_title: bool) {
-    let block_title = charts_block_title(app, full_title);
+fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme, block_title: &str) {
     let block = Block::default()
-        .title(block_title.as_str())
+        .title(block_title)
         .borders(Borders::ALL)
         .style(theme.canvas())
         .border_style(Style::default().fg(theme.border).bg(theme.background));
@@ -831,7 +831,7 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
         f.render_widget(chart, macd_area);
     };
 
-    let price_area = charts_price_area(area, &block_title, app.chart_indicators);
+    let price_area = charts_price_area(area, block_title, app.chart_indicators);
 
     if app.chart_indicators.needs_subpane() {
         render_price(f, price_area);
@@ -869,6 +869,175 @@ fn draw_charts_inner(f: &mut Frame, app: &App, area: Rect, theme: ResolvedTheme,
     } else {
         render_price(f, price_area);
     }
+}
+
+/// Clamps dashboard news `max_rows` to SPEC §70.4 (3..=30).
+pub(crate) fn clamp_dashboard_news_max_rows(max_rows: Option<u8>) -> u8 {
+    max_rows.unwrap_or(30).clamp(3, 30)
+}
+
+/// True when `options.symbol` requests a symbol other than the active session symbol.
+pub(crate) fn dashboard_symbol_override_blocked(
+    opts: &crate::models::dashboard::DashboardPaneOptions,
+    app: &App,
+) -> bool {
+    let Some(ref want) = opts.symbol else {
+        return false;
+    };
+    let want = want.trim();
+    if want.is_empty() {
+        return false;
+    }
+    !crate::models::symbol::symbols_equivalent(want, &app.symbol)
+}
+
+fn draw_dashboard_chart_placeholder(
+    f: &mut Frame,
+    area: Rect,
+    theme: ResolvedTheme,
+    title: &str,
+    msg: &str,
+) {
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .style(theme.canvas())
+        .border_style(Style::default().fg(theme.border).bg(theme.background));
+    let text = vec![Line::from(Span::styled(msg, theme.fg_border()))];
+    f.render_widget(Paragraph::new(text).block(block), area);
+}
+
+/// Read-only chart pane for Dashboard (Issue #24 / §70.9.2).
+pub(crate) fn draw_chart_pane_in(
+    f: &mut Frame,
+    app: &mut App,
+    area: Rect,
+    theme: ResolvedTheme,
+    opts: &crate::models::dashboard::DashboardPaneOptions,
+    block_title: &str,
+    chart_footer: &str,
+) {
+    if dashboard_symbol_override_blocked(opts, app) {
+        draw_dashboard_chart_placeholder(
+            f,
+            area,
+            theme,
+            block_title,
+            "Symbol override not supported — use Stock View",
+        );
+        return;
+    }
+
+    let footer_h = 1u16;
+    let (body, footer) = if area.height > footer_h + 2 {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(0), Constraint::Length(footer_h)])
+            .split(area);
+        (chunks[0], Some(chunks[1]))
+    } else {
+        (area, None)
+    };
+
+    if matches!(app.chart_mode, ChartDisplayMode::Candlestick) {
+        let price_area = charts_price_area(body, block_title, app.chart_indicators);
+        app.prepare_charts_draw_cache(price_area);
+    }
+    draw_charts_inner(f, app, body, theme, block_title);
+
+    if let Some(footer_area) = footer {
+        let line = Line::from(vec![Span::styled(chart_footer, theme.fg_muted())]);
+        f.render_widget(Paragraph::new(line).style(theme.canvas()), footer_area);
+    }
+}
+
+fn last_finite_indicator_value(series: &[Option<f64>]) -> Option<f64> {
+    series.iter().rev().find_map(|v| *v).filter(|x| x.is_finite())
+}
+
+/// Read-only indicator summary for Dashboard (Issue #24 / §70.9.2).
+pub(crate) fn draw_indicator_summary_pane_in(
+    f: &mut Frame,
+    app: &App,
+    area: Rect,
+    theme: ResolvedTheme,
+    opts: &crate::models::dashboard::DashboardPaneOptions,
+    title_override: Option<&str>,
+) {
+    let title = title_override.unwrap_or("Indicators");
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .style(theme.canvas())
+        .border_style(Style::default().fg(theme.border).bg(theme.background));
+
+    if dashboard_symbol_override_blocked(opts, app) {
+        let text = vec![Line::from(Span::styled(
+            "Symbol override not supported — use Stock View",
+            theme.fg_border(),
+        ))];
+        f.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
+
+    if !app.chart_indicators.any_enabled() {
+        let text = vec![Line::from(Span::styled(
+            "No indicators (Charts tab: s/e/r/m)",
+            theme.fg_border(),
+        ))];
+        f.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
+
+    let cache = app.chart_indicator_cache.as_ref();
+    let mut lines: Vec<Line> = Vec::new();
+    if app.chart_indicators.sma_20 {
+        let v = cache
+            .and_then(|c| last_finite_indicator_value(&c.sma_20))
+            .map(crate::app::format::format_usd_price)
+            .unwrap_or_else(|| "—".to_string());
+        lines.push(Line::from(vec![
+            Span::styled("SMA(20): ", theme.canvas()),
+            Span::styled(v, theme.fg_foreground()),
+        ]));
+    }
+    if app.chart_indicators.ema_20 {
+        let v = cache
+            .and_then(|c| last_finite_indicator_value(&c.ema_20))
+            .map(crate::app::format::format_usd_price)
+            .unwrap_or_else(|| "—".to_string());
+        lines.push(Line::from(vec![
+            Span::styled("EMA(20): ", theme.canvas()),
+            Span::styled(v, theme.fg_foreground()),
+        ]));
+    }
+    if app.chart_indicators.rsi_14 {
+        let v = cache
+            .and_then(|c| last_finite_indicator_value(&c.rsi_14))
+            .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "—".to_string());
+        lines.push(Line::from(vec![
+            Span::styled("RSI(14): ", theme.canvas()),
+            Span::styled(v, theme.fg_foreground()),
+        ]));
+    }
+    if app.chart_indicators.macd {
+        let v = cache
+            .and_then(|c| last_finite_indicator_value(&c.macd.macd))
+            .map(|v| format!("{v:.2}"))
+            .unwrap_or_else(|| "—".to_string());
+        lines.push(Line::from(vec![
+            Span::styled("MACD: ", theme.canvas()),
+            Span::styled(v, theme.fg_foreground()),
+        ]));
+    }
+    if lines.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "Waiting for chart data…",
+            theme.fg_muted(),
+        )));
+    }
+    f.render_widget(Paragraph::new(lines).block(block), area);
 }
 
 /// Fixed-width candle body span per bar (Issue #190 — layout rewrite).
@@ -1814,5 +1983,29 @@ mod tests {
             };
             assert_eq!(got, expected, "mismatch for {_label}");
         }
+    }
+
+    #[test]
+    fn clamp_dashboard_news_max_rows_bounds() {
+        assert_eq!(super::clamp_dashboard_news_max_rows(None), 30);
+        assert_eq!(super::clamp_dashboard_news_max_rows(Some(2)), 3);
+        assert_eq!(super::clamp_dashboard_news_max_rows(Some(50)), 30);
+        assert_eq!(super::clamp_dashboard_news_max_rows(Some(10)), 10);
+    }
+
+    #[test]
+    fn dashboard_symbol_override_blocked_when_different() {
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        let opts = crate::models::dashboard::DashboardPaneOptions {
+            symbol: Some("MSFT".into()),
+            ..Default::default()
+        };
+        assert!(super::dashboard_symbol_override_blocked(&opts, &app));
+        let same = crate::models::dashboard::DashboardPaneOptions {
+            symbol: Some("AAPL".into()),
+            ..Default::default()
+        };
+        assert!(!super::dashboard_symbol_override_blocked(&same, &app));
     }
 }

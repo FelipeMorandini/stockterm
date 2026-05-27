@@ -6294,13 +6294,13 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
 **Scope:**
 
-- [GitHub Issue #24](https://github.com/FelipeMorandini/stockterm/issues/24) — User-defined dashboard layouts: multiple pane types (watchlist, chart, news, portfolio, alerts) composed in one **Dashboard** tab from `~/.stockterm.json`. v1 is config-driven (edit JSON, restart); in-app editor is out of scope.
+- [GitHub Issue #24](https://github.com/FelipeMorandini/stockterm/issues/24) — Composable dashboard panes on a **Dashboard** tab from `~/.stockterm.json`. **Phases A–C (shipped):** config-driven grid + read-only panes for all `DashboardPaneKind` values in v1 (`watchlist`, `stock_detail`, `news`, `portfolio`, `alerts_list`, `chart`, `indicator_summary`). In-app editor (Phase D) → [#208](https://github.com/FelipeMorandini/stockterm/issues/208).
 
 **Spec:** [`docs/SPEC.md`](SPEC.md) §70.
 
-**Status:** **Ready for manual QA** — Phase A (watchlist panes + `dual_watchlist` config) shipped 2026-05-26. Phases B–C (other pane kinds) not required for this sign-off unless included in the same PR. **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207).
+**Status:** **Phases A–C shipped** (Phase A **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207); Phases B–C **PR:** [#210](https://github.com/FelipeMorandini/stockterm/pull/210); sign-off **2026-05-27**). Issue **#24** may stay open for Phase D per triage policy.
 
-**Prerequisite:** §3 watchlist, §31 layout, §23 filters (if watchlist panes use filtered rows), §58 `insta` patterns for optional dashboard snapshots.
+**Prerequisites:** §3 watchlist + quote batch, §31 layout (regression), §23 filters (watchlist panes respect `watchlist_filter_indices_cache`), §69 saved filters optional, §58 snapshot patterns.
 
 ### Automated (local) — required when implementing
 
@@ -6322,34 +6322,74 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
    **Pass:** Snapshots committed or reviewed via `insta review`.
 
-### Manual — config + dual watchlist (Phase A / Issue #24 AC)
+### Manual — Phase A: config + dual watchlist (Issue #24 acceptance)
 
-**Setup:** Stop StockTerm. Edit `~/.stockterm.json` (backup first). Set `active_dashboard` and a `dashboards` entry per §70.5 / README example `dual_watchlist` (1×2 grid, two `watchlist` panes). Relaunch.
+**Setup:**
+
+1. Stop StockTerm.
+2. Backup `~/.stockterm.json`.
+3. Merge the README `dual_watchlist` block (or copy from [`tests/fixtures/dashboard_dual_watchlist.json`](../tests/fixtures/dashboard_dual_watchlist.json)):
+
+   ```json
+   "active_dashboard": "dual_watchlist",
+   "dashboards": [ { "name": "dual_watchlist", "rows": 1, "cols": 2, "panes": [ ... ] } ]
+   ```
+
+4. Ensure watchlist has ≥2 symbols with quotes (e.g. `AAPL`, `MSFT`).
+5. `cargo run --release`.
 
 | Step | Action | Pass criteria |
 |------|--------|---------------|
-| 1 | `cargo run --release` | App starts; no config parse panic. |
-| 2 | Switch to **Dashboard** tab (tab bar label visible) | Body shows **two** watchlist panes side-by-side (or stacked if terminal narrow per §70.6.4). |
-| 3 | Compare pane content to **Stock View** watchlist | Same symbols and quote columns (or same empty-state message). |
-| 4 | Empty watchlist test (optional copy of config) | Both panes show graceful empty placeholder; no panic. |
-| 5 | Trigger quote fetch error (e.g. invalid symbol + provider) | Panes show degraded cells / footer hint; other panes still render. |
-| 6 | Remove one pane from JSON, restart | Layout updates; no stale pane ghost. |
-| 7 | Regression: **Stock View**, **Portfolio**, **Charts** tabs | Unchanged behavior vs pre-§70 build (§31 splits, chart candles, filters). |
+| 1 | Launch | No panic; config loads; tab bar shows **Dash**. |
+| 2 | Open **Dashboard** | Two bordered panes (titles **Watchlist (left)** / **Watchlist (right)** or custom `title`). |
+| 3 | Compare to **Stock View** watchlist | Same symbol rows, prices, % change; read-only (no `>` selection cursor in dashboard panes). |
+| 4 | **Stock View:** press `/`, type filter substring | Return to **Dashboard** — both panes show filtered subset (§23 cache). |
+| 5 | **Stock View:** clear watchlist (or use empty config copy) + restart | Both panes: **No symbols** placeholder; no crash. |
+| 6 | Invalid `active_dashboard` name | Centered message (unknown dashboard); no panic. |
+| 7 | Omit `active_dashboard` | **Dashboard not configured** (or equivalent §70 message). |
+| 8 | Quote error (bad symbol / offline) | Pane body still renders; one-line error footer if `active_runtime_error` set; second pane unaffected. |
+| 9 | JSON: remove `wl_right` pane, restart | Single pane only; no ghost rect. |
+| 10 | JSON: add `kind: "news"` pane, restart | News pane shows headlines (Phases B–C shipped); not a stub. |
+| 11 | Regression: **Stock View**, **Portfolio**, **Charts**, **Settings** | Tab order, §31 splits, candles, filters, keymap unchanged. |
 
-### Manual — additional pane kinds (Phase B/C, if shipped in same PR)
+### Manual — Phase B (§70.9.1 shipped 2026-05-27)
+
+**Setup:** Config with `market_overview` preset (2×2) or custom JSON with `stock_detail`, `news`, `portfolio`, `alerts_list` panes. Restart.
 
 | Step | Action | Pass criteria |
 |------|--------|---------------|
-| 1 | Preset with `news` + `portfolio` panes | Headlines and holdings visible; read-only (no add dialog from dashboard). |
-| 2 | `chart` pane (if enabled) | Shows active symbol series; documents limitation if symbol override not implemented. |
+| 1 | **Dashboard** with four Phase B kinds | Each pane shows live data (not stub text). |
+| 2 | Press **a** on Portfolio tab (add dialog) | Dialog on Portfolio only — **not** on Dashboard portfolio pane. |
+| 3 | News pane | Headlines for active symbol; row count ≤ `options.max_rows` (default full list). |
+| 4 | Alerts pane | Table visible; **a** add dialog does not open from Dashboard. |
+| 5 | Narrow terminal (e.g. 80×24) | Grid degrades; **Terminal too small** or partial panes — no panic. |
+
+### Manual — Phase C (§70.9.2 shipped 2026-05-27)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | `chart` pane with active symbol + historical data | Candlestick or line per session `chart_mode`; uses cached layout (no flicker). |
+| 2 | `options.symbol` override in JSON | Placeholder explains override unsupported in v1 (per SPEC). |
+| 3 | `indicator_summary` with §46 toggles on Charts | Summary lines match enabled indicators; empty state when none. |
+| 4 | Switch symbol on Stock View, return to Dashboard | Chart pane updates after fetch completes. |
 
 ### Sign-off — Issue #24
 
+**Phase A (shipped 2026-05-26; PR #207):**
+
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| `cargo test` + clippy | | | |
-| Config: dual watchlist JSON | | | |
-| Manual: two watchlist panes | | | |
-| Manual: config add/remove on restart | | | |
-| Manual: empty/error degradation | | | |
-| Regression: core tabs | | | |
+| Automated: `cargo test dashboard` + full `cargo test` + clippy | maintainer | 2026-05-26 | Pass |
+| Manual: dual watchlist panes + Stock View parity | maintainer | 2026-05-26 | Pass |
+| Manual: filter respects dashboard panes | maintainer | 2026-05-26 | Pass |
+| Manual: empty / unknown dashboard / stub kind | maintainer | 2026-05-26 | Pass |
+| Manual: config pane add/remove on restart | maintainer | 2026-05-26 | Pass |
+| Manual: error footer degradation | maintainer | 2026-05-26 | Pass |
+| Regression: core tabs | maintainer | 2026-05-26 | Pass |
+
+**Phase B/C (shipped 2026-05-27):**
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Phase B: market_overview / four pane kinds | maintainer | 2026-05-27 | Pass |
+| Phase C: chart + indicator_summary | maintainer | 2026-05-27 | Pass |

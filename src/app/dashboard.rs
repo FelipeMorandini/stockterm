@@ -202,6 +202,9 @@ pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedThem
             );
         }
         ActiveDashboardResolve::Ready(def) => {
+            if app.dashboard_pane_draw_cache.is_empty() && !def.panes.is_empty() {
+                crate::app::dashboard_display::rebuild_dashboard_display_strings(app);
+            }
             if def.panes.is_empty() {
                 draw_dashboard_message(
                     f,
@@ -256,7 +259,7 @@ mod tests {
     };
     use crate::app::App;
     use crate::app::Tab;
-    use crate::models::dashboard::preset_dual_watchlist;
+    use crate::models::dashboard::{preset_dual_watchlist, preset_market_overview};
 
     #[test]
     fn dashboard_grid_chunks_dual_watchlist_side_by_side() {
@@ -298,5 +301,133 @@ mod tests {
             draw_dashboard(f, &mut app, full_area(SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT), rt);
         });
         insta::assert_snapshot!("dashboard_dual_watchlist", buffer_snapshot_string(&buf));
+    }
+
+    #[test]
+    fn snapshot_dashboard_market_overview() {
+        let mut app = App::new();
+        app.config.active_dashboard = Some("market_overview".into());
+        app.config.dashboards = vec![preset_market_overview()];
+        app.symbol = "AAPL".into();
+        app.watchlist = vec!["AAPL".into(), "MSFT".into()];
+        app.portfolio = vec![crate::models::portfolio::PortfolioItem::new(
+            "AAPL".into(),
+            10.0,
+            150.0,
+        )];
+        if let Some(row) = app.portfolio.first_mut() {
+            row.current_price = Some(180.0);
+        }
+        app.rebuild_table_filter_caches();
+        app.active_tab = Tab::Dashboard;
+
+        let buf = render_to_buffer(120, 40, |f| {
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_dashboard(f, &mut app, full_area(120, 40), rt);
+        });
+        insta::assert_snapshot!("dashboard_market_overview", buffer_snapshot_string(&buf));
+    }
+
+    fn sample_historical(bars: usize) -> crate::models::historical::HistoricalResponse {
+        use crate::models::historical::HistoricalData;
+        crate::models::historical::HistoricalResponse {
+            ticker: "AAPL".into(),
+            results: (0..bars)
+                .map(|i| HistoricalData {
+                    t: (i as u64) * 86_400_000,
+                    o: 100.0,
+                    h: 101.0,
+                    l: 99.0,
+                    c: 100.0 + i as f64 * 0.1,
+                    v: 1_000.0,
+                    n: None,
+                    vw: 0.0,
+                })
+                .collect(),
+            status: "OK".into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn snapshot_dashboard_chart_pane_80x24() {
+        use crate::app::charts::draw_chart_pane_in;
+        use crate::models::dashboard::{
+            DashboardDefinition, DashboardPane, DashboardPaneKind, DashboardPaneOptions,
+        };
+
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        app.config.active_dashboard = Some("chart_only".into());
+        app.config.dashboards = vec![DashboardDefinition {
+            name: "chart_only".into(),
+            rows: 1,
+            cols: 1,
+            panes: vec![DashboardPane {
+                id: "chart".into(),
+                kind: DashboardPaneKind::Chart,
+                row: 0,
+                col: 0,
+                row_span: 1,
+                col_span: 1,
+                title: None,
+                options: DashboardPaneOptions::default(),
+            }],
+        }];
+        app.historical_data = Some(sample_historical(20));
+        app.chart_viewport = crate::app::charts::ChartViewport::full(20);
+        crate::app::dashboard_display::rebuild_dashboard_display_strings(&mut app);
+
+        let opts = DashboardPaneOptions::default();
+        let block_title = app
+            .dashboard_pane_draw_cache
+            .get("chart")
+            .map(|e| e.block_title.clone())
+            .unwrap_or_else(|| app.dashboard_chart_block_title_cache.clone());
+        let chart_footer = app.dashboard_chart_footer_cache.clone();
+        let buf = render_to_buffer(80, 24, |f| {
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_chart_pane_in(
+                f,
+                &mut app,
+                full_area(80, 24),
+                rt,
+                &opts,
+                &block_title,
+                &chart_footer,
+            );
+        });
+        insta::assert_snapshot!("dashboard_chart_pane_80x24", buffer_snapshot_string(&buf));
+    }
+
+    #[test]
+    fn snapshot_dashboard_chart_symbol_override_placeholder() {
+        use crate::app::charts::draw_chart_pane_in;
+        use crate::models::dashboard::DashboardPaneOptions;
+
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        crate::app::dashboard_display::rebuild_dashboard_display_strings(&mut app);
+        let opts = DashboardPaneOptions {
+            symbol: Some("MSFT".into()),
+            ..Default::default()
+        };
+        let chart_footer = app.dashboard_chart_footer_cache.clone();
+        let buf = render_to_buffer(80, 24, |f| {
+            let rt = ResolvedTheme::from_palette(app.theme_palette_for_render());
+            draw_chart_pane_in(
+                f,
+                &mut app,
+                full_area(80, 24),
+                rt,
+                &opts,
+                "Chart",
+                &chart_footer,
+            );
+        });
+        insta::assert_snapshot!(
+            "dashboard_chart_symbol_override_placeholder",
+            buffer_snapshot_string(&buf)
+        );
     }
 }

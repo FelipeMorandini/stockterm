@@ -226,11 +226,15 @@ fn draw_error_log_overlay(f: &mut Frame, app: &mut App, full: Rect, rt: Resolved
     f.render_widget(footer, footer_area);
 }
 
-fn resolve_quote(app: &App) -> Option<&TickerResponse> {
-    app.ticker_data
-        .as_ref()
-        .filter(|t| ticker_response_matches_symbol_for_session(t, &app.symbol, &app.symbol))
-        .or_else(|| app.watchlist_quotes.get(&app.symbol))
+fn resolve_quote_for_symbol<'a>(app: &'a App, symbol: &str) -> Option<&'a TickerResponse> {
+    if let Some(ticker_data) = &app.ticker_data {
+        if ticker_response_matches_symbol_for_session(ticker_data, symbol, &app.symbol)
+            && ticker_data.latest_result().is_some()
+        {
+            return Some(ticker_data);
+        }
+    }
+    watchlist_quote_for_symbol(&app.watchlist_quotes, symbol)
 }
 
 fn draw_stock_view(
@@ -456,13 +460,32 @@ pub(crate) fn draw_watchlist_pane_readonly(
 }
 
 fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
+    draw_stock_detail_in(
+        f,
+        app,
+        area,
+        rt,
+        &app.stock_detail_title_cache,
+        &app.symbol,
+    );
+}
+
+/// Read-only stock detail pane for Dashboard (Issue #24 / §70.9.1).
+pub(crate) fn draw_stock_detail_in(
+    f: &mut Frame,
+    app: &App,
+    area: Rect,
+    rt: ResolvedTheme,
+    block_title: &str,
+    symbol: &str,
+) {
     let block = Block::default()
-        .title(format!("Detail: {}", app.symbol))
+        .title(block_title)
         .borders(Borders::ALL)
         .style(rt.canvas())
         .border_style(Style::default().fg(rt.border).bg(rt.background));
 
-    if let Some(ticker_data) = resolve_quote(app) {
+    if let Some(ticker_data) = resolve_quote_for_symbol(app, symbol) {
         if ticker_data.results.is_empty() {
             let text = vec![Line::from(vec![Span::styled(
                 "No quote data returned for this symbol.",
@@ -495,7 +518,7 @@ fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
         let text = vec![
             Line::from(vec![
                 Span::styled("Symbol: ", rt.canvas()),
-                Span::styled(&app.symbol, rt.fg_accent()),
+                Span::styled(symbol, rt.fg_accent()),
             ]),
             Line::from(vec![
                 Span::styled("Price: ", rt.canvas()),
@@ -531,11 +554,19 @@ fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
         ];
 
         f.render_widget(Paragraph::new(text).block(block), area);
-    } else if let Some(error) = app.error_message().as_deref() {
-        let text = vec![Line::from(vec![Span::styled(error, rt.error_text())])];
+    } else if crate::models::symbol::symbols_equivalent(symbol, &app.symbol) {
+        if let Some(error) = app.error_message().as_deref() {
+            let text = vec![Line::from(vec![Span::styled(error, rt.error_text())])];
+            f.render_widget(Paragraph::new(text).block(block), area);
+            return;
+        }
+        let text = vec![Line::from(vec![Span::styled("Loading...", rt.fg_border())])];
         f.render_widget(Paragraph::new(text).block(block), area);
     } else {
-        let text = vec![Line::from(vec![Span::styled("Loading...", rt.fg_border())])];
+        let text = vec![Line::from(vec![Span::styled(
+            "No quote for symbol — select on Stock View",
+            rt.fg_border(),
+        )])];
         f.render_widget(Paragraph::new(text).block(block), area);
     }
 }
@@ -664,10 +695,26 @@ fn draw_search(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
 }
 
 fn draw_news(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
-    let title = format!("News — {}", app.symbol);
+    let title = format!(
+        "News — {} (j/k · Enter open · c copy)",
+        app.symbol
+    );
+    draw_news_list_in(f, app, area, rt, None, &title, true);
+}
+
+/// Read-only news list for Dashboard (Issue #24 / §70.9.1).
+pub(crate) fn draw_news_list_in(
+    f: &mut Frame,
+    app: &mut App,
+    area: Rect,
+    rt: ResolvedTheme,
+    max_rows: Option<u8>,
+    block_title: &str,
+    interactive: bool,
+) {
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(title.as_str())
+        .title(block_title)
         .style(rt.canvas())
         .border_style(Style::default().fg(rt.border).bg(rt.background));
 
@@ -693,9 +740,11 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
             return;
         }
 
+        let row_cap = usize::from(crate::app::charts::clamp_dashboard_news_max_rows(max_rows));
         let items: Vec<ListItem> = data
             .results
             .iter()
+            .take(row_cap)
             .map(|item| {
                 let pub_name = truncate_visual(&item.publisher.name, 18);
                 let title_s = truncate_visual(&item.title, 52);
@@ -709,16 +758,20 @@ fn draw_news(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
             })
             .collect();
 
-        let list = List::new(items)
-            .block(block.title(format!("{} (j/k · Enter open · c copy)", title)))
-            .highlight_style(
-                Style::default()
-                    .bg(rt.selection)
-                    .fg(rt.foreground)
-                    .add_modifier(Modifier::BOLD),
-            )
-            .highlight_symbol("> ");
-        f.render_stateful_widget(list, area, &mut app.news_list_state);
+        let list = List::new(items).block(block);
+        if interactive {
+            let list = list
+                .highlight_style(
+                    Style::default()
+                        .bg(rt.selection)
+                        .fg(rt.foreground)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .highlight_symbol("> ");
+            f.render_stateful_widget(list, area, &mut app.news_list_state);
+        } else {
+            f.render_widget(list, area);
+        }
         return;
     }
 

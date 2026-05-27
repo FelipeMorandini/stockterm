@@ -5,6 +5,7 @@ mod app_error;
 mod backtest_ui;
 pub mod charts;
 mod dashboard;
+mod dashboard_display;
 mod dashboard_panes;
 pub mod event;
 mod fetch_delivery;
