@@ -50,6 +50,7 @@ pub enum Tab {
     Search,
     News,
     Charts,
+    Dashboard,
     Settings,
     Backtest,
     Options,
@@ -65,6 +66,7 @@ impl Tab {
             Tab::Search => "search",
             Tab::News => "news",
             Tab::Charts => "charts",
+            Tab::Dashboard => "dashboard",
             Tab::Settings => "settings",
             Tab::Backtest => "backtest",
             Tab::Options => "options",
@@ -79,6 +81,7 @@ impl Tab {
             "search" | "Search" => Tab::Search,
             "news" | "News" => Tab::News,
             "charts" | "Charts" => Tab::Charts,
+            "dashboard" | "Dashboard" => Tab::Dashboard,
             "settings" | "Settings" => Tab::Settings,
             "backtest" | "Backtest" => Tab::Backtest,
             "options" | "Options" => Tab::Options,
@@ -451,6 +454,11 @@ pub struct App {
     pub filter_compiled: crate::app::table_filter::CompiledTableFilter,
     /// Issue #194 — precomputed watchlist row indices for draw (§69.3.4).
     pub watchlist_filter_indices_cache: Vec<usize>,
+    /// Precomputed watchlist table cells (Issue #24 / §70 audit).
+    pub(crate) watchlist_display_rows_cache:
+        Vec<crate::app::watchlist_display::WatchlistDisplayRow>,
+    /// Cached dashboard pane layout (Issue #24 / §70 audit).
+    pub(crate) dashboard_layout_cache: Option<crate::app::dashboard::DashboardLayoutCache>,
     /// Issue #194 — precomputed portfolio row indices for draw.
     pub portfolio_filter_indices_cache: Vec<usize>,
     /// Issue #194 — index into `config.saved_filters` for recall/delete cycling.
@@ -767,6 +775,8 @@ impl App {
                 regex_error: None,
             },
             watchlist_filter_indices_cache: Vec::new(),
+            watchlist_display_rows_cache: Vec::new(),
+            dashboard_layout_cache: None,
             portfolio_filter_indices_cache: Vec::new(),
             saved_filter_cycle_index: 0,
             filter_save_name_buffer: String::new(),
@@ -1104,6 +1114,7 @@ impl App {
                 self.filter_regex_mode,
                 &self.filter_compiled,
             );
+        crate::app::watchlist_display::rebuild_watchlist_display_rows(self);
     }
 
     pub(crate) fn watchlist_filter_indices(&self) -> Vec<usize> {
@@ -1522,6 +1533,7 @@ impl App {
         }
 
         self.ticker_data = self.watchlist_quotes.get(&self.symbol).cloned();
+        crate::app::watchlist_display::rebuild_watchlist_display_rows(self);
 
         if !errors.is_empty() {
             self.last_failed_fetch = LastFailedFetch::StockQuoteBatch;
@@ -1713,7 +1725,7 @@ impl App {
 
     fn on_background_tick(&mut self) {
         match self.active_tab {
-            Tab::StockView | Tab::Alerts => self.try_spawn_stock_poll_throttled(),
+            Tab::StockView | Tab::Alerts | Tab::Dashboard => self.try_spawn_stock_poll_throttled(),
             Tab::Charts => self.try_spawn_historical_fetch(),
             Tab::News => self.try_spawn_news_fetch(),
             Tab::Search => self.try_spawn_search_tick(),
@@ -3728,7 +3740,8 @@ impl App {
             Tab::Alerts => Tab::Search,
             Tab::Search => Tab::News,
             Tab::News => Tab::Charts,
-            Tab::Charts => Tab::Settings,
+            Tab::Charts => Tab::Dashboard,
+            Tab::Dashboard => Tab::Settings,
             Tab::Settings => Tab::Backtest,
             Tab::Backtest => Tab::Options,
             Tab::Options => Tab::StockView,
@@ -3748,8 +3761,9 @@ impl App {
             Tab::Alerts => Tab::Portfolio,
             Tab::Search => Tab::Alerts,
             Tab::News => Tab::Search,
-            Tab::Charts => Tab::News,
-            Tab::Settings => Tab::Charts,
+            Tab::Charts => Tab::Dashboard,
+            Tab::Dashboard => Tab::Charts,
+            Tab::Settings => Tab::Dashboard,
             Tab::Backtest => Tab::Settings,
             Tab::Options => Tab::Backtest,
         };
@@ -4202,6 +4216,8 @@ mod tests {
         assert_eq!(Tab::from_config_str("backtest"), Some(Tab::Backtest));
         assert_eq!(Tab::from_config_str("options"), Some(Tab::Options));
         assert_eq!(Tab::Options.as_config_str(), "options");
+        assert_eq!(Tab::from_config_str("dashboard"), Some(Tab::Dashboard));
+        assert_eq!(Tab::Dashboard.as_config_str(), "dashboard");
         assert!(Tab::from_config_str("nope").is_none());
     }
 

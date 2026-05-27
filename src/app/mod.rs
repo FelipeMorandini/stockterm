@@ -4,6 +4,8 @@ pub mod app;
 mod app_error;
 mod backtest_ui;
 pub mod charts;
+mod dashboard;
+mod dashboard_panes;
 pub mod event;
 mod fetch_delivery;
 mod format;
@@ -16,6 +18,7 @@ pub mod portfolio;
 pub mod styles;
 mod table_filter;
 pub mod ui;
+mod watchlist_display;
 
 #[cfg(test)]
 mod snapshot_test_util;

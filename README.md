@@ -17,7 +17,9 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 | `theme` | object or null | `null` | Theme preset and hex overrides (see [`docs/SPEC.md`](docs/SPEC.md) §21). |
 | `provider` | string | `"yahoo"` | `"yahoo"` or `"polygon"`. |
 | `notifications_enabled` | boolean | `true` | Desktop toasts for alert fires (bell always rings). |
-| `last_tab` | string or omitted | omitted | Last tab: `stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `settings`, `backtest`, `options` (Issue #19 / §22). |
+| `last_tab` | string or omitted | omitted | Last tab: `stock_view`, `portfolio`, `alerts`, `search`, `news`, `charts`, `dashboard`, `settings`, `backtest`, `options` (Issue #19 / §22). |
+| `dashboards` | array | `[]` | Composable dashboard layouts (Issue #24 / §70). Each entry: `name`, `rows`, `cols`, `panes[]` with `id`, `kind`, `row`, `col`, `row_span`, `col_span`, optional `title`. |
+| `active_dashboard` | string or omitted | omitted | Name of the dashboard to render on the **Dashboard** tab; must match a `dashboards[].name`. |
 | `backtest` | object | see below | Simulation capital, commission, slippage (Issue #25 / §47). |
 | `backtest_strategy` | object | SMA 50/200 | Strategy kind and periods (Issue #25 / §47). |
 | `last_symbol` | string or omitted | omitted | Last active ticker when `watchlist` was empty at launch (normalized). |
@@ -55,6 +57,45 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 ```
 
 On **Settings** row **6. Layout**, use **←/→** or **h**/**l** to preview presets and **Enter** to save.
+
+#### `dashboards` / `active_dashboard` (Issue #24 / §70)
+
+Pane `kind` values: `watchlist`, `stock_detail`, `chart`, `news`, `portfolio`, `alerts_list`, `indicator_summary`. Phase A implements **`watchlist`** only; other kinds show a placeholder until later phases.
+
+**Example — dual watchlist (acceptance fixture):**
+
+```json
+"active_dashboard": "dual_watchlist",
+"dashboards": [
+  {
+    "name": "dual_watchlist",
+    "rows": 1,
+    "cols": 2,
+    "panes": [
+      {
+        "id": "wl_left",
+        "kind": "watchlist",
+        "row": 0,
+        "col": 0,
+        "row_span": 1,
+        "col_span": 1,
+        "title": "Watchlist (left)"
+      },
+      {
+        "id": "wl_right",
+        "kind": "watchlist",
+        "row": 0,
+        "col": 1,
+        "row_span": 1,
+        "col_span": 1,
+        "title": "Watchlist (right)"
+      }
+    ]
+  }
+]
+```
+
+Restart StockTerm after editing; open the **Dashboard** tab. Config changes take effect on next launch (no in-app editor in v1).
 
 #### `backtest` / `backtest_strategy` (Issue #25)
 

@@ -1,10 +1,12 @@
 use crate::app::alerts::draw_alerts;
 use crate::app::charts::draw_charts;
-use crate::app::format::{format_signed_usd_delta, format_usd_price, symbol_kind_label};
+use crate::app::dashboard::draw_dashboard;
+use crate::app::format::{format_signed_usd_delta, format_usd_price};
 use crate::app::layout::{centered_rect, shell_vertical_constraints};
 use crate::app::portfolio::draw_portfolio;
 use crate::app::styles::{ResolvedTheme, ThemeStamp};
 use crate::app::table_filter::filter_title_suffix;
+use crate::app::watchlist_display::watchlist_display_rows_to_ratatui;
 use crate::app::{App, SettingsEdit, Tab};
 use crate::config::MarketProviderKind;
 use crate::config::ResolvedLayout;
@@ -28,7 +30,7 @@ pub(crate) const STOCK_VIEW_STATUS_SINGLE_LINE_COLS: u16 = 100;
 const WATCHLIST_KIND_COLUMN_MIN_WIDTH: u16 = 72;
 
 /// Resolve a watchlist quote by row symbol, matching compact normalized keys (§43.13).
-fn watchlist_quote_for_symbol<'a>(
+pub(crate) fn watchlist_quote_for_symbol<'a>(
     quotes: &'a std::collections::HashMap<String, TickerResponse>,
     row_symbol: &str,
 ) -> Option<&'a TickerResponse> {
@@ -69,6 +71,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
                 "Search",
                 "News",
                 "Charts",
+                "Dashboard",
                 "Settings",
                 "Backtest",
                 "Options",
@@ -89,9 +92,10 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
                     Tab::Search => 3,
                     Tab::News => 4,
                     Tab::Charts => 5,
-                    Tab::Settings => 6,
-                    Tab::Backtest => 7,
-                    Tab::Options => 8,
+                    Tab::Dashboard => 6,
+                    Tab::Settings => 7,
+                    Tab::Backtest => 8,
+                    Tab::Options => 9,
                 })
                 .style(Style::default())
                 .highlight_style(Style::default().add_modifier(Modifier::BOLD));
@@ -113,6 +117,7 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
             Tab::Search => draw_search(f, app, body, rt),
             Tab::News => draw_news(f, app, body, rt),
             Tab::Charts => draw_charts(f, app, body, rt, layout),
+            Tab::Dashboard => draw_dashboard(f, app, body, rt),
             Tab::Settings => draw_settings(f, app, body, rt),
             Tab::Backtest => crate::app::backtest_ui::draw_backtest(f, app, body, rt),
             Tab::Options => crate::app::options::draw_options(f, app, body, &rt, theme_stamp),
@@ -151,6 +156,7 @@ fn error_log_tab_label(tab: Tab) -> &'static str {
         Tab::Search => "Search",
         Tab::News => "News",
         Tab::Charts => "Charts",
+        Tab::Dashboard => "Dash",
         Tab::Settings => "Sets",
         Tab::Backtest => "BT",
         Tab::Options => "OPT",
@@ -316,86 +322,15 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
         .style(rt.canvas().add_modifier(Modifier::BOLD))
         .height(1);
 
-    struct WatchlistRowCells {
-        sym: String,
-        kind: String,
-        last_s: String,
-        chg_s: String,
-        pct_s: String,
-        vol_s: String,
-        chg_color: ratatui::style::Color,
-    }
-
-    let row_cells: Vec<WatchlistRowCells> = filtered_idx
-        .iter()
-        .map(|&idx| {
-            let sym = app.watchlist[idx].clone();
-            let kind = symbol_kind_label(app.symbol_kind_for_display(&sym)).to_string();
-            let (last_s, chg_s, pct_s, vol_s, chg_color) =
-                match watchlist_quote_for_symbol(&app.watchlist_quotes, &sym)
-                    .and_then(|r| r.latest_result())
-                {
-                    Some(bar) => {
-                        let price_change = bar.c - bar.o;
-                        let pct = if bar.o.abs() > f64::EPSILON {
-                            (price_change / bar.o) * 100.0
-                        } else {
-                            0.0
-                        };
-                        let chg_color = if price_change >= 0.0 {
-                            rt.positive
-                        } else {
-                            rt.negative
-                        };
-                        (
-                            format_usd_price(bar.c),
-                            format_signed_usd_delta(price_change),
-                            format!("{}{:.2}%", if price_change >= 0.0 { "+" } else { "" }, pct),
-                            format!("{:.0}", bar.v),
-                            chg_color,
-                        )
-                    }
-                    _ => (
-                        "—".to_string(),
-                        "—".to_string(),
-                        "—".to_string(),
-                        "—".to_string(),
-                        rt.muted,
-                    ),
-                };
-            WatchlistRowCells {
-                sym,
-                kind,
-                last_s,
-                chg_s,
-                pct_s,
-                vol_s,
-                chg_color,
-            }
-        })
-        .collect();
-
-    let row_style = rt.canvas();
-    let rows: Vec<Row> = row_cells
-        .iter()
-        .map(|r| {
-            let mut cells = vec![Cell::from(r.sym.as_str())];
-            if show_kind {
-                cells.push(Cell::from(r.kind.as_str()).style(if r.kind.is_empty() {
-                    row_style
-                } else {
-                    rt.fg_color(rt.muted)
-                }));
-            }
-            cells.extend([
-                Cell::from(r.last_s.as_str()),
-                Cell::from(r.chg_s.as_str()).style(rt.fg_color(r.chg_color)),
-                Cell::from(r.pct_s.as_str()).style(rt.fg_color(r.chg_color)),
-                Cell::from(r.vol_s.as_str()),
-            ]);
-            Row::new(cells).height(1).style(row_style)
-        })
-        .collect();
+    let rows = watchlist_display_rows_to_ratatui(
+        &app.watchlist_display_rows_cache,
+        show_kind,
+        rt.foreground,
+        rt.background,
+        rt.positive,
+        rt.negative,
+        rt.muted,
+    );
 
     let constraints: Vec<Constraint> = if show_kind {
         vec![
@@ -429,6 +364,95 @@ fn draw_watchlist_table(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTh
         .highlight_symbol("> ");
 
     f.render_stateful_widget(table, area, &mut app.watchlist_state);
+}
+
+/// Read-only watchlist pane for the Dashboard tab (Issue #24 / §70).
+pub(crate) fn draw_watchlist_pane_readonly(
+    f: &mut Frame,
+    app: &App,
+    area: Rect,
+    rt: ResolvedTheme,
+    title_override: Option<&str>,
+) {
+    let block_title = title_override.unwrap_or("Watchlist");
+
+    if app.watchlist.is_empty() {
+        let block = Block::default()
+            .title(block_title)
+            .borders(Borders::ALL)
+            .style(rt.canvas())
+            .border_style(Style::default().fg(rt.border).bg(rt.background));
+        let text = vec![Line::from(Span::styled("No symbols", rt.fg_border()))];
+        f.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
+
+    let filtered_idx = &app.watchlist_filter_indices_cache;
+    if filtered_idx.is_empty() {
+        let block = Block::default()
+            .title(block_title)
+            .borders(Borders::ALL)
+            .style(rt.canvas())
+            .border_style(Style::default().fg(rt.border).bg(rt.background));
+        let text = vec![Line::from(Span::styled(
+            "No symbols match filter",
+            rt.fg_border(),
+        ))];
+        f.render_widget(Paragraph::new(text).block(block), area);
+        return;
+    }
+
+    let show_kind = area.width >= WATCHLIST_KIND_COLUMN_MIN_WIDTH;
+    let header_labels: &[&str] = if show_kind {
+        &["Symbol", "Kind", "Last", "Change", "%Chg", "Volume"]
+    } else {
+        &["Symbol", "Last", "Change", "%Chg", "Volume"]
+    };
+    let header_cells = header_labels
+        .iter()
+        .map(|h| Cell::from(*h).style(rt.fg_foreground()));
+    let header = Row::new(header_cells)
+        .style(rt.canvas().add_modifier(Modifier::BOLD))
+        .height(1);
+
+    let rows = watchlist_display_rows_to_ratatui(
+        &app.watchlist_display_rows_cache,
+        show_kind,
+        rt.foreground,
+        rt.background,
+        rt.positive,
+        rt.negative,
+        rt.muted,
+    );
+
+    let constraints: Vec<Constraint> = if show_kind {
+        vec![
+            Constraint::Min(6),
+            Constraint::Length(6),
+            Constraint::Length(12),
+            Constraint::Length(10),
+            Constraint::Length(9),
+            Constraint::Min(8),
+        ]
+    } else {
+        vec![
+            Constraint::Min(6),
+            Constraint::Length(12),
+            Constraint::Length(10),
+            Constraint::Length(9),
+            Constraint::Min(8),
+        ]
+    };
+
+    let table = Table::new(rows, constraints).header(header).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(block_title)
+            .style(rt.canvas())
+            .border_style(Style::default().fg(rt.border).bg(rt.background)),
+    );
+
+    f.render_widget(table, area);
 }
 
 fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
@@ -516,7 +540,7 @@ fn draw_stock_detail(f: &mut Frame, app: &App, area: Rect, rt: ResolvedTheme) {
     }
 }
 
-fn truncate_visual(s: &str, max_chars: usize) -> String {
+pub(crate) fn truncate_visual(s: &str, max_chars: usize) -> String {
     let count = s.chars().count();
     if count <= max_chars {
         return s.to_string();
