@@ -71,7 +71,7 @@ _None at this time — all roadmap-labelled issues are either shipped or deferre
 | [#204](https://github.com/FelipeMorandini/stockterm/issues/204) | Config: canonicalize symbols on load | §67 follow-up — migrate legacy mixed-case `~/.stockterm.json` rows. |
 | [#68](https://github.com/FelipeMorandini/stockterm/issues/68)  | Portfolio: optional decimal types | Optional precision upgrade; current `f64` matches providers. |
 | [#24](https://github.com/FelipeMorandini/stockterm/issues/24)  | Advanced: custom widgets — post-MVP | **§70 Phases A–C shipped** (all v1 pane kinds; **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207) + B–C **PR:** [#210](https://github.com/FelipeMorandini/stockterm/pull/210)); Phase D → [#208](https://github.com/FelipeMorandini/stockterm/issues/208). |
-| [#208](https://github.com/FelipeMorandini/stockterm/issues/208) | Dashboard §70 Phase D: in-app pane editor | §70.9 Phase D — config editor in TUI. |
+| [#208](https://github.com/FelipeMorandini/stockterm/issues/208) | Dashboard §70 Phase D: in-app pane editor | **§71 shipped** 2026-05-27 — wizard modal editor; QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#208** (sign-off pending). |
 | [#209](https://github.com/FelipeMorandini/stockterm/issues/209) | Dashboard: gate historical/news fetch on pane kinds | §70 tech debt — skip fetches when dashboard has no chart/news panes. |
 
 **Triage policy:** [#24](https://github.com/FelipeMorandini/stockterm/issues/24), [#68](https://github.com/FelipeMorandini/stockterm/issues/68), [#191](https://github.com/FelipeMorandini/stockterm/issues/191), [#204](https://github.com/FelipeMorandini/stockterm/issues/204) are intentionally deferred/low priority and should not be auto-closed during backlog sweeps.

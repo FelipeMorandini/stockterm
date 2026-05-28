@@ -1,6 +1,7 @@
 #![allow(clippy::collapsible_match)]
 
 use crate::app::alerts::{cycle_alert_dialog_focus, handle_alerts_events};
+use crate::app::dashboard_editor::handle_dashboard_events;
 use crate::app::keyboard::{letter_key_plain, should_global_quit, tab_key_plain};
 use crate::app::portfolio::{cycle_portfolio_dialog_focus, handle_portfolio_events};
 use crate::app::{App, SettingsEdit, Tab};
@@ -12,6 +13,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 fn modal_add_dialog_open(app: &App) -> bool {
     (app.active_tab == Tab::Alerts && app.alert_add_dialog.is_some())
         || (app.active_tab == Tab::Portfolio && app.portfolio_dialog.is_some())
+        || (app.active_tab == Tab::Dashboard && app.dashboard_editor.is_some())
 }
 
 pub fn handle_event(app: &mut App, key: KeyEvent) {
@@ -89,7 +91,9 @@ pub fn handle_event(app: &mut App, key: KeyEvent) {
             Tab::Charts => {
                 handle_charts_events(app, key);
             }
-            Tab::Dashboard => {}
+            Tab::Dashboard => {
+                handle_dashboard_events(app, key);
+            }
             Tab::Backtest => {
                 handle_backtest_events(app, key);
             }

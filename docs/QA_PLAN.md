@@ -6294,7 +6294,7 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
 **Scope:**
 
-- [GitHub Issue #24](https://github.com/FelipeMorandini/stockterm/issues/24) — Composable dashboard panes on a **Dashboard** tab from `~/.stockterm.json`. **Phases A–C (shipped):** config-driven grid + read-only panes for all `DashboardPaneKind` values in v1 (`watchlist`, `stock_detail`, `news`, `portfolio`, `alerts_list`, `chart`, `indicator_summary`). In-app editor (Phase D) → [#208](https://github.com/FelipeMorandini/stockterm/issues/208).
+- [GitHub Issue #24](https://github.com/FelipeMorandini/stockterm/issues/24) — Composable dashboard panes on a **Dashboard** tab from `~/.stockterm.json`. **Phases A–C (shipped):** config-driven grid + read-only panes for all `DashboardPaneKind` values in v1 (`watchlist`, `stock_detail`, `news`, `portfolio`, `alerts_list`, `chart`, `indicator_summary`). In-app editor (Phase D) → [#208](https://github.com/FelipeMorandini/stockterm/issues/208) (**§71**).
 
 **Spec:** [`docs/SPEC.md`](SPEC.md) §70.
 
@@ -6393,3 +6393,105 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 |-------|--------|------|-----------|
 | Phase B: market_overview / four pane kinds | maintainer | 2026-05-27 | Pass |
 | Phase C: chart + indicator_summary | maintainer | 2026-05-27 | Pass |
+
+---
+
+## Issue #208 — Dashboard in-app pane editor (§71 / §70 Phase D)
+
+**Scope:**
+
+- [GitHub Issue #208](https://github.com/FelipeMorandini/stockterm/issues/208) — In-app dashboard editor on the **Dashboard** tab: create/edit layouts from presets or scratch, add/remove panes, edit grid `rows`/`cols` and pane placement, inline validation (overlap / out-of-bounds), persist to `~/.stockterm.json`, **live preview without restart**. Wizard modal (**`e`** on Dashboard); drag-resize out of scope.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §71.
+
+**Prerequisite:** §70 Phases A–C shipped (read-only panes, `dashboard_layout_cache`, `normalize_dashboards` on load). §24 keymap, §22 `try_save_config_with_session`, §18.13 modal layout.
+
+**Status:** **Implemented** (2026-05-27) — automated tests + audit passed; **manual sign-off pending** before merge.
+
+### Automated (local) — required when implementing
+
+1. From the repo root:
+
+   ```bash
+   cargo test dashboard
+   cargo test dashboard_editor
+   cargo test validate_dashboard
+   cargo test
+   cargo clippy -- -D warnings
+   ```
+
+   **Pass:** All exit 0.
+
+2. If `insta` snapshots added (§71.9):
+
+   ```bash
+   cargo test dashboard_editor_snapshot
+   ```
+
+   **Pass:** Snapshots committed or reviewed via `insta review`.
+
+### Manual — setup
+
+1. Stop StockTerm.
+2. Backup `~/.stockterm.json`.
+3. Remove `dashboards` / `active_dashboard` keys (or use a temp `HOME`) to test empty-state editor.
+4. `cargo run --release`.
+
+### Manual — open editor and preset flow (§71.1 D2)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Open **Dashboard** with no config | Message prompts configuration; press **`e`**. |
+| 2 | Editor: **New from preset** → `dual_watchlist` | Prompt for name (or default); draft preview shows two watchlist panes behind overlay. |
+| 3 | **Save** | `~/.stockterm.json` contains new `dashboards[]` entry + `active_dashboard`; Dashboard tab renders two panes **without restart**. |
+| 4 | Quit and relaunch | Layout persists. |
+
+### Manual — edit layout: grid and panes (§71.1 D3)
+
+**Setup:** Active `market_overview` or custom 2×2 dashboard.
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | **`e`** on Dashboard | Editor opens on **EditLayout**; dimmed live preview matches draft. |
+| 2 | Change `rows` or `cols` (within 1..4) | Preview grid updates; invalid values show inline error, **Save** disabled. |
+| 3 | **`a`** add pane (`Watchlist`) | New row in pane list; preview shows new pane (auto id). |
+| 4 | **`d`** then **`d`** / **`y`** remove pane | Two-step confirm; pane removed from preview. |
+| 5 | Create overlapping panes (same cell) | Footer shows overlap error; **Save** blocked; disk JSON unchanged. |
+| 6 | Fix overlap, **Save** | Config updated; preview matches saved layout after overlay closes. |
+
+### Manual — edit pane fields (§71.1 D4)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Select pane, **`e`** (EditPane) | Form shows `kind`, row/col, spans, optional title. |
+| 2 | Change `kind` to `news`, set `max_rows` | Preview news pane respects row cap (§70). |
+| 3 | Set `row_span` past grid edge | Inline error on pane form; cannot return to layout with invalid pane. |
+| 4 | **Esc** back to list, **Save** | Committed JSON reflects edits. |
+
+### Manual — validation and save failure
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Duplicate dashboard name on **New** | Inline error; no partial write. |
+| 2 | **Esc** with dirty draft | Confirm discard prompt; **n** stays in editor; **y** closes without save. |
+| 3 | Save with read-only config (safe temp `HOME` chmod) | Status/runtime error surfaced; in-memory config reverted to snapshot; no panic. |
+
+### Manual — regression
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | §70 read-only behavior | Without editor open, dashboard panes still read-only (no portfolio add from dashboard pane). |
+| 2 | Stock View / Portfolio / Charts / Settings | Tab order, §31 layout, filters, keymap unchanged. |
+| 3 | JSON power-user path | Hand-edit `dashboards` still loads after restart; editor does not corrupt unrelated config keys. |
+
+### Sign-off — Issue #208
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated: dashboard + editor + validate tests + clippy | | | |
+| Manual: preset create without JSON | | | |
+| Manual: add/remove pane + grid edit + live preview | | | |
+| Manual: overlap / OOB inline errors block save | | | |
+| Manual: save persists without restart | | | |
+| Manual: discard / save-failure paths | | | |
+| Regression: §70 read-only + core tabs | | | |

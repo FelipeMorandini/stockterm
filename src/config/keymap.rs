@@ -39,6 +39,10 @@ pub enum BindingLayer {
     Backtest,
     /// Options tab (Issue #22 / SPEC §48.5).
     Options,
+    /// Dashboard tab (Issue #208 / §71).
+    Dashboard,
+    /// Dashboard layout editor modal (Issue #208 / §71).
+    DashboardEditor,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -189,6 +193,21 @@ pub enum Action {
     OptionsStrikeUp,
     OptionsStrikeDown,
     OptionsToggleGreeks,
+    /// Open dashboard layout editor (Issue #208 / §71).
+    DashboardOpenEditor,
+    DashboardEditorEsc,
+    DashboardEditorSave,
+    DashboardEditorRowDown,
+    DashboardEditorRowUp,
+    DashboardEditorAddPane,
+    DashboardEditorRemoveArm,
+    DashboardEditorEditPane,
+    DashboardEditorGridInc,
+    DashboardEditorGridDec,
+    DashboardEditorFocusNext,
+    DashboardEditorKindNext,
+    DashboardEditorBackspace,
+    DashboardEditorDigit,
 }
 
 #[inline]
@@ -263,6 +282,20 @@ pub fn action_binding_layer(a: Action) -> BindingLayer {
         | OptionsStrikeUp
         | OptionsStrikeDown
         | OptionsToggleGreeks => BindingLayer::Options,
+        DashboardOpenEditor => BindingLayer::Dashboard,
+        DashboardEditorEsc
+        | DashboardEditorSave
+        | DashboardEditorRowDown
+        | DashboardEditorRowUp
+        | DashboardEditorAddPane
+        | DashboardEditorRemoveArm
+        | DashboardEditorEditPane
+        | DashboardEditorGridInc
+        | DashboardEditorGridDec
+        | DashboardEditorFocusNext
+        | DashboardEditorKindNext
+        | DashboardEditorBackspace
+        | DashboardEditorDigit => BindingLayer::DashboardEditor,
     }
 }
 
@@ -778,6 +811,33 @@ const DEFAULT_BINDINGS: &[(BindingLayer, &'static str, Action)] = {
         (Options, "char:k", OptionsStrikeUp),
         (Options, "up", OptionsStrikeUp),
         (Options, "char:g", OptionsToggleGreeks),
+        (Dashboard, "char:e", DashboardOpenEditor),
+        (DashboardEditor, "esc", DashboardEditorEsc),
+        (DashboardEditor, "enter", DashboardEditorSave),
+        (DashboardEditor, "ctrl+s", DashboardEditorSave),
+        (DashboardEditor, "char:j", DashboardEditorRowDown),
+        (DashboardEditor, "down", DashboardEditorRowDown),
+        (DashboardEditor, "char:k", DashboardEditorRowUp),
+        (DashboardEditor, "up", DashboardEditorRowUp),
+        (DashboardEditor, "char:a", DashboardEditorAddPane),
+        (DashboardEditor, "char:d", DashboardEditorRemoveArm),
+        (DashboardEditor, "char:e", DashboardEditorEditPane),
+        (DashboardEditor, "plus", DashboardEditorGridInc),
+        (DashboardEditor, "shift+=", DashboardEditorGridInc),
+        (DashboardEditor, "minus", DashboardEditorGridDec),
+        (DashboardEditor, "tab", DashboardEditorFocusNext),
+        (DashboardEditor, "char:c", DashboardEditorKindNext),
+        (DashboardEditor, "backspace", DashboardEditorBackspace),
+        (DashboardEditor, "char:0", DashboardEditorDigit),
+        (DashboardEditor, "char:1", DashboardEditorDigit),
+        (DashboardEditor, "char:2", DashboardEditorDigit),
+        (DashboardEditor, "char:3", DashboardEditorDigit),
+        (DashboardEditor, "char:4", DashboardEditorDigit),
+        (DashboardEditor, "char:5", DashboardEditorDigit),
+        (DashboardEditor, "char:6", DashboardEditorDigit),
+        (DashboardEditor, "char:7", DashboardEditorDigit),
+        (DashboardEditor, "char:8", DashboardEditorDigit),
+        (DashboardEditor, "char:9", DashboardEditorDigit),
     ]
 };
 
@@ -1186,7 +1246,7 @@ mod tests {
 
     #[test]
     fn default_bindings_total_row_count() {
-        assert_eq!(default_bindings().len(), 251);
+        assert_eq!(default_bindings().len(), 278);
     }
 
     #[test]

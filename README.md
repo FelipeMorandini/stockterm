@@ -97,7 +97,9 @@ Pane `kind` values: `watchlist`, `stock_detail`, `chart`, `news`, `portfolio`, `
 
 **Example — market overview (2×2):** set `"active_dashboard": "market_overview"` and copy the `preset_market_overview()` layout from [`src/models/dashboard.rs`](src/models/dashboard.rs) (`watchlist`, `detail`, `news`, `portfolio` panes).
 
-Restart StockTerm after editing; open the **Dashboard** tab. Config changes take effect on next launch (no in-app editor in v1).
+Open the **Dashboard** tab and press **`e`** to create or edit layouts in-app (live preview; **Enter** on **Save** to persist). Hand-editing `~/.stockterm.json` still works; restart only needed if you edit JSON while the app is closed.
+
+**Dashboard editor (Issue #208):** `e` open editor · `j`/`k` navigate · `a` add pane · `d` then `d`/`y` remove pane · `Tab` cycle focus · `+`/`-` rows/cols when focused · **Save** row + **Enter** to commit · `Esc` close.
 
 #### `backtest` / `backtest_strategy` (Issue #25)
 
@@ -146,6 +148,8 @@ Optional JSON object: each key is a **chord** string, each value is an **`Action
 **Backtest tab (Issue #25 / §47):** Load historical bars on **Charts** first ( **`4`** = Y1 recommended). **Backtest** tab: **`Enter`** or **`r`** run, **`n`** cycle strategy (SMA crossover ↔ RSI mean-reversion), **`x`** export `~/.stockterm/backtest_<symbol>_<ts>.{csv,json}`, **`j`**/**`k`** scroll trades. Long-only, fills at bar **close**, force-flat on the last bar.
 
 **Options tab (Issue #22 / §48, Polygon #167 / §50):** **Yahoo** (`provider: "yahoo"`) or **Polygon** (`provider: "polygon"` + `api_key` / `STOCKTERM_API_KEY`; requires Polygon **Options Starter** plan or higher). Set a symbol on **Stock View** (e.g. **`AAPL`**), open **Options**: **`r`** refresh chain, **`[`** / **`]`** or **`h`** / **`l`** cycle expirations, **`j`** / **`k`** move strike highlight (calls + puts), **`g`** toggle Greeks columns. Symbols without listed options show **No options available**.
+
+**Dashboard tab — layout editor (Issue #208 / §71):** **`e`** opens the editor. While the modal is open: **`j`** / **`k`** navigate lists, **`Enter`** confirm selection or save (focus **Save** row for layout commit, or **`ctrl+s`** anytime on **Edit layout**), **`Tab`** cycle focus, **`Space`** toggle **Set as active**, **`+`** / **`-`** adjust rows/cols when those rows are focused, **`a`** add pane, **`d`** then **`d`** / **`y`** remove pane (**`n`** cancels remove), **`e`** edit pane fields, **`c`** cycle pane kind on the pane form, digits edit numeric fields, type letters on **title**, **`Esc`** close (**`y`** / **`n`** on discard prompt).
 
 **Chord grammar** (ASCII, case-insensitive except `char:` payload):
 

@@ -1,6 +1,6 @@
 # SPEC — StockTerm (Issue #3 baseline + follow-ons)
 
-**[#24](https://github.com/FelipeMorandini/stockterm/issues/24)** — Custom dashboard panes (composable watchlist / chart / news / portfolio / alerts panels — **§70**; **Phases A–C shipped** 2026-05-26–27 — all v1 read-only pane kinds + `market_overview` preset; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#24** sign-off **2026-05-27**; **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207), [#210](https://github.com/FelipeMorandini/stockterm/pull/210)). Phase D → [#208](https://github.com/FelipeMorandini/stockterm/issues/208). **[#194](https://github.com/FelipeMorandini/stockterm/issues/194)** — Saved named filters + optional regex mode for Portfolio / Stock View tables (**§23** follow-up — **§69**; **shipped** — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#194** sign-off **2026-05-26**; **PR:** [#206](https://github.com/FelipeMorandini/stockterm/pull/206)). **[#79](https://github.com/FelipeMorandini/stockterm/issues/79)** — Unicode / full case-folding for ticker normalization (**§11.12.4** / [#74](https://github.com/FelipeMorandini/stockterm/issues/74) follow-up — **§67**; **shipped** — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#79** sign-off **2026-05-25**; **PR:** [#205](https://github.com/FelipeMorandini/stockterm/pull/205)). **[#191](https://github.com/FelipeMorandini/stockterm/issues/191)** — Optional `CancellationToken` for superseded quote batches (**§16.1** follow-up — **§68**; **planned / deferred** — implement only if overlapping quote batches become a product requirement; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#191** after approval). **[#192](https://github.com/FelipeMorandini/stockterm/issues/192)** — `Config::save`: stop silently dropping I/O errors; audit `let _ = try_save_*` call sites (**§22** / **§4.15** follow-up — **§66**; **shipped** — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#192** sign-off **2026-05-25**). **[#199](https://github.com/FelipeMorandini/stockterm/issues/199)** — Charts: precompute candle layout off the 60fps render path (**§63** follow-up — **§64**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#199, #200** — sign-off **2026-05-25**; **PR:** [#202](https://github.com/FelipeMorandini/stockterm/pull/202)). **[#200](https://github.com/FelipeMorandini/stockterm/issues/200)** — `HistoricalData::t`: normalize bar timestamp unit at provider ingest (**§63** follow-up — **§65**; shipped — same PR as **#199**). **[#190](https://github.com/FelipeMorandini/stockterm/issues/190)** — Charts: terminal candlestick visual density polish (**§63**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#190** — sign-off **2026-05-25**; **PR:** [#201](https://github.com/FelipeMorandini/stockterm/pull/201)). **[#195](https://github.com/FelipeMorandini/stockterm/issues/195)** — Options: lazy `options_theme_stamp` compare to skip redundant table rebuilds (**§56.7** follow-up — **§61**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#195** — sign-off **2026-05-24**; **PR:** [#198](https://github.com/FelipeMorandini/stockterm/pull/198)). **[#196](https://github.com/FelipeMorandini/stockterm/issues/196)** — Theme: audit watchlist/portfolio/alerts draw paths + commit hook (**§56.7** follow-up — **§62**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#196** — sign-off **2026-05-24**; **PR:** [#198](https://github.com/FelipeMorandini/stockterm/pull/198)). **[#189](https://github.com/FelipeMorandini/stockterm/issues/189)** — M7 Phase 2: expand `insta` snapshots (Stock View status + portfolio dialog) — **§59** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#189** — sign-off **2026-05-24**; **PR:** [#197](https://github.com/FelipeMorandini/stockterm/pull/197)). **[#193](https://github.com/FelipeMorandini/stockterm/issues/193)** — CI: enforce blocking `cargo fmt --check` — **§60** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#193** — sign-off **2026-05-24**; **PR:** [#197](https://github.com/FelipeMorandini/stockterm/pull/197)). **[#181](https://github.com/FelipeMorandini/stockterm/issues/181)** — GitHub Actions CI (`cargo test` + `clippy -D warnings`) — **§57** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#181** — sign-off **2026-05-23**; **PR:** [#188](https://github.com/FelipeMorandini/stockterm/pull/188)). **[#184](https://github.com/FelipeMorandini/stockterm/issues/184)** — `TestBackend` draw snapshot tests (error overlay first) — **§58** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#184** — sign-off **2026-05-23**; **PR:** [#188](https://github.com/FelipeMorandini/stockterm/pull/188)). **[#183](https://github.com/FelipeMorandini/stockterm/issues/183)** — Options: rebuild display tables when theme preset changes (**§53.2** / **§21** follow-up — **§56**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#183** — sign-off **2026-05-23**; **PR:** [#187](https://github.com/FelipeMorandini/stockterm/pull/187)). **[#182](https://github.com/FelipeMorandini/stockterm/issues/182)** — Portfolio row edit UI for existing holdings (**§13** / **§15** follow-up — **§55**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#182** — sign-off **2026-05-23**). **[#180](https://github.com/FelipeMorandini/stockterm/issues/180)** — Persist Charts **`time_range`** and **`chart_mode`** in **`~/.stockterm.json`** (**§11** follow-up — **§54**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#180** — sign-off **2026-05-23**; **PR:** [#185](https://github.com/FelipeMorandini/stockterm/pull/185)). **[#65](https://github.com/FelipeMorandini/stockterm/issues/65)** — Polygon historical response size limit + free-tier messaging (**§11** follow-up — **§52**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#65** — sign-off **2026-05-22**). **Options tab polish** (post-**§48** / **§50** / **§51** UX hardening — **§52.2**; same PR as **#65**). **[#176](https://github.com/FelipeMorandini/stockterm/issues/176)** — Polygon historical `next_url` pagination loop (**§52** follow-up — **§53.1**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#176** — sign-off **2026-05-22**; **PR:** [#179](https://github.com/FelipeMorandini/stockterm/pull/179)). **[#177](https://github.com/FelipeMorandini/stockterm/issues/177)** — Options tab zero-clone draw path (**§52.2** follow-up — **§53.2**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#177** — sign-off **2026-05-22**; **PR:** [#179](https://github.com/FelipeMorandini/stockterm/pull/179)). **[#171](https://github.com/FelipeMorandini/stockterm/issues/171)** — Polygon options expiration list session cache (**§50** follow-up — **§51**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#171** — sign-off **2026-05-22**; **PR:** [#173](https://github.com/FelipeMorandini/stockterm/pull/173)). **[#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — Yahoo options expiration slice cache (**§48** follow-up — **§49.2**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#167](https://github.com/FelipeMorandini/stockterm/issues/167)** — Polygon.io options chain provider (**§48** follow-up — **§50**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#167** — sign-off **2026-05-22**; **PR:** [#172](https://github.com/FelipeMorandini/stockterm/pull/172)). **[#165](https://github.com/FelipeMorandini/stockterm/issues/165) / [#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — §47 / §48 follow-ons: backtest golden metric fixtures + Yahoo options expiration slice cache (**§49**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#165, #168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#22](https://github.com/FelipeMorandini/stockterm/issues/22)** — options chains + **Options** tab (calls/puts table, expiration selector, Greeks toggle — **§48**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#22** — sign-off **2026-05-21**; **PR:** [#169](https://github.com/FelipeMorandini/stockterm/pull/169)). **[#25](https://github.com/FelipeMorandini/stockterm/issues/25)** — backtesting engine + **Backtest** tab (strategy trait, SMA crossover / RSI mean-reversion, equity curve, CSV/JSON export — **§47**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#25** — sign-off **2026-05-21**; **PR:** [#166](https://github.com/FelipeMorandini/stockterm/pull/166)). **[#21](https://github.com/FelipeMorandini/stockterm/issues/21)** — technical indicators (SMA / EMA / RSI / MACD) on the Charts tab (**§46**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21** — sign-off **2026-05-21**; **PR:** [#164](https://github.com/FelipeMorandini/stockterm/pull/164)). **Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#160](https://github.com/FelipeMorandini/stockterm/issues/160) / [#161](https://github.com/FelipeMorandini/stockterm/issues/161)** — §44 follow-ons: clear **`symbol_kind_cache`** on Settings provider change + Polygon crypto **`X:`** wire mapping in **`resolve_provider_symbol`** (**§45**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#160, #161** — sign-off **2026-05-20**; **PR:** [#163](https://github.com/FelipeMorandini/stockterm/pull/163)). **[#157](https://github.com/FelipeMorandini/stockterm/issues/157) / [#158](https://github.com/FelipeMorandini/stockterm/issues/158)** — provider-aware symbol resolver (Yahoo vs Polygon HTTP namespaces) + **`SymbolKind`** from Yahoo **`quoteType`** metadata with heuristic fallback (**§44**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#157, #158** — sign-off **2026-05-20**; **PR:** [#162](https://github.com/FelipeMorandini/stockterm/pull/162)). **[#23](https://github.com/FelipeMorandini/stockterm/issues/23)** — cryptocurrency quotes via Yahoo-style symbols (`BTC-USD`), adaptive price formatting, **`SymbolKind`** UI label, Stock View hyphen entry, §43.13 quote-cache alignment (**§43**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#23** — sign-off **2026-05-19**; **PR:** [#159](https://github.com/FelipeMorandini/stockterm/pull/159)). **[#51](https://github.com/FelipeMorandini/stockterm/issues/51) / [#28](https://github.com/FelipeMorandini/stockterm/issues/28)** — global **`q`/`Q`** quit via **`should_global_quit`**, Tab meta policy, **`STOCKTERM_API_KEY`** runtime overlay (no env merge on load — **§42**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** — sign-off **2026-05-19**; **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156)). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
+**[#24](https://github.com/FelipeMorandini/stockterm/issues/24)** — Custom dashboard panes (composable watchlist / chart / news / portfolio / alerts panels — **§70**; **Phases A–C shipped** 2026-05-26–27 — all v1 read-only pane kinds + `market_overview` preset; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#24** sign-off **2026-05-27**; **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207), [#210](https://github.com/FelipeMorandini/stockterm/pull/210)). **Phase D shipped** (2026-05-27 — in-app pane editor **§71**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#208** pending sign-off; **PR:** pending). **[#194](https://github.com/FelipeMorandini/stockterm/issues/194)** — Saved named filters + optional regex mode for Portfolio / Stock View tables (**§23** follow-up — **§69**; **shipped** — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#194** sign-off **2026-05-26**; **PR:** [#206](https://github.com/FelipeMorandini/stockterm/pull/206)). **[#79](https://github.com/FelipeMorandini/stockterm/issues/79)** — Unicode / full case-folding for ticker normalization (**§11.12.4** / [#74](https://github.com/FelipeMorandini/stockterm/issues/74) follow-up — **§67**; **shipped** — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#79** sign-off **2026-05-25**; **PR:** [#205](https://github.com/FelipeMorandini/stockterm/pull/205)). **[#191](https://github.com/FelipeMorandini/stockterm/issues/191)** — Optional `CancellationToken` for superseded quote batches (**§16.1** follow-up — **§68**; **planned / deferred** — implement only if overlapping quote batches become a product requirement; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#191** after approval). **[#192](https://github.com/FelipeMorandini/stockterm/issues/192)** — `Config::save`: stop silently dropping I/O errors; audit `let _ = try_save_*` call sites (**§22** / **§4.15** follow-up — **§66**; **shipped** — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#192** sign-off **2026-05-25**). **[#199](https://github.com/FelipeMorandini/stockterm/issues/199)** — Charts: precompute candle layout off the 60fps render path (**§63** follow-up — **§64**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#199, #200** — sign-off **2026-05-25**; **PR:** [#202](https://github.com/FelipeMorandini/stockterm/pull/202)). **[#200](https://github.com/FelipeMorandini/stockterm/issues/200)** — `HistoricalData::t`: normalize bar timestamp unit at provider ingest (**§63** follow-up — **§65**; shipped — same PR as **#199**). **[#190](https://github.com/FelipeMorandini/stockterm/issues/190)** — Charts: terminal candlestick visual density polish (**§63**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#190** — sign-off **2026-05-25**; **PR:** [#201](https://github.com/FelipeMorandini/stockterm/pull/201)). **[#195](https://github.com/FelipeMorandini/stockterm/issues/195)** — Options: lazy `options_theme_stamp` compare to skip redundant table rebuilds (**§56.7** follow-up — **§61**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#195** — sign-off **2026-05-24**; **PR:** [#198](https://github.com/FelipeMorandini/stockterm/pull/198)). **[#196](https://github.com/FelipeMorandini/stockterm/issues/196)** — Theme: audit watchlist/portfolio/alerts draw paths + commit hook (**§56.7** follow-up — **§62**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#196** — sign-off **2026-05-24**; **PR:** [#198](https://github.com/FelipeMorandini/stockterm/pull/198)). **[#189](https://github.com/FelipeMorandini/stockterm/issues/189)** — M7 Phase 2: expand `insta` snapshots (Stock View status + portfolio dialog) — **§59** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#189** — sign-off **2026-05-24**; **PR:** [#197](https://github.com/FelipeMorandini/stockterm/pull/197)). **[#193](https://github.com/FelipeMorandini/stockterm/issues/193)** — CI: enforce blocking `cargo fmt --check` — **§60** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#193** — sign-off **2026-05-24**; **PR:** [#197](https://github.com/FelipeMorandini/stockterm/pull/197)). **[#181](https://github.com/FelipeMorandini/stockterm/issues/181)** — GitHub Actions CI (`cargo test` + `clippy -D warnings`) — **§57** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#181** — sign-off **2026-05-23**; **PR:** [#188](https://github.com/FelipeMorandini/stockterm/pull/188)). **[#184](https://github.com/FelipeMorandini/stockterm/issues/184)** — `TestBackend` draw snapshot tests (error overlay first) — **§58** (shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#184** — sign-off **2026-05-23**; **PR:** [#188](https://github.com/FelipeMorandini/stockterm/pull/188)). **[#183](https://github.com/FelipeMorandini/stockterm/issues/183)** — Options: rebuild display tables when theme preset changes (**§53.2** / **§21** follow-up — **§56**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#183** — sign-off **2026-05-23**; **PR:** [#187](https://github.com/FelipeMorandini/stockterm/pull/187)). **[#182](https://github.com/FelipeMorandini/stockterm/issues/182)** — Portfolio row edit UI for existing holdings (**§13** / **§15** follow-up — **§55**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#182** — sign-off **2026-05-23**). **[#180](https://github.com/FelipeMorandini/stockterm/issues/180)** — Persist Charts **`time_range`** and **`chart_mode`** in **`~/.stockterm.json`** (**§11** follow-up — **§54**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#180** — sign-off **2026-05-23**; **PR:** [#185](https://github.com/FelipeMorandini/stockterm/pull/185)). **[#65](https://github.com/FelipeMorandini/stockterm/issues/65)** — Polygon historical response size limit + free-tier messaging (**§11** follow-up — **§52**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#65** — sign-off **2026-05-22**). **Options tab polish** (post-**§48** / **§50** / **§51** UX hardening — **§52.2**; same PR as **#65**). **[#176](https://github.com/FelipeMorandini/stockterm/issues/176)** — Polygon historical `next_url` pagination loop (**§52** follow-up — **§53.1**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#176** — sign-off **2026-05-22**; **PR:** [#179](https://github.com/FelipeMorandini/stockterm/pull/179)). **[#177](https://github.com/FelipeMorandini/stockterm/issues/177)** — Options tab zero-clone draw path (**§52.2** follow-up — **§53.2**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#177** — sign-off **2026-05-22**; **PR:** [#179](https://github.com/FelipeMorandini/stockterm/pull/179)). **[#171](https://github.com/FelipeMorandini/stockterm/issues/171)** — Polygon options expiration list session cache (**§50** follow-up — **§51**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#171** — sign-off **2026-05-22**; **PR:** [#173](https://github.com/FelipeMorandini/stockterm/pull/173)). **[#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — Yahoo options expiration slice cache (**§48** follow-up — **§49.2**; shipped — manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#167](https://github.com/FelipeMorandini/stockterm/issues/167)** — Polygon.io options chain provider (**§48** follow-up — **§50**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#167** — sign-off **2026-05-22**; **PR:** [#172](https://github.com/FelipeMorandini/stockterm/pull/172)). **[#165](https://github.com/FelipeMorandini/stockterm/issues/165) / [#168](https://github.com/FelipeMorandini/stockterm/issues/168)** — §47 / §48 follow-ons: backtest golden metric fixtures + Yahoo options expiration slice cache (**§49**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#165, #168** — sign-off **2026-05-21**; **PR:** [#170](https://github.com/FelipeMorandini/stockterm/pull/170)). **[#22](https://github.com/FelipeMorandini/stockterm/issues/22)** — options chains + **Options** tab (calls/puts table, expiration selector, Greeks toggle — **§48**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#22** — sign-off **2026-05-21**; **PR:** [#169](https://github.com/FelipeMorandini/stockterm/pull/169)). **[#25](https://github.com/FelipeMorandini/stockterm/issues/25)** — backtesting engine + **Backtest** tab (strategy trait, SMA crossover / RSI mean-reversion, equity curve, CSV/JSON export — **§47**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#25** — sign-off **2026-05-21**; **PR:** [#166](https://github.com/FelipeMorandini/stockterm/pull/166)). **[#21](https://github.com/FelipeMorandini/stockterm/issues/21)** — technical indicators (SMA / EMA / RSI / MACD) on the Charts tab (**§46**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#21** — sign-off **2026-05-21**; **PR:** [#164](https://github.com/FelipeMorandini/stockterm/pull/164)). **Issue #3** — Multi-symbol watchlist & multi-row quote table (§§1–7). **[#160](https://github.com/FelipeMorandini/stockterm/issues/160) / [#161](https://github.com/FelipeMorandini/stockterm/issues/161)** — §44 follow-ons: clear **`symbol_kind_cache`** on Settings provider change + Polygon crypto **`X:`** wire mapping in **`resolve_provider_symbol`** (**§45**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#160, #161** — sign-off **2026-05-20**; **PR:** [#163](https://github.com/FelipeMorandini/stockterm/pull/163)). **[#157](https://github.com/FelipeMorandini/stockterm/issues/157) / [#158](https://github.com/FelipeMorandini/stockterm/issues/158)** — provider-aware symbol resolver (Yahoo vs Polygon HTTP namespaces) + **`SymbolKind`** from Yahoo **`quoteType`** metadata with heuristic fallback (**§44**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#157, #158** — sign-off **2026-05-20**; **PR:** [#162](https://github.com/FelipeMorandini/stockterm/pull/162)). **[#23](https://github.com/FelipeMorandini/stockterm/issues/23)** — cryptocurrency quotes via Yahoo-style symbols (`BTC-USD`), adaptive price formatting, **`SymbolKind`** UI label, Stock View hyphen entry, §43.13 quote-cache alignment (**§43**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#23** — sign-off **2026-05-19**; **PR:** [#159](https://github.com/FelipeMorandini/stockterm/pull/159)). **[#51](https://github.com/FelipeMorandini/stockterm/issues/51) / [#28](https://github.com/FelipeMorandini/stockterm/issues/28)** — global **`q`/`Q`** quit via **`should_global_quit`**, Tab meta policy, **`STOCKTERM_API_KEY`** runtime overlay (no env merge on load — **§42**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#51, #28** — sign-off **2026-05-19**; **PR:** [#156](https://github.com/FelipeMorandini/stockterm/pull/156)). **[#32](https://github.com/FelipeMorandini/stockterm/issues/32) / [#33](https://github.com/FelipeMorandini/stockterm/issues/33) / [#55](https://github.com/FelipeMorandini/stockterm/issues/55)** — **`get_current_price`** symbol/ticker alignment, **`ProviderError`** **`thiserror`** migration, API error taxonomy audit (**§41**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#32, #33, #55** — sign-off **2026-05-19**; **PR:** [#155](https://github.com/FelipeMorandini/stockterm/pull/155)). **[#36](https://github.com/FelipeMorandini/stockterm/issues/36) / [#56](https://github.com/FelipeMorandini/stockterm/issues/56) / [#106](https://github.com/FelipeMorandini/stockterm/issues/106)** — Charts timestamp panic hardening + regression tests, explicit quote-batch **`Semaphore`** acquire failures, §18.15 post-audit **`centered_rect`** release clamp + incremental notify **`body`** assembly (**§40**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#36, #56, #106** — sign-off **2026-05-19**; **PR:** [#154](https://github.com/FelipeMorandini/stockterm/pull/154)). **[#108](https://github.com/FelipeMorandini/stockterm/issues/108) / [#78](https://github.com/FelipeMorandini/stockterm/issues/78) / [#87](https://github.com/FelipeMorandini/stockterm/issues/87)** — event-thread clean shutdown, inflight recovery when both **`FetchDone`** and **`InflightRecovery`** sends fail, and **`mpsc`** back-pressure policy (**§39**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#108, #78, #87** — sign-off **2026-05-19**; **PR:** [#153](https://github.com/FelipeMorandini/stockterm/pull/153)). **[#76](https://github.com/FelipeMorandini/stockterm/issues/76) / [#85](https://github.com/FelipeMorandini/stockterm/issues/85) / [#86](https://github.com/FelipeMorandini/stockterm/issues/86) / [#117](https://github.com/FelipeMorandini/stockterm/issues/117) / [#118](https://github.com/FelipeMorandini/stockterm/issues/118)** — async/HTTP reliability tail: **`tracing`** for dropped fetch results, cap **`STOCKTERM_DEBUG_HTTP_DELAY_MS`**, dev panic payload logging, **408** retry, structured **`reqwest` Client** init (**§38**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#76, #85, #86, #117, #118** — sign-off **2026-05-18**; **PR:** [#152](https://github.com/FelipeMorandini/stockterm/pull/152)). **[#81](https://github.com/FelipeMorandini/stockterm/issues/81) / [#82](https://github.com/FelipeMorandini/stockterm/issues/82) / [#83](https://github.com/FelipeMorandini/stockterm/issues/83)** — Stock View narrow-terminal status hints, plain-**Tab** portfolio dialog focus, **`add_to_portfolio`** false-path contract (**§37**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#81–#83** — sign-off **2026-05-18**; **PR:** [#151](https://github.com/FelipeMorandini/stockterm/pull/151)). **[#54](https://github.com/FelipeMorandini/stockterm/issues/54)** — Yahoo news: resilient **`query2`** parsing + **`STOCKTERM_DEBUG_YAHOO_NEWS`** (**§36**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#54** — sign-off **2026-05-18**; **PR:** [#150](https://github.com/FelipeMorandini/stockterm/pull/150)). **[#4](https://github.com/FelipeMorandini/stockterm/issues/4)** — configurable **`refresh_rate`** vs UI tick (**§35**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** — sign-off **2026-05-18**; **PR:** [#149](https://github.com/FelipeMorandini/stockterm/pull/149)). **[#90](https://github.com/FelipeMorandini/stockterm/issues/90) / [#91](https://github.com/FelipeMorandini/stockterm/issues/91)** — Yahoo quote adapter: **`STOCKTERM_DEBUG_YAHOO_QUOTE`** v7→v8 stderr + v7 multi-row **symbol** match (**§34**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#90, #91** — sign-off **2026-05-18**). **[#60](https://github.com/FelipeMorandini/stockterm/issues/60)** — Search **Esc** must not clear cross-tab runtime errors (**§33**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#60** — sign-off **2026-05-18**). **[#89](https://github.com/FelipeMorandini/stockterm/issues/89)** — Yahoo **`yahoo_latest_quote`** **v7→v8** orchestration integration test (**§32**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#89** — sign-off **2026-05-18**). **[#15](https://github.com/FelipeMorandini/stockterm/issues/15)** — **layout / widget visibility** (`Config.layout`, shell + pane splits, optional Settings presets — **§31**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#15** — sign-off **2026-05-17**). **[#138](https://github.com/FelipeMorandini/stockterm/issues/138)** — keymap **compile-time default chord table** (remove runtime `Box::leak` — **§30**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#138** — sign-off 2026-05-17). **[#134](https://github.com/FelipeMorandini/stockterm/issues/134)** — keymap **per-context overlay propagation** (portfolio list vs remove-armed shared row nav — **§25**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#134**). **Issue #44** — Stock View & Alerts keyboard modifiers (§8, shipped). **Issues #48 / #6** — Portfolio tab: keyboard parity (§12, shipped); add dialog, confirm remove, quote coverage (§13, shipped). **Issue #31** — Yahoo Finance default provider & Polygon fallback (§9, shipped). **Issues #29 / #5 / #11 / #12** — Search typeahead, News list, Settings editor (§10, shipped — see §10.9 PR). **Issues #9 / #8 / #7** — Historical time ranges, chart viewport (zoom/pan), real candlestick widget (§11, shipped — see §11.10 PR). **Issues #62 / #63 / #64** — Charts polish: symbol/series coherence, Yahoo W1 empty fallback, historical fetch resilience (§11.11, shipped — see §11.11.7). **Issues #71 / #72 / #73 / #74** — Charts/async hardening: inflight recovery on channel send failure, remove dead sync historical fetch, Yahoo W1 unit tests, watchlist add without spurious chart clear (§11.12, shipped — see §11.12.8). **Issues #43 / #49 / #50 / #67 / #69** — Alerts titles & copy, Stock View watchlist typing hint, Portfolio dialog Tab/Shift+Tab field focus, commit inline errors and optional numeric caps (§15, shipped — see §15.8). **Issues #17 / #46 / #77** — Non-blocking loop completion, quote-batch panic-safety, and `stock_refresh_pending` on stock inflight recovery (§16, shipped — see §16.8). **Issue #2** — Latest-session stock quotes via provider adapters (§17, shipped — see §17.9). **Issues #10 / #42** — Alerts: add dialog + bell/desktop notify + Settings toggle; Status column from latched `triggered` (§18, shipped — see §18.12). **Issues #93 / #94 / #95** — Shared modal `centered_rect`, alert dialog **←/→** on Condition, optional stderr when desktop **`show()`** fails (§18.13, shipped — see §18.13.8). **Issues #96 / #97 / #98** — Alerts tab banner + optional save retry after `try_save` failure, coalesced desktop toast per quote batch, sanitized notify text (§18.14, implemented — see §18.14.9 and [PR #105](https://github.com/FelipeMorandini/stockterm/pull/105); sign-off **2026-05-18**). **Issues #100 / #101 / #104** — `centered_rect` percent contract (`debug_assert!`), README **Developer / debug** env vars, total cap on coalesced desktop notify **`body`** (§18.15, implemented — see §18.15.8). **Issue #18** — API robustness: shared HTTP tuning, **`Retry-After`** on 429, exponential backoff + jitter, non-JSON error bodies, extended **`ProviderError`** (**§19** — shipped [PR #115](https://github.com/FelipeMorandini/stockterm/pull/115); **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue #18 sign-off). **Issues #110 / #111 / #112 / #113 / #114 / #116** — §19 post-audit hardening (bounded error-body reads, **`Retry-After`** ceiling + sub-second **`Display`**, HTTP-date tolerance, paused-**`tokio`** test docs, retry **`unreachable!`**, query redaction on **`Debug`** / stored URL — **§19.13**, shipped — see §19.13.7; **manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#110–#116** sign-off). **Issue #14** — Theme system: palette model, JSON hex slots, built-in presets, Settings picker, theme-aware draw helpers (**§21** — shipped — see §21.11 / [PR #126](https://github.com/FelipeMorandini/stockterm/pull/126)). **Issues [#19](https://github.com/FelipeMorandini/stockterm/issues/19) / [#103](https://github.com/FelipeMorandini/stockterm/issues/103)** — config persistence polish + coordination of sticky alerts-save failures with other runtime errors (**§22** — partial ship: #103 + session fields + README; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) **Issues #19, #103**). **[#34](https://github.com/FelipeMorandini/stockterm/issues/34) / [#35](https://github.com/FelipeMorandini/stockterm/issues/35) / [#40](https://github.com/FelipeMorandini/stockterm/issues/40) / [#129](https://github.com/FelipeMorandini/stockterm/issues/129)** — operator-facing API-key docs, load-failure UX audit, optional async config I/O, session-write coalescing (**§22.7** follow-ons). **[#16](https://github.com/FelipeMorandini/stockterm/issues/16)** — Portfolio + Stock View watchlist **substring filter** (`/`, live table, Esc clear, Enter commit, Tab-safe — **§23**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#16**). **[#13](https://github.com/FelipeMorandini/stockterm/issues/13)** — **Configurable keymap** (`Action`, `BindingLayer`, `~/.stockterm.json` **`keymap`** — **§24**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#13** — sign-off **2026-05-18**. **[#136](https://github.com/FelipeMorandini/stockterm/issues/136)** — **Keymap phase 2** (symbol buffers + modal digit/symbol entry under `Action` / hybrid policy — **§26**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#136** — sign-off **2026-05-18**. **[#137](https://github.com/FelipeMorandini/stockterm/issues/137)** — **Keymap: remappable filter-input mode** (`BindingLayer::FilterInput` — **§28**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#137** — sign-off **2026-05-18**. **[#58](https://github.com/FelipeMorandini/stockterm/issues/58) / [#59](https://github.com/FelipeMorandini/stockterm/issues/59)** — News **clipboard copy** + **non-blocking** browser open with **`http`/`https`** allowlist (**§27**; manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issues **#58, #59** — sign-off **2026-05-18**). **[#3](https://github.com/FelipeMorandini/stockterm/issues/3)** — shipped watchlist baseline; re-run §3 / QA **Issue #3** when touching session save or watchlist persistence (**§22.7.5**).
 
 **Sources (Issue #3):**
 
@@ -12466,7 +12466,7 @@ Extend [`filter_title_suffix`](../src/app/table_filter.rs) (or sibling **`filter
 
 ## 70. Issue [#24](https://github.com/FelipeMorandini/stockterm/issues/24) — Custom dashboard panes (composable widgets)
 
-**Status:** **Phases A–C shipped** (2026-05-26–27) — `Tab::Dashboard`, config-driven grid, read-only panes for all v1 `DashboardPaneKind` values, `dual_watchlist` + `market_overview` presets (**PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207), [#210](https://github.com/FelipeMorandini/stockterm/pull/210)). **Phase D** (in-app editor) → [#208](https://github.com/FelipeMorandini/stockterm/issues/208). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#24** (sign-off **2026-05-27**).
+**Status:** **Phases A–D shipped** (2026-05-26–27) — `Tab::Dashboard`, config-driven grid, read-only panes for all v1 `DashboardPaneKind` values, `dual_watchlist` + `market_overview` presets, in-app layout editor (**§71** / [#208](https://github.com/FelipeMorandini/stockterm/issues/208); **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207), [#210](https://github.com/FelipeMorandini/stockterm/pull/210), Phase D PR pending). **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#24** (sign-off **2026-05-27**); Issue **#208** pending sign-off.
 
 **Sources:**
 
@@ -12495,7 +12495,7 @@ Extend [`filter_title_suffix`](../src/app/table_filter.rs) (or sibling **`filter
 | Area | Gap |
 |------|-----|
 | Trait registry | §70.6.2 `DashboardPaneRenderer` **not** extracted; dispatch remains a `match` in `render_dashboard_pane`. |
-| Product | In-app editor (Phase D) → [#208](https://github.com/FelipeMorandini/stockterm/issues/208); heat-map / P/L panes without `App` backing (out of scope per §70.13). |
+| Product | In-app editor (Phase D) → [#208](https://github.com/FelipeMorandini/stockterm/issues/208) (**§71** planned); heat-map / P/L panes without `App` backing (out of scope per §70.13). |
 | Performance | Dashboard tab may spawn historical/news fetches even when panes do not need them → [#209](https://github.com/FelipeMorandini/stockterm/issues/209). |
 
 **Conclusion:** Phases A–C satisfy Issue #24 v1 pane kinds. Phase D and follow-ons are tracked separately.
@@ -12517,12 +12517,12 @@ At least **one** of:
 - Persisted dashboard definitions in **`~/.stockterm.json`**.
 - New **`Tab::Dashboard`** (config id **`dashboard`**) rendering a grid of panes from config.
 - At least **two `Watchlist` panes side-by-side** render correctly (read-only table clones of Stock View watchlist data).
-- Config add/remove/reorder panes takes effect on **next launch** (v1 is file-edited; see §70.9).
+- Config add/remove/reorder panes takes effect on **next launch** for Phases A–C (file-edited); **§71** adds live commit without restart.
 - Each pane **degrades gracefully** when data is empty or errored (inline placeholder; no panic).
 
 **Non-goals (v1):**
 
-- In-app dashboard editor (drag-resize, add-pane wizard) — future issue.
+- In-app dashboard editor — **§71** / [#208](https://github.com/FelipeMorandini/stockterm/issues/208) (wizard modal; drag-resize deferred).
 - User scripting / plugin DLLs / WASM.
 - New HTTP providers or indicator math (reuse **§46** on Charts tab only unless a pane explicitly embeds chart+indicators later).
 - Heat-map, P/L time-series, or other pane kinds **not** backed by existing `App` state — may be **`DashboardPaneKind` variants** stubbed with “not implemented” until a follow-on issue defines data.
@@ -12695,7 +12695,7 @@ Register **`BindingLayer::Dashboard`** only if pane-local keys are added later; 
 | **A** | Models + config + `Tab::Dashboard` + `Watchlist` ×2 + degradation + tests | **Shipped** 2026-05-26 ([#207](https://github.com/FelipeMorandini/stockterm/pull/207)) |
 | **B** | `StockDetail`, `News`, `Portfolio`, `AlertsList` read-only panes | **Shipped** 2026-05-27 |
 | **C** | `Chart` + `IndicatorSummary` panes | **Shipped** 2026-05-27 |
-| **D** | In-app editor + live preview | Deferred → **new GitHub issue** (do not block closing #24 after B+C) |
+| **D** | In-app editor + live preview | **Shipped** — [#208](https://github.com/FelipeMorandini/stockterm/issues/208) (**§71**; PR pending) |
 
 Engineer ships **Phase A** sign-off before Phase B. Phases B+C may share one PR if refactors stay under ~400 LOC net.
 
@@ -12731,15 +12731,11 @@ Engineer ships **Phase A** sign-off before Phase B. Phases B+C may share one PR 
 
 **Performance:** Chart pane must use `app.candle_layout_cache` (§64) — zero layout work in `draw`.
 
-#### 70.9.3 Phase D — in-app editor (deferred)
+#### 70.9.3 Phase D — in-app editor
 
-**Split to a new GitHub issue** before implementation:
+**Canonical implementation plan:** [#208](https://github.com/FelipeMorandini/stockterm/issues/208) — **§71** (wizard modal, live preview, `try_save` hot-reload). Drag-resize and per-pane focus remain out of scope for the first **#208** slice.
 
-- Settings row or Dashboard-local modal: pick preset, toggle pane kinds, edit grid `rows`/`cols` (clamped 1..4).
-- Live preview without restart — requires `Config::try_save` + hot-reload `resolve_active_dashboard` + `dashboard_layout_cache` invalidation.
-- Drag-resize / pane focus — out of scope for first editor slice.
-
-Do **not** implement Phase D under Issue #24; reference child issue from ROADMAP §2.1 when filed.
+Do **not** implement Phase D under Issue #24.
 
 #### 70.9.4 Optional refactor (any phase)
 
@@ -12777,7 +12773,7 @@ cargo clippy -- -D warnings
 
 ### 70.13 Out of scope
 
-- Drag-and-drop dashboard editor; live resize without restart (v1).
+- Drag-and-drop dashboard editor; mouse drag-resize (§71 wizard only).
 - Pane kinds without existing `App` backing (heat-map, P/L chart) until follow-on issues.
 - Persisting per-pane filter state separate from Stock View / Portfolio filters.
 - Replacing **§31** layout presets — dashboards are additive.
@@ -12786,7 +12782,7 @@ cargo clippy -- -D warnings
 
 - **Phase A:** Shipped — run [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#24** manual steps; maintainer sign-off closes the acceptance slice. Issue **#24** may remain **open** until Phases B–C are scheduled or split into follow-ons (per issue comment 2026-05-27).
 - **Phases B–C:** Require explicit maintainer approval on this SPEC section (**§70.9.1–§70.9.2**) before code per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc).
-- **Phase D:** File a new GitHub issue; do not expand #24 scope.
+- **Phase D:** [#208](https://github.com/FelipeMorandini/stockterm/issues/208) / **§71** — implement only after maintainer approval of §71.
 
 ### 70.15 Shipment record — Phase A
 
@@ -12803,3 +12799,333 @@ cargo clippy -- -D warnings
 - **PR:** [#210](https://github.com/FelipeMorandini/stockterm/pull/210).
 - **Code:** [`src/app/dashboard_display.rs`](../src/app/dashboard_display.rs), refactors in [`ui.rs`](../src/app/ui.rs), [`portfolio.rs`](../src/app/portfolio.rs), [`alerts.rs`](../src/app/alerts.rs), [`charts.rs`](../src/app/charts.rs).
 - **Automated:** `cargo test dashboard`, `insta` `dashboard_market_overview`, `dashboard_chart_pane_80x24`, `dashboard_chart_symbol_override_placeholder`.
+
+---
+
+## 71. Issue [#208](https://github.com/FelipeMorandini/stockterm/issues/208) — Dashboard in-app pane editor (§70 Phase D)
+
+**Status:** **Shipped** (2026-05-27) — wizard modal editor on Dashboard tab (`e`), live preview, strict validation on commit, hot-reload caches. **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#208** (sign-off pending). **Code:** [`src/app/dashboard_editor.rs`](../src/app/dashboard_editor.rs).
+
+**Tracking:**
+
+- [Issue #208](https://github.com/FelipeMorandini/stockterm/issues/208) — *Dashboard §70 Phase D: in-app pane editor* (`roadmap`).
+- Parent: [#24](https://github.com/FelipeMorandini/stockterm/issues/24) / **§70** Phases A–C (shipped).
+
+**Related:** **§70.4–§70.6** (models, grid, read-only render), **§18.13** (`centered_rect` modals), **§22.7** (`try_save_config_with_session`), **§24** (`Action` / `BindingLayer`), **§31** (`settings_commit_layout_preset` draft/commit pattern), **§55** (two-step armed save for destructive edits).
+
+**Problem (verified in tree, 2026-05-27):**
+
+| Area | Location | State today |
+|------|----------|-------------|
+| Dashboard config | `Config::dashboards`, `active_dashboard` | Loaded at startup; `normalize_dashboards` on load silently drops invalid panes. |
+| Layout cache | `App::dashboard_layout_cache`, `prepare_dashboard_layout_cache` | Rebuilds when terminal area or definition changes — **not** invalidated on in-session config edits (no editor). |
+| Draw strings | `dashboard_pane_draw_cache`, `rebuild_dashboard_display_strings` | Rebuilt on symbol/watchlist changes; not tied to dashboard JSON edits. |
+| UX | [`README.md`](../README.md) | States *"Config changes take effect on next launch (no in-app editor in v1)"*. |
+| Keys | [`handlers.rs`](../src/app/handlers.rs) `Tab::Dashboard` | Empty handler — read-only tab. |
+
+**Goal:** Let users create and edit dashboard layouts from the TUI **without hand-editing JSON**. Committed changes persist to **`~/.stockterm.json`** and apply **immediately** (live preview while editing; hot-reload caches on save). Invalid layouts show **inline editor errors** (overlap, out-of-bounds, empty id) instead of silent drops.
+
+**Product decision (wizard, not drag-resize):** Phase D v1 uses a **modal wizard** on the **Dashboard** tab (form fields + list navigation), mirroring Settings layout preset commit and Portfolio edit overlay patterns. **Mouse drag-resize**, per-pane focus rings, and live grid resizing are **out of scope** for Issue **#208** (may follow in a separate issue).
+
+---
+
+### 71.1 UX flow
+
+**Open editor (Dashboard tab, no overlay / filter / other modal):**
+
+1. User is on **`Tab::Dashboard`** with a configured or empty dashboard.
+2. **`e`** (`Action::DashboardOpenEditor`, `letter_key_plain`) opens **`DashboardEditor`** overlay (§71.2).
+3. If `dashboards` is empty, editor starts on **"New from preset"** screen with `dual_watchlist` / `market_overview` choices.
+
+**Editor screens (single modal; `DashboardEditorScreen` enum):**
+
+| Screen | Purpose | Primary keys |
+|--------|---------|--------------|
+| **PickDashboard** | Select existing `dashboards[].name` or **New…** | `j`/`k`, **Enter** |
+| **NewFromPreset** | Clone `preset_dual_watchlist()` / `preset_market_overview()` with new name | `j`/`k`, **Enter** |
+| **EditLayout** | Edit `rows`/`cols` (1..4), pane list, active dashboard name | See §71.3 |
+| **EditPane** | Edit selected pane: `kind`, `row`, `col`, `row_span`, `col_span`, optional `title` | Tab cycle fields, digits, **Enter** save pane back to list |
+| **ConfirmDiscard** | Unsaved draft — **y** discard / **n** stay | Armed pattern like §55 |
+
+**EditLayout screen (main workspace):**
+
+- **Header:** `Editing: {name}` + `active_dashboard` indicator when this layout is active.
+- **Grid:** `rows` × `cols` with **`+`/`-`** or digit entry (clamped **1..=4** per §70.4).
+- **Pane list:** one row per pane (`id`, `kind`, `row,col`, spans); **`a`** add pane (default kind `Watchlist`, auto `id` via §71.4), **`d`** two-step remove pane (mirror portfolio remove), **`e`** enter **EditPane** for highlighted row.
+- **Preview:** While editor is open, **`draw_dashboard`** renders from **`dashboard_editor_draft`** (not committed `config`) behind a dimmed overlay so grid/pane changes are visible **without restart**.
+- **Validation line:** When draft fails `validate_dashboard_definition` (§71.5), show first error in modal footer; **Save** disabled until valid.
+
+**Save / cancel:**
+
+| Action | Behavior |
+|--------|----------|
+| **Esc** (no unsaved draft) | Close editor. |
+| **Esc** (dirty draft) | → **ConfirmDiscard** |
+| **Enter** on **Save** row (valid draft) | Upsert `dashboards[]`, set `active_dashboard` if editing the active name, `try_save_config_with_session`, hot-reload caches (§71.6), close editor, flash saved (reuse `SETTINGS_SAVED_FLASH` duration pattern). |
+| Save failure | Revert in-memory `config` snapshot taken at open; surface `ErrorSourceDomain::Settings` or new **`Dashboard`** domain error on status line. |
+
+**Settings alternative (optional v1.1 — not required for #208 ship):** A Settings row **"Dashboard layout"** that opens the same editor is **nice-to-have**; **#208** acceptance is satisfied by Dashboard-tab **`e`** only.
+
+---
+
+### 71.2 State model (`src/app/dashboard_editor.rs`, `src/app/app.rs`)
+
+```rust
+/// In-app dashboard editor (Issue #208 / §71).
+#[derive(Debug, Clone)]
+pub struct DashboardEditor {
+    /// Screen stack / current step.
+    pub screen: DashboardEditorScreen,
+    /// Working copy; becomes `config.dashboards[]` on commit.
+    pub draft: DashboardDefinition,
+    /// Index in `config.dashboards` when editing existing; `None` when creating new.
+    pub editing_index: Option<usize>,
+    /// Whether `draft` differs from snapshot at open.
+    pub dirty: bool,
+    /// Selected pane index in `draft.panes` on EditLayout.
+    pub selected_pane: usize,
+    /// Pane remove armed (two-step `d`).
+    pub remove_armed: bool,
+    /// Validation / commit errors (editor-local; not `active_runtime_error` until save fails).
+    pub inline_error: Option<String>,
+    /// Sub-editor for one pane (EditPane screen).
+    pub pane_form: Option<DashboardPaneForm>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DashboardEditorScreen {
+    PickDashboard,
+    NewFromPreset,
+    EditLayout,
+    EditPane,
+    ConfirmDiscard,
+}
+
+/// Mutable pane fields while on EditPane (buffers for numeric fields).
+#[derive(Debug, Clone)]
+pub struct DashboardPaneForm {
+    pub pane_index: usize,
+    pub kind_cycle: DashboardPaneKind,
+    pub row_buf: String,
+    pub col_buf: String,
+    pub row_span_buf: String,
+    pub col_span_buf: String,
+    pub title_buf: String,
+    pub focused: DashboardPaneFormField,
+}
+```
+
+**`App` fields (add):**
+
+```rust
+pub(crate) dashboard_editor: Option<DashboardEditor>,
+/// Config snapshot when editor opened (for revert on save failure / discard).
+pub(crate) dashboard_editor_config_snapshot: Option<(Vec<DashboardDefinition>, Option<String>)>,
+```
+
+**Mutual exclusion:** While `dashboard_editor` is `Some`, suppress Dashboard-global keys, filter mode, and other tab actions (editor consumes keys via `BindingLayer::DashboardEditor`). Leaving Dashboard tab → **`clear_dashboard_editor`** (discard or prompt — **discard** in v1 to avoid cross-tab stale draft).
+
+---
+
+### 71.3 Keymap (`src/config/keymap.rs`, `src/app/handlers.rs`)
+
+**New `BindingLayer` variants:**
+
+- **`Dashboard`** — read-only tab: `DashboardOpenEditor` (**`e`**).
+- **`DashboardEditor`** — modal: navigation, add/remove pane, save, field edit.
+
+**New `Action` variants (illustrative):**
+
+| Action | Default chord | Layer |
+|--------|---------------|-------|
+| `DashboardOpenEditor` | `e` | `Dashboard` |
+| `DashboardEditorEsc` | `Esc` | `DashboardEditor` |
+| `DashboardEditorSave` | `Enter` on save row / `Ctrl+s` optional | `DashboardEditor` |
+| `DashboardEditorRowDown` / `Up` | `j` / `k` | `DashboardEditor` |
+| `DashboardEditorAddPane` | `a` | `DashboardEditor` |
+| `DashboardEditorRemoveArm` | `d` | `DashboardEditor` |
+| `DashboardEditorRemoveConfirm` | `d` / `y` when armed | `DashboardEditor` |
+| `DashboardEditorEditPane` | `e` | `DashboardEditor` |
+| `DashboardEditorGridInc` / `Dec` | `+` / `-` on rows/cols focus | `DashboardEditor` |
+
+Register defaults in `DEFAULT_BINDINGS`; document in **`README.md`** Keymap table.
+
+**Handler wiring:**
+
+- `handle_dashboard_events` in new [`src/app/dashboard_editor.rs`](../src/app/dashboard_editor.rs) (or `handlers.rs` thin delegate).
+- `ui.rs`: when `app.dashboard_editor.is_some()`, after `draw_dashboard` using draft, call `draw_dashboard_editor_overlay` with `centered_rect(85, 70)` (same contract as §18.13).
+
+---
+
+### 71.4 Domain helpers (`src/models/dashboard.rs`)
+
+**Pane id allocation:**
+
+```rust
+/// Generate a unique pane id within `draft.panes` (e.g. `pane_1`, `pane_2`).
+pub fn allocate_dashboard_pane_id(existing: &[DashboardPane]) -> String
+```
+
+**Editor validation (strict — do not silently drop):**
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DashboardValidationError {
+    EmptyName,
+    DuplicateName { name: String },
+    GridOutOfRange { rows: u8, cols: u8 },
+    EmptyPaneId,
+    DuplicatePaneId { id: String },
+    PaneOutOfBounds { id: String, reason: &'static str },
+    PanesOverlap { a: String, b: String },
+    NoPanes,
+}
+
+/// Validate before editor save; does not mutate `def`.
+pub fn validate_dashboard_definition(def: &DashboardDefinition) -> Result<(), Vec<DashboardValidationError>>
+
+/// Validate a single pane against grid + existing panes (exclude_index for edit).
+pub fn validate_dashboard_pane(
+    def: &DashboardDefinition,
+    pane: &DashboardPane,
+    exclude_index: Option<usize>,
+) -> Result<(), DashboardValidationError>
+```
+
+**Relationship to `normalize_dashboard_definition`:** On **config load**, keep existing **normalize** (silent drop + `tracing::warn!`). On **editor commit**, run **`validate_dashboard_definition`** first; only persist when `Ok`. Optionally run **normalize** after successful validation to clamp spans (but editor should already enforce bounds so normalize is a no-op).
+
+**Preset clone for new dashboards:**
+
+```rust
+pub fn clone_preset_with_name(preset: &DashboardDefinition, new_name: &str) -> DashboardDefinition
+```
+
+Reject duplicate `dashboards[].name` on **NewFromPreset** commit.
+
+---
+
+### 71.5 Live preview and cache hot-reload (`src/app/app.rs`, `src/app/dashboard.rs`)
+
+**Preview source during edit:**
+
+```rust
+/// Dashboard definition used for draw: editor draft when open, else config.
+pub fn dashboard_definition_for_render(app: &App) -> ActiveDashboardResolve
+```
+
+- When `dashboard_editor` is open, `resolve_active_dashboard` logic reads **`editor.draft`** if `editing_index` matches active name **or** user toggled **"Set as active"** in editor (checkbox on EditLayout — default **true** for new dashboards).
+- Pass `&draft` into `prepare_dashboard_layout_cache` / `draw_dashboard` path.
+
+**After successful save (`commit_dashboard_editor`):**
+
+```rust
+pub(crate) fn invalidate_dashboard_caches_after_config_change(&mut self) {
+    self.dashboard_layout_cache = None;
+    crate::app::dashboard_display::rebuild_dashboard_display_strings(self);
+    // Optional: clear candle layout if chart pane count/kind changed — reuse charts invalidation hook if exists.
+}
+```
+
+Call from `commit_dashboard_editor` after `config` update + successful `try_save_config_with_session`.
+
+**Async:** No new HTTP tasks. Existing Dashboard tab fetch behavior unchanged (**#209** may gate fetches separately).
+
+---
+
+### 71.6 Config persistence (`src/config/config.rs`)
+
+**Commit algorithm (`App::commit_dashboard_editor`):**
+
+1. `validate_dashboard_definition(&editor.draft)?`.
+2. If `editing_index` is `Some(i)`, replace `config.dashboards[i]`; else `push` new entry.
+3. If **Set as active** (or draft name matches previous `active_dashboard`), set `config.active_dashboard = Some(draft.name)`.
+4. `try_save_config_with_session()` — on `Err`, restore `dashboard_editor_config_snapshot`.
+5. `invalidate_dashboard_caches_after_config_change()`.
+
+**README updates:**
+
+- Replace *"take effect on next launch"* with: in-app editor **`e`** on Dashboard tab; JSON editing still supported for power users.
+- Document editor keymap rows and validation rules (overlap, 1..4 grid).
+
+---
+
+### 71.7 Module layout
+
+| Module | Role |
+|--------|------|
+| [`src/app/dashboard_editor.rs`](../src/app/dashboard_editor.rs) | **New** — state, handlers, overlay draw, commit/discard |
+| [`src/models/dashboard.rs`](../src/models/dashboard.rs) | `validate_*`, `allocate_dashboard_pane_id`, `clone_preset_with_name` |
+| [`src/app/dashboard.rs`](../src/app/dashboard.rs) | `dashboard_definition_for_render`, preview hook in `draw_dashboard` |
+| [`src/app/dashboard_display.rs`](../src/app/dashboard_display.rs) | Accept optional `&DashboardDefinition` arg or read via `dashboard_definition_for_render` |
+| [`src/app/handlers.rs`](../src/app/handlers.rs) | Route `Tab::Dashboard` → `handle_dashboard_events` |
+| [`src/config/keymap.rs`](../src/config/keymap.rs) | `BindingLayer::Dashboard`, `DashboardEditor`, new `Action`s |
+| [`src/app/ui.rs`](../src/app/ui.rs) | Editor overlay after dashboard body |
+| [`src/app/mod.rs`](../src/app/mod.rs) | `mod dashboard_editor;` |
+
+---
+
+### 71.8 Phased implementation (engineer order)
+
+| Slice | Deliverable | Notes |
+|-------|-------------|-------|
+| **D1** | `validate_dashboard_*` + unit tests | Overlap, bounds, duplicate id/name cases from §70 tests |
+| **D2** | `DashboardEditor` + overlay shell + Pick/New preset + commit preset as new dashboard | Smallest shippable: user can add `market_overview` without JSON |
+| **D3** | EditLayout: grid dimensions, pane list add/remove, live preview | Core #208 acceptance |
+| **D4** | EditPane form + `DashboardPaneKind` cycle + options `max_rows` for News | Complete pane editing |
+| **D5** | README + keymap docs + `insta` editor overlay snapshot | §58 pattern |
+
+Slices **D2–D3** may ship in one PR if LOC stays focused; do not start until §71 is approved.
+
+---
+
+### 71.9 Automated verification
+
+```bash
+cargo test dashboard
+cargo test dashboard_editor
+cargo test validate_dashboard
+cargo clippy -- -D warnings
+```
+
+| Test | Approach |
+|------|----------|
+| `validate_dashboard_definition` | Overlap, out-of-bounds, duplicate ids, empty name |
+| `allocate_dashboard_pane_id` | Collision-free after deletes |
+| Editor commit | `App` unit test: draft save updates `config.dashboards`, invalid draft does not persist |
+| Overlay | `insta` `dashboard_editor_edit_layout` @ 120×40 (optional D5) |
+
+---
+
+### 71.10 Manual verification pointer
+
+[`docs/QA_PLAN.md`](QA_PLAN.md) — **Issue #208**.
+
+---
+
+### 71.11 Acceptance criteria (Issue #208)
+
+- [x] Maintainer approves **§71** before implementation.
+- [x] User can create a dashboard from built-in presets without editing JSON.
+- [x] User can add/remove panes and change grid `rows`/`cols` from the TUI.
+- [x] User can change pane `kind` and placement (`row`, `col`, spans) with inline validation errors (no silent drop on save).
+- [x] Save persists to `~/.stockterm.json` and updates Dashboard tab **without restart**.
+- [x] Invalid overlap / out-of-bounds shows editor error; config on disk unchanged.
+- [x] `cargo test` + `cargo clippy -- -D warnings` green.
+- [ ] Manual QA Issue **#208** signed.
+- [x] No `println!` / UI-thread HTTP; `tracing` for diagnostics.
+
+---
+
+### 71.12 Out of scope (Issue #208)
+
+- Mouse drag-resize and pane focus navigation on the grid.
+- Per-pane HTTP fetch or symbol-override chart fetch (§70.7 limitation stands).
+- Heat-map / P/L pane kinds.
+- Settings-row entry point (optional follow-on).
+- Replacing JSON editing — both paths remain supported.
+
+---
+
+### 71.13 Approval
+
+After maintainer approval of **§71**, the **engineer** may implement per [`.cursor/rules/sdd_workflow.mdc`](../.cursor/rules/sdd_workflow.mdc) and run [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#208** before merge. Closing [#24](https://github.com/FelipeMorandini/stockterm/issues/24) is optional once **#208** ships; triage may keep #24 open as umbrella until Phase D sign-off.
