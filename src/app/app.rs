@@ -1033,13 +1033,13 @@ impl App {
             }
             LastFailedFetch::Historical => {
                 self.last_charts_network_poll = None;
-                if !self.hist_refresh_inflight {
+                if !self.hist_refresh_inflight && self.may_spawn_historical_fetch() {
                     self.try_spawn_historical_fetch();
                 }
             }
             LastFailedFetch::News { .. } => {
                 self.last_news_network_poll = None;
-                if !self.news_refresh_inflight {
+                if !self.news_refresh_inflight && self.may_spawn_news_fetch() {
                     self.try_spawn_news_fetch();
                 }
             }
@@ -1748,6 +1748,40 @@ impl App {
         });
     }
 
+    /// Whether historical fetch/retry may run on the active tab (Issue #209 / §72).
+    ///
+    /// On **Dashboard**, allowed only when the committed layout includes `Chart` or
+    /// `IndicatorSummary` panes. On all other tabs, always allowed (Charts tab tick,
+    /// `Ctrl+R` retry after leaving Charts, etc.).
+    fn may_spawn_historical_fetch(&self) -> bool {
+        match self.active_tab {
+            Tab::Dashboard => crate::app::dashboard::dashboard_fetch_needs_for_app(self).historical,
+            _ => true,
+        }
+    }
+
+    /// Whether news fetch/retry may run on the active tab (Issue #209 / §72).
+    ///
+    /// On **Dashboard**, allowed only when the committed layout includes a `News` pane.
+    /// On all other tabs, always allowed.
+    fn may_spawn_news_fetch(&self) -> bool {
+        match self.active_tab {
+            Tab::Dashboard => crate::app::dashboard::dashboard_fetch_needs_for_app(self).news,
+            _ => true,
+        }
+    }
+
+    /// Dashboard-tab background polls gated on pane kinds (Issue #209 / §72).
+    fn try_spawn_dashboard_background_fetches(&mut self) {
+        let needs = crate::app::dashboard::dashboard_fetch_needs_for_app(self);
+        if needs.historical {
+            self.try_spawn_historical_fetch();
+        }
+        if needs.news {
+            self.try_spawn_news_fetch();
+        }
+    }
+
     fn on_background_tick(&mut self) {
         match self.active_tab {
             Tab::StockView | Tab::Alerts | Tab::Dashboard => self.try_spawn_stock_poll_throttled(),
@@ -1758,8 +1792,7 @@ impl App {
             _ => {}
         }
         if self.active_tab == Tab::Dashboard {
-            self.try_spawn_historical_fetch();
-            self.try_spawn_news_fetch();
+            self.try_spawn_dashboard_background_fetches();
         }
         self.tick_runtime_error_ttl();
         self.flush_session_persist_if_due();
@@ -4975,5 +5008,100 @@ mod tests {
             result: Ok(historical_response_with_t_stride(10, 300_000)),
         });
         assert!(app.historical_data_stamp > stamp1);
+    }
+
+    /// Issue #209 / §72.6 — watchlist-only dashboard must not arm historical/news inflight.
+    #[tokio::test]
+    async fn on_background_tick_dashboard_skips_historical_when_not_needed() {
+        use crate::models::dashboard::preset_dual_watchlist;
+
+        let (fetch_tx, _fetch_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut app = App::new();
+        app.fetch_done_tx = Some(fetch_tx);
+        app.symbol = "AAPL".into();
+        app.active_tab = Tab::Dashboard;
+        app.config.active_dashboard = Some("dual_watchlist".into());
+        app.config.dashboards = vec![preset_dual_watchlist()];
+
+        app.on_background_tick();
+
+        assert!(!app.hist_refresh_inflight);
+        assert!(!app.news_refresh_inflight);
+        assert!(app.last_charts_network_poll.is_none());
+        assert!(app.last_news_network_poll.is_none());
+    }
+
+    /// Issue #209 / §72.6 — `market_overview` needs news only on Dashboard tab.
+    #[tokio::test]
+    async fn on_background_tick_dashboard_spawns_news_for_market_overview() {
+        use crate::models::dashboard::preset_market_overview;
+
+        let (fetch_tx, _fetch_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut app = App::new();
+        app.fetch_done_tx = Some(fetch_tx);
+        app.symbol = "AAPL".into();
+        app.active_tab = Tab::Dashboard;
+        app.config.active_dashboard = Some("market_overview".into());
+        app.config.dashboards = vec![preset_market_overview()];
+
+        app.on_background_tick();
+
+        assert!(!app.hist_refresh_inflight);
+        assert!(app.news_refresh_inflight);
+    }
+
+    /// Issue #209 / §72.6 — chart pane dashboard arms historical fetch.
+    #[tokio::test]
+    async fn on_background_tick_dashboard_spawns_historical_for_chart_pane() {
+        use crate::models::dashboard::{
+            DashboardDefinition, DashboardPane, DashboardPaneKind, DashboardPaneOptions,
+        };
+
+        let (fetch_tx, _fetch_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut app = App::new();
+        app.fetch_done_tx = Some(fetch_tx);
+        app.symbol = "AAPL".into();
+        app.active_tab = Tab::Dashboard;
+        app.config.active_dashboard = Some("chart_only".into());
+        app.config.dashboards = vec![DashboardDefinition {
+            name: "chart_only".into(),
+            rows: 1,
+            cols: 1,
+            panes: vec![DashboardPane {
+                id: "chart".into(),
+                kind: DashboardPaneKind::Chart,
+                row: 0,
+                col: 0,
+                row_span: 1,
+                col_span: 1,
+                title: None,
+                options: DashboardPaneOptions::default(),
+            }],
+        }];
+
+        app.on_background_tick();
+
+        assert!(app.hist_refresh_inflight);
+        assert!(!app.news_refresh_inflight);
+    }
+
+    /// Issue #209 / §72 — `Ctrl+R` must not retry historical on watchlist-only dashboard.
+    #[tokio::test]
+    async fn retry_last_failed_fetch_skips_historical_on_dual_watchlist_dashboard() {
+        use crate::app::app_error::LastFailedFetch;
+        use crate::models::dashboard::preset_dual_watchlist;
+
+        let (fetch_tx, _fetch_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut app = App::new();
+        app.fetch_done_tx = Some(fetch_tx);
+        app.symbol = "AAPL".into();
+        app.active_tab = Tab::Dashboard;
+        app.config.active_dashboard = Some("dual_watchlist".into());
+        app.config.dashboards = vec![preset_dual_watchlist()];
+        app.last_failed_fetch = LastFailedFetch::Historical;
+
+        app.retry_last_failed_fetch();
+
+        assert!(!app.hist_refresh_inflight);
     }
 }
