@@ -3,7 +3,7 @@
 use crate::app::dashboard_panes::render_dashboard_pane;
 use crate::app::styles::ResolvedTheme;
 use crate::app::App;
-use crate::models::dashboard::DashboardDefinition;
+use crate::models::dashboard::{DashboardDefinition, DashboardPaneKind};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::Style,
@@ -40,6 +40,45 @@ pub fn resolve_active_dashboard(config: &crate::config::Config) -> ActiveDashboa
         None => ActiveDashboardResolve::Unknown {
             name: name.to_string(),
         },
+    }
+}
+
+/// Which background fetch domains the active dashboard layout needs (Issue #209 / §72).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct DashboardFetchNeeds {
+    /// Historical chart series + indicator cache (`Chart` / `IndicatorSummary` panes).
+    pub historical: bool,
+    /// Headlines (`News` panes).
+    pub news: bool,
+}
+
+/// Scan pane kinds on a resolved dashboard definition (Issue #209 / §72).
+pub fn dashboard_fetch_needs(def: &DashboardDefinition) -> DashboardFetchNeeds {
+    let mut needs = DashboardFetchNeeds::default();
+    for pane in &def.panes {
+        match pane.kind {
+            DashboardPaneKind::Chart | DashboardPaneKind::IndicatorSummary => {
+                needs.historical = true;
+            }
+            DashboardPaneKind::News => needs.news = true,
+            DashboardPaneKind::Watchlist
+            | DashboardPaneKind::StockDetail
+            | DashboardPaneKind::Portfolio
+            | DashboardPaneKind::AlertsList => {}
+        }
+    }
+    needs
+}
+
+/// Resolve active dashboard from committed config and derive fetch needs (Issue #209 / §72).
+///
+/// Editor draft panes are excluded — only persisted `config.dashboards` + `active_dashboard`.
+pub fn dashboard_fetch_needs_for_app(app: &App) -> DashboardFetchNeeds {
+    match dashboard_definition_for_render(app) {
+        ActiveDashboardResolve::Ready(def) => dashboard_fetch_needs(&def),
+        ActiveDashboardResolve::Unconfigured | ActiveDashboardResolve::Unknown { .. } => {
+            DashboardFetchNeeds::default()
+        }
     }
 }
 
@@ -272,7 +311,76 @@ mod tests {
     };
     use crate::app::App;
     use crate::app::Tab;
-    use crate::models::dashboard::{preset_dual_watchlist, preset_market_overview};
+    use crate::models::dashboard::{
+        preset_dual_watchlist, preset_market_overview, DashboardDefinition, DashboardPane,
+        DashboardPaneKind, DashboardPaneOptions,
+    };
+
+    #[test]
+    fn dashboard_fetch_needs_dual_watchlist() {
+        let needs = dashboard_fetch_needs(&preset_dual_watchlist());
+        assert!(!needs.historical);
+        assert!(!needs.news);
+    }
+
+    #[test]
+    fn dashboard_fetch_needs_market_overview() {
+        let needs = dashboard_fetch_needs(&preset_market_overview());
+        assert!(!needs.historical);
+        assert!(needs.news);
+    }
+
+    #[test]
+    fn dashboard_fetch_needs_chart_only() {
+        let def = DashboardDefinition {
+            name: "chart_only".into(),
+            rows: 1,
+            cols: 1,
+            panes: vec![DashboardPane {
+                id: "c".into(),
+                kind: DashboardPaneKind::Chart,
+                row: 0,
+                col: 0,
+                row_span: 1,
+                col_span: 1,
+                title: None,
+                options: DashboardPaneOptions::default(),
+            }],
+        };
+        let needs = dashboard_fetch_needs(&def);
+        assert!(needs.historical);
+        assert!(!needs.news);
+    }
+
+    #[test]
+    fn dashboard_fetch_needs_indicator_only() {
+        let def = DashboardDefinition {
+            name: "ind".into(),
+            rows: 1,
+            cols: 1,
+            panes: vec![DashboardPane {
+                id: "i".into(),
+                kind: DashboardPaneKind::IndicatorSummary,
+                row: 0,
+                col: 0,
+                row_span: 1,
+                col_span: 1,
+                title: None,
+                options: DashboardPaneOptions::default(),
+            }],
+        };
+        let needs = dashboard_fetch_needs(&def);
+        assert!(needs.historical);
+        assert!(!needs.news);
+    }
+
+    #[test]
+    fn dashboard_fetch_needs_for_app_unconfigured() {
+        let app = App::new();
+        let needs = dashboard_fetch_needs_for_app(&app);
+        assert!(!needs.historical);
+        assert!(!needs.news);
+    }
 
     #[test]
     fn dashboard_grid_chunks_dual_watchlist_side_by_side() {

@@ -6495,3 +6495,99 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 | Manual: save persists without restart | | | |
 | Manual: discard / save-failure paths | | | |
 | Regression: §70 read-only + core tabs | | | |
+
+---
+
+## Issue #209 — Dashboard: gate historical/news fetch on pane kinds (§72)
+
+**Scope:**
+
+- [GitHub Issue #209](https://github.com/FelipeMorandini/stockterm/issues/209) — On **`Tab::Dashboard`**, spawn historical and news background fetches **only** when the **active** dashboard definition (committed config) includes panes that need that data. **`dual_watchlist`** must not trigger historical/news HTTP; **`market_overview`** must still refresh news; dashboards with **`Chart`** / **`IndicatorSummary`** panes must still refresh historical.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §72.
+
+**Prerequisite:** §70 Phases A–C shipped (dashboard tab + pane kinds). §71 editor optional but useful for adding/removing pane kinds without hand-editing JSON.
+
+**Status:** **Shipped** (2026-05-27) — automated tests + audit passed; manual sign-off **2026-05-27**.
+
+### Automated (local) — required
+
+1. From the repo root:
+
+   ```bash
+   cargo test dashboard_fetch_needs
+   cargo test dashboard
+   cargo test on_background_tick_dashboard
+   cargo test
+   cargo clippy -- -D warnings
+   ```
+
+   **Pass:** All exit 0.
+
+2. Predicate matrix (§72.6) — spot-check test names:
+
+   ```bash
+   cargo test dashboard_fetch_needs_dual_watchlist -- --nocapture
+   cargo test dashboard_fetch_needs_market_overview -- --nocapture
+   ```
+
+   **Pass:** `dual_watchlist` → no historical, no news; `market_overview` → news only, no historical.
+
+3. Static audit — single gated Dashboard spawn site:
+
+   ```bash
+   rg -n "try_spawn_historical_fetch|try_spawn_news_fetch" src/app/app.rs
+   ```
+
+   **Pass:** Dashboard tab calls are only inside the `active_tab == Tab::Dashboard` block guarded by `dashboard_fetch_needs_*` (Charts / News tab arms unchanged).
+
+### Manual — setup
+
+1. Backup `~/.stockterm.json`.
+2. Ensure Yahoo provider (or Polygon with key) and symbol **AAPL** on watchlist.
+3. Optional: enable fetch logging for observation:
+
+   ```bash
+   RUST_LOG=stockterm::fetch=debug cargo run --release
+   ```
+
+   (Log file path per README / `tracing` subscriber in `main.rs`.)
+
+### Manual — `dual_watchlist` (no historical / no news)
+
+**Setup:** Set `active_dashboard` to `dual_watchlist` (editor preset or JSON). Open **Dashboard** tab. Wait ≥ one full `refresh_rate` cycle (default 30 s, or lower `refresh_rate` in Settings for faster test).
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Stay on Dashboard 60 s | **No** `historical` / `news` fetch log lines (or network calls to chart/news endpoints) while quote refresh may still occur. |
+| 2 | Switch to **Charts** tab | Historical fetch **resumes** (status / chart loads). |
+| 3 | Return to **Dashboard** (`dual_watchlist`) | Historical fetch **stops** again on subsequent ticks; Charts data may remain in memory but no new historical polls while idle on Dashboard. |
+
+### Manual — `market_overview` (news only)
+
+**Setup:** Active dashboard `market_overview` (four panes including **News**; no **Chart** / **IndicatorSummary** in default preset).
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Dashboard tab, wait one refresh cycle | News pane populates or shows loading/error placeholder; **news** fetch activity present in logs. |
+| 2 | Same session | **No** historical fetch activity attributable to Dashboard ticks (Charts tab not focused). |
+| 3 | Add **Chart** pane via editor (**`e`**), save, stay on Dashboard | After save, historical fetch **starts** on throttle; chart pane shows series or loading state (not permanently empty due to missing fetch). |
+
+### Manual — regression
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | **Charts** tab | Historical refresh unchanged vs pre-#209 (`1`–`4`, pan/zoom). |
+| 2 | **News** tab | News list refresh unchanged. |
+| 3 | **Stock View** on Dashboard switch | Quote batch still updates watchlist/detail panes on Dashboard (**§23.7**). |
+| 4 | **`Ctrl+R`** on Dashboard (`dual_watchlist`) after a Charts historical failure | Retry does **not** spawn historical while on watchlist-only dashboard. |
+
+### Sign-off — Issue #209
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| Automated: `dashboard_fetch_needs` + app tick guard tests + clippy | maintainer | 2026-05-27 | Pass |
+| Manual: `dual_watchlist` — no hist/news network work | maintainer | 2026-05-27 | Pass |
+| Manual: `market_overview` — news yes, hist no (until Chart added) | maintainer | 2026-05-27 | Pass |
+| Manual: Chart pane enables historical on Dashboard | maintainer | 2026-05-27 | Pass |
+| Regression: Charts / News tabs + quote batch on Dashboard | maintainer | 2026-05-27 | Pass |
