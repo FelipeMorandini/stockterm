@@ -162,7 +162,12 @@ fn dashboard_layout_key(
 impl App {
     /// Rebuild dashboard pane rects when terminal area or definition changes (§70 audit).
     pub(crate) fn prepare_dashboard_layout_cache(&mut self, def: &DashboardDefinition, area: Rect) {
-        let active_name = self.config.active_dashboard.as_deref().unwrap_or("");
+        let active_name = self
+            .dashboard_editor
+            .as_ref()
+            .map(|e| e.draft.name.as_str())
+            .or(self.config.active_dashboard.as_deref())
+            .unwrap_or("");
         let key = dashboard_layout_key(def, area, active_name);
         if self
             .dashboard_layout_cache
@@ -185,9 +190,17 @@ impl App {
     }
 }
 
+/// Dashboard definition for draw: editor draft preview or committed config (§71.5).
+pub fn dashboard_definition_for_render(app: &App) -> ActiveDashboardResolve {
+    if let Some(editor) = &app.dashboard_editor {
+        return ActiveDashboardResolve::Ready(editor.draft.clone());
+    }
+    resolve_active_dashboard(&app.config)
+}
+
 /// Draw the active dashboard or an empty-state message.
 pub fn draw_dashboard(f: &mut Frame, app: &mut App, area: Rect, rt: ResolvedTheme) {
-    match resolve_active_dashboard(&app.config) {
+    match dashboard_definition_for_render(app) {
         ActiveDashboardResolve::Unconfigured => {
             draw_dashboard_unconfigured(f, area, rt);
         }
@@ -237,7 +250,7 @@ fn draw_dashboard_unconfigured(f: &mut Frame, area: Rect, rt: ResolvedTheme) {
         f,
         area,
         rt,
-        "No dashboard configured. Set active_dashboard and dashboards in ~/.stockterm.json (see README).",
+        "No dashboard configured. Press e to open the editor, or set active_dashboard in ~/.stockterm.json (see README).",
     );
 }
 

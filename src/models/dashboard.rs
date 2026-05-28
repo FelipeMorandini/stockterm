@@ -17,6 +17,66 @@ pub enum DashboardPaneKind {
     IndicatorSummary,
 }
 
+impl DashboardPaneKind {
+    /// Human-readable label for the in-app editor (Issue #208 / §71).
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Watchlist => "watchlist",
+            Self::StockDetail => "stock_detail",
+            Self::Chart => "chart",
+            Self::News => "news",
+            Self::Portfolio => "portfolio",
+            Self::AlertsList => "alerts_list",
+            Self::IndicatorSummary => "indicator_summary",
+        }
+    }
+
+    /// Cycle pane kinds in editor (Issue #208 / §71).
+    pub fn next(self) -> Self {
+        match self {
+            Self::Watchlist => Self::StockDetail,
+            Self::StockDetail => Self::Chart,
+            Self::Chart => Self::News,
+            Self::News => Self::Portfolio,
+            Self::Portfolio => Self::AlertsList,
+            Self::AlertsList => Self::IndicatorSummary,
+            Self::IndicatorSummary => Self::Watchlist,
+        }
+    }
+}
+
+/// Editor-time validation error (strict — Issue #208 / §71.4).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DashboardValidationError {
+    EmptyName,
+    DuplicateName { name: String },
+    GridOutOfRange { rows: u8, cols: u8 },
+    EmptyPaneId,
+    DuplicatePaneId { id: String },
+    PaneOutOfBounds { id: String, reason: &'static str },
+    PanesOverlap { a: String, b: String },
+    NoPanes,
+}
+
+impl std::fmt::Display for DashboardValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EmptyName => write!(f, "dashboard name is required"),
+            Self::DuplicateName { name } => write!(f, "dashboard name \"{name}\" already exists"),
+            Self::GridOutOfRange { rows, cols } => {
+                write!(f, "grid must be 1–4 rows/cols (got {rows}×{cols})")
+            }
+            Self::EmptyPaneId => write!(f, "pane id is required"),
+            Self::DuplicatePaneId { id } => write!(f, "duplicate pane id \"{id}\""),
+            Self::PaneOutOfBounds { id, reason } => {
+                write!(f, "pane \"{id}\": {reason}")
+            }
+            Self::PanesOverlap { a, b } => write!(f, "panes \"{a}\" and \"{b}\" overlap"),
+            Self::NoPanes => write!(f, "dashboard needs at least one pane"),
+        }
+    }
+}
+
 /// Per-pane options (unknown JSON fields ignored via [`Default`] on deserialize).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DashboardPaneOptions {
@@ -231,6 +291,171 @@ pub fn normalize_dashboards(dashboards: &mut [DashboardDefinition]) {
     }
 }
 
+/// Clone a built-in preset under a new dashboard name (Issue #208 / §71.4).
+pub fn clone_preset_with_name(preset: &DashboardDefinition, new_name: &str) -> DashboardDefinition {
+    let mut def = preset.clone();
+    def.name = new_name.to_string();
+    def
+}
+
+/// Unique dashboard name for a new layout (`dashboard_1`, …).
+pub fn allocate_dashboard_name(existing: &[DashboardDefinition]) -> String {
+    for i in 1..=999u32 {
+        let name = format!("dashboard_{i}");
+        if !existing.iter().any(|d| d.name == name) {
+            return name;
+        }
+    }
+    "dashboard".to_string()
+}
+
+/// Unique pane id within a draft (`pane_1`, …).
+pub fn allocate_dashboard_pane_id(existing: &[DashboardPane]) -> String {
+    for i in 1..=999u32 {
+        let id = format!("pane_{i}");
+        if !existing.iter().any(|p| p.id == id) {
+            return id;
+        }
+    }
+    "pane".to_string()
+}
+
+/// Validate a dashboard name is unique in config (editor commit).
+pub fn validate_dashboard_name_unique(
+    name: &str,
+    dashboards: &[DashboardDefinition],
+    editing_index: Option<usize>,
+) -> Result<(), DashboardValidationError> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(DashboardValidationError::EmptyName);
+    }
+    for (i, def) in dashboards.iter().enumerate() {
+        if Some(i) == editing_index {
+            continue;
+        }
+        if def.name == trimmed {
+            return Err(DashboardValidationError::DuplicateName {
+                name: trimmed.to_string(),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Validate one pane against the grid and siblings (Issue #208 / §71.4).
+pub fn validate_dashboard_pane(
+    def: &DashboardDefinition,
+    pane: &DashboardPane,
+    exclude_index: Option<usize>,
+) -> Result<(), DashboardValidationError> {
+    if pane.id.trim().is_empty() {
+        return Err(DashboardValidationError::EmptyPaneId);
+    }
+    if def.rows < 1 || def.cols < 1 || def.rows > 4 || def.cols > 4 {
+        return Err(DashboardValidationError::GridOutOfRange {
+            rows: def.rows,
+            cols: def.cols,
+        });
+    }
+    if pane.row >= def.rows {
+        return Err(DashboardValidationError::PaneOutOfBounds {
+            id: pane.id.clone(),
+            reason: "row outside grid",
+        });
+    }
+    if pane.col >= def.cols {
+        return Err(DashboardValidationError::PaneOutOfBounds {
+            id: pane.id.clone(),
+            reason: "col outside grid",
+        });
+    }
+    if pane.row_span == 0 || pane.col_span == 0 {
+        return Err(DashboardValidationError::PaneOutOfBounds {
+            id: pane.id.clone(),
+            reason: "span must be at least 1",
+        });
+    }
+    if pane.row.saturating_add(pane.row_span) > def.rows {
+        return Err(DashboardValidationError::PaneOutOfBounds {
+            id: pane.id.clone(),
+            reason: "row span exceeds grid rows",
+        });
+    }
+    if pane.col.saturating_add(pane.col_span) > def.cols {
+        return Err(DashboardValidationError::PaneOutOfBounds {
+            id: pane.id.clone(),
+            reason: "col span exceeds grid cols",
+        });
+    }
+    for (i, other) in def.panes.iter().enumerate() {
+        if Some(i) == exclude_index {
+            continue;
+        }
+        if other.id == pane.id {
+            return Err(DashboardValidationError::DuplicatePaneId {
+                id: pane.id.clone(),
+            });
+        }
+        if dashboard_panes_overlap(pane, other) {
+            return Err(DashboardValidationError::PanesOverlap {
+                a: pane.id.clone(),
+                b: other.id.clone(),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Validate a full dashboard before editor save (Issue #208 / §71.4).
+pub fn validate_dashboard_definition(
+    def: &DashboardDefinition,
+) -> Result<(), Vec<DashboardValidationError>> {
+    let mut errors = Vec::new();
+    if def.name.trim().is_empty() {
+        errors.push(DashboardValidationError::EmptyName);
+    }
+    if def.rows < 1 || def.cols < 1 || def.rows > 4 || def.cols > 4 {
+        errors.push(DashboardValidationError::GridOutOfRange {
+            rows: def.rows,
+            cols: def.cols,
+        });
+    }
+    if def.panes.is_empty() {
+        errors.push(DashboardValidationError::NoPanes);
+    }
+    let mut seen_ids = HashSet::new();
+    for (i, pane) in def.panes.iter().enumerate() {
+        if pane.id.trim().is_empty() {
+            errors.push(DashboardValidationError::EmptyPaneId);
+            continue;
+        }
+        if !seen_ids.insert(pane.id.clone()) {
+            errors.push(DashboardValidationError::DuplicatePaneId {
+                id: pane.id.clone(),
+            });
+        }
+        if let Err(e) = validate_dashboard_pane(def, pane, Some(i)) {
+            if !errors.contains(&e) {
+                errors.push(e);
+            }
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+/// First validation message for editor footer.
+pub fn format_dashboard_validation_errors(errors: &[DashboardValidationError]) -> String {
+    errors
+        .first()
+        .map(ToString::to_string)
+        .unwrap_or_else(|| "invalid dashboard".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -310,5 +535,54 @@ mod tests {
             options: DashboardPaneOptions::default(),
         };
         assert!(dashboard_panes_overlap(&a, &b));
+    }
+
+    #[test]
+    fn validate_dashboard_rejects_overlap() {
+        let def = DashboardDefinition {
+            name: "t".into(),
+            rows: 2,
+            cols: 2,
+            panes: vec![
+                DashboardPane {
+                    id: "a".into(),
+                    kind: DashboardPaneKind::Watchlist,
+                    row: 0,
+                    col: 0,
+                    row_span: 2,
+                    col_span: 2,
+                    title: None,
+                    options: DashboardPaneOptions::default(),
+                },
+                DashboardPane {
+                    id: "b".into(),
+                    kind: DashboardPaneKind::Watchlist,
+                    row: 1,
+                    col: 1,
+                    row_span: 1,
+                    col_span: 1,
+                    title: None,
+                    options: DashboardPaneOptions::default(),
+                },
+            ],
+        };
+        assert!(validate_dashboard_definition(&def).is_err());
+    }
+
+    #[test]
+    fn validate_dashboard_accepts_dual_watchlist() {
+        let def = preset_dual_watchlist();
+        assert!(validate_dashboard_definition(&def).is_ok());
+    }
+
+    #[test]
+    fn allocate_dashboard_name_skips_existing() {
+        let existing = vec![DashboardDefinition {
+            name: "dashboard_1".into(),
+            rows: 1,
+            cols: 1,
+            panes: vec![],
+        }];
+        assert_eq!(allocate_dashboard_name(&existing), "dashboard_2");
     }
 }

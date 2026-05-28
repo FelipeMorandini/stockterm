@@ -478,6 +478,13 @@ pub struct App {
     pub filter_save_prompt: bool,
     /// Issue #194 — first `ctrl+d` armed; second step is `y`.
     pub filter_delete_armed: bool,
+    /// In-app dashboard editor (Issue #208 / §71).
+    pub(crate) dashboard_editor: Option<crate::app::dashboard_editor::DashboardEditor>,
+    /// Config snapshot when editor opened (revert on failed save).
+    pub(crate) dashboard_editor_config_snapshot: Option<(
+        Vec<crate::models::dashboard::DashboardDefinition>,
+        Option<String>,
+    )>,
 }
 
 const MISSING_API_KEY_FOR_POLYGON_MSG: &str = "Polygon provider requires a non-empty `api_key` in ~/.stockterm.json or export STOCKTERM_API_KEY.";
@@ -795,6 +802,8 @@ impl App {
             filter_save_name_buffer: String::new(),
             filter_save_prompt: false,
             filter_delete_armed: false,
+            dashboard_editor: None,
+            dashboard_editor_config_snapshot: None,
         };
 
         if !app.portfolio.is_empty() {
@@ -3772,6 +3781,9 @@ impl App {
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
         }
+        if from == Tab::Dashboard && self.active_tab != Tab::Dashboard {
+            self.clear_dashboard_editor();
+        }
         self.clear_table_filter();
         self.persist_session_to_disk();
     }
@@ -3792,6 +3804,9 @@ impl App {
         };
         if from == Tab::Portfolio && self.active_tab != Tab::Portfolio {
             self.clear_portfolio_tab_transient();
+        }
+        if from == Tab::Dashboard && self.active_tab != Tab::Dashboard {
+            self.clear_dashboard_editor();
         }
         self.clear_table_filter();
         self.persist_session_to_disk();

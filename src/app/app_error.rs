@@ -182,6 +182,8 @@ pub enum ErrorSourceDomain {
     NewsOpenUrl,
     Backtest,
     Options,
+    /// Dashboard layout editor save / validation (Issue #208 / §71).
+    Dashboard,
     #[allow(dead_code)]
     Other,
 }

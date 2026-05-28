@@ -117,7 +117,12 @@ pub fn draw<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result
             Tab::Search => draw_search(f, app, body, rt),
             Tab::News => draw_news(f, app, body, rt),
             Tab::Charts => draw_charts(f, app, body, rt, layout),
-            Tab::Dashboard => draw_dashboard(f, app, body, rt),
+            Tab::Dashboard => {
+                draw_dashboard(f, app, body, rt);
+                if app.dashboard_editor.is_some() {
+                    crate::app::dashboard_editor::draw_dashboard_editor_overlay(f, app, body, rt);
+                }
+            }
             Tab::Settings => draw_settings(f, app, body, rt),
             Tab::Backtest => crate::app::backtest_ui::draw_backtest(f, app, body, rt),
             Tab::Options => crate::app::options::draw_options(f, app, body, &rt, theme_stamp),

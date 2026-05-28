@@ -1,6 +1,6 @@
 //! Precomputed dashboard pane strings (Issue #24 / §70 — off 60fps draw path).
 
-use crate::app::dashboard::resolve_active_dashboard;
+use crate::app::dashboard::dashboard_definition_for_render;
 use crate::app::dashboard::ActiveDashboardResolve;
 use crate::app::App;
 use crate::models::dashboard::{DashboardPane, DashboardPaneKind};
@@ -30,7 +30,7 @@ pub fn rebuild_dashboard_display_strings(app: &mut App) {
     );
 
     app.dashboard_pane_draw_cache.clear();
-    let ActiveDashboardResolve::Ready(def) = resolve_active_dashboard(&app.config) else {
+    let ActiveDashboardResolve::Ready(def) = dashboard_definition_for_render(app) else {
         return;
     };
 
