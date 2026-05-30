@@ -13494,6 +13494,7 @@ After maintainer approval of **§73**, the **engineer** may implement per [`.cur
 ### 73.13 Shipment record
 
 - **Date:** 2026-05-28.
+- **PR:** [#213](https://github.com/FelipeMorandini/stockterm/pull/213).
 - **Tracking:** [Issue #204](https://github.com/FelipeMorandini/stockterm/issues/204).
 - **Code:** [`src/models/symbol.rs`](../src/models/symbol.rs) (`SymbolCanonicalizeReport`, `canonicalize_persisted_symbol_fields`, field helpers); [`src/config/config.rs`](../src/config/config.rs) (`canonicalize_persisted_symbols`, `load_config_from_path` hook); [`src/app/app.rs`](../src/app/app.rs) (startup watchlist uses pre-canonicalized config).
 - **Automated:** `cargo test canonicalize`, `load_config_from_path_canonicalizes_mixed_case_symbols`, clippy clean.
