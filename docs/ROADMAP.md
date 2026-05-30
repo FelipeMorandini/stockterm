@@ -67,7 +67,7 @@ _None at this time — all roadmap-labelled issues are either shipped or deferre
 
 | # | Title | Scope (one line) |
 |---|-------|------------------|
-| [#191](https://github.com/FelipeMorandini/stockterm/issues/191) | Optional CancellationToken for quote batches | Only if overlapping batches become a product requirement — **§68** (SPEC + QA planned 2026-05-25). |
+| [#191](https://github.com/FelipeMorandini/stockterm/issues/191) | Optional CancellationToken for quote batches | **Shipped** 2026-05-30 — **§68**; follow-up [#214](https://github.com/FelipeMorandini/stockterm/issues/214) (overlap inflight watchdog); manual QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#191** sign-off **2026-05-30**. |
 | [#68](https://github.com/FelipeMorandini/stockterm/issues/68)  | Portfolio: optional decimal types | Optional precision upgrade; current `f64` matches providers. |
 | [#24](https://github.com/FelipeMorandini/stockterm/issues/24)  | Advanced: custom widgets — post-MVP | **§70 Phases A–D shipped** (read-only panes + in-app editor **§71**; **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207), [#210](https://github.com/FelipeMorandini/stockterm/pull/210), [#211](https://github.com/FelipeMorandini/stockterm/pull/211)). |
 | [#208](https://github.com/FelipeMorandini/stockterm/issues/208) | Dashboard §70 Phase D: in-app pane editor | **§71 shipped** 2026-05-27 — wizard modal editor; QA [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#208** (sign-off pending). |

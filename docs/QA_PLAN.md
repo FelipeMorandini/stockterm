@@ -6150,13 +6150,21 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
 - [GitHub Issue #191](https://github.com/FelipeMorandini/stockterm/issues/191) — Cooperative cancellation for **`run_stock_quote_batch`** when overlapping quote batches are allowed; stale **`FetchDone::Stock`** must not mutate **`watchlist_quotes`**.
 
-**Spec:** [`docs/SPEC.md`](SPEC.md) §68.
+**Spec:** [`docs/SPEC.md`](SPEC.md) §68 (architect plan **2026-05-30**).
 
-**Status:** **Deferred** — run this section only after maintainer approval of §68 **and** a §68.2 product trigger (overlapping quote batches). **If single-flight remains the only mode,** verify doc-only: generation ignore + §16 smoke still pass; skip overlap-specific steps.
+**Status:** **Implemented** (2026-05-30) — phases 0–3 shipped in-tree. Run manual sign-off below (single-flight baseline always; overlap steps only with **`allow_overlapping_quote_batches": true`** in `~/.stockterm.json`).
 
-**Prerequisite:** §16 shipped ([#17](https://github.com/FelipeMorandini/stockterm/issues/17), [#46](https://github.com/FelipeMorandini/stockterm/issues/46), [#77](https://github.com/FelipeMorandini/stockterm/issues/77)). For overlap tests, feature flag or build that enables **`allow_overlapping_quote_batches`** (per §68.4.5) must be documented in the PR.
+**Prerequisite:** §16 shipped ([#17](https://github.com/FelipeMorandini/stockterm/issues/17), [#46](https://github.com/FelipeMorandini/stockterm/issues/46), [#77](https://github.com/FelipeMorandini/stockterm/issues/77)). For overlap tests (phase 3), feature flag or build that enables **`allow_overlapping_quote_batches`** (per §68.4.5) must be documented in the PR README.
 
-### Automated (local) — required when implementing
+### Doc-only / phase 0 sign-off (no code change)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Read §16.1 item 2 + §68.3 in SPEC | Confirms generation ignore is the supported supersede model under single-flight. |
+| 2 | `cargo test` + `cargo clippy -- -D warnings` on `main` | Green (no §68 code required). |
+| 3 | Optional: `STOCKTERM_DEBUG_HTTP_DELAY_MS=5000 cargo run --release` | §16.1 smoke: UI responsive during inflight refresh (validates baseline before any overlap work). |
+
+### Automated (local) — required when implementing (phase 1+)
 
 1. Full test + lint:
 
@@ -6176,12 +6184,21 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
    **Pass:** No regressions in inflight recovery / generation ignore tests.
 
+3. **Phase 1 only** — stale generation unit test (no overlap):
+
+   ```bash
+   cargo test apply_stock_fetch_done
+   ```
+
+   **Pass:** Test proves **`apply_stock_fetch_done`** with **`generation < stock_fetch_generation`** does not insert into **`watchlist_quotes`** (see §68.6).
+
 ### Manual — single-flight baseline (always run before merge)
 
 | Step | Action | Pass criteria |
 |------|--------|---------------|
 | 1 | `STOCKTERM_DEBUG_HTTP_DELAY_MS=5000 cargo run --release` | During delay, tab switch / **`j`/`k`** / typing remain responsive (§16.1 smoke). |
 | 2 | Rapid **`Enter`** on symbol change 3× during inflight refresh | Status **Refreshing quotes…**; final quotes match last symbol; no panic. |
+| 3 | Coalesced refresh: start refresh, trigger another poll while inflight (e.g. add symbol + immediate poll) | Second batch runs **after** first completes (**`stock_refresh_pending`**); no overlapping HTTP without mode **B**. |
 
 ### Manual — overlap + cancel (only when §68 mode B enabled)
 
@@ -6196,10 +6213,12 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| `cargo test` + clippy | | | |
-| Unit/integration: superseded batch | | | |
-| Manual: §16 delay smoke | | | |
-| Manual: overlap cancel (if mode B) | | | |
+| Doc-only / phase 0 (§68.3 read + baseline clippy/test) | Maintainer | 2026-05-30 | Pass |
+| `cargo test` + clippy (implementation PR) | Maintainer | 2026-05-30 | Pass |
+| Unit/integration: superseded batch (phase 1+) | Maintainer | 2026-05-30 | Pass |
+| Manual: §16 delay smoke | Maintainer | 2026-05-30 | Pass |
+| Manual: coalesced pending (single-flight) | Maintainer | 2026-05-30 | Pass |
+| Manual: overlap cancel (mode B only) | Maintainer | 2026-05-30 | N/A (default single-flight) |
 
 ---
 
