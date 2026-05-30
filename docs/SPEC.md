@@ -12320,7 +12320,7 @@ After maintainer approval of **§68** **and** (for HTTP cancel) a **§68.2** pro
 - **Status:** Shipped (2026-05-30) — `tokio-util` **`CancellationToken`**, **`allow_overlapping_quote_batches`** (default `false`), cooperative cancel in **`run_stock_quote_batch`** / Yahoo batch path, 8 unit tests (`issue_191` filter).
 - **Follow-up:** [#214](https://github.com/FelipeMorandini/stockterm/issues/214) — overlap mode inflight watchdog when latest batch hangs (audit strategic debt).
 - **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#191** (sign-off **2026-05-30**).
-- **PR:** (fill on merge)
+- **PR:** [#215](https://github.com/FelipeMorandini/stockterm/pull/215)
 
 ---
 
