@@ -11,6 +11,7 @@ use crate::models::backtest::{BacktestConfig, BacktestStrategyParams};
 use crate::models::dashboard::{normalize_dashboards, DashboardDefinition};
 use crate::models::portfolio::PortfolioItem;
 use crate::models::saved_filter::{sanitize_saved_filters, SavedFilter};
+use crate::models::symbol::{canonicalize_persisted_symbol_fields, SymbolCanonicalizeReport};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -144,6 +145,18 @@ pub enum ConfigError {
     Serde(#[from] serde_json::Error),
 }
 
+/// Rewrite persisted ticker fields to §67 canonical form (Issue #204 / §73).
+pub fn canonicalize_persisted_symbols(cfg: &mut Config) -> SymbolCanonicalizeReport {
+    canonicalize_persisted_symbol_fields(
+        &mut cfg.watchlist,
+        &mut cfg.portfolio,
+        &mut cfg.alerts,
+        &mut cfg.default_symbol,
+        &mut cfg.last_symbol,
+        &mut cfg.dashboards,
+    )
+}
+
 /// Read `path` as JSON [`Config`]. Missing file → [`Config::default`]; same rules as [`Config::try_load`] after path resolution.
 fn load_config_from_path(path: &Path) -> Result<Config, ConfigError> {
     match fs::read_to_string(path) {
@@ -153,6 +166,13 @@ fn load_config_from_path(path: &Path) -> Result<Config, ConfigError> {
             let mut cfg: Config = serde_json::from_str(&s).map_err(ConfigError::Serde)?;
             sanitize_saved_filters(&mut cfg.saved_filters);
             normalize_dashboards(&mut cfg.dashboards);
+            let report = canonicalize_persisted_symbols(&mut cfg);
+            if report.any_changes() {
+                tracing::info!(
+                    ?report,
+                    "canonicalized persisted symbols while loading config"
+                );
+            }
             Ok(cfg)
         }
     }
@@ -410,6 +430,37 @@ mod tests {
             matches!(res, Err(ConfigError::Serde(_))),
             "expected Serde error, got {res:?}"
         );
+    }
+
+    #[test]
+    fn load_config_from_path_canonicalizes_mixed_case_symbols() {
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target/_stockterm_canonicalize_cfg_test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("mixed.json");
+        let j = r#"{
+            "portfolio":[
+                {"symbol":"aapl","shares":1.0,"purchase_price":100.0},
+                {"symbol":"AAPL","shares":2.0,"purchase_price":110.0}
+            ],
+            "watchlist":["aapl","AAPL","MSFT"],
+            "refresh_rate":0,
+            "api_key":"",
+            "alerts":[{"symbol":"msft","condition":"Above","price":1.0,"triggered":false}],
+            "default_symbol":"btc - usd",
+            "last_symbol":"aapl",
+            "provider":"yahoo"
+        }"#;
+        fs::write(&path, j).expect("write config");
+        let cfg = super::load_config_from_path(&path).expect("load");
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(cfg.watchlist, vec!["AAPL", "MSFT"]);
+        assert_eq!(cfg.portfolio.len(), 1);
+        assert_eq!(cfg.portfolio[0].symbol, "AAPL");
+        assert_eq!(cfg.alerts[0].symbol, "MSFT");
+        assert_eq!(cfg.default_symbol, "BTC-USD");
+        assert_eq!(cfg.last_symbol.as_deref(), Some("AAPL"));
     }
 
     #[test]

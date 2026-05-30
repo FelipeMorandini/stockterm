@@ -4,7 +4,8 @@ pub mod keymap;
 pub mod layout;
 pub mod theme;
 
-pub use self::config::{Config, ConfigError, MarketProviderKind};
+pub use self::config::{canonicalize_persisted_symbols, Config, ConfigError, MarketProviderKind};
 pub use self::keymap::{Action, BindingLayer, Chord, KeymapParseError, ResolvedKeymap};
 pub use self::layout::{Layout, LayoutPreset, ResolvedLayout};
 pub use self::theme::{parse_hex_rgb, PaletteRgb, Theme, ThemePalette, ThemePreset};
+pub use crate::models::symbol::SymbolCanonicalizeReport;

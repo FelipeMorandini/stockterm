@@ -6591,3 +6591,98 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 | Manual: `market_overview` — news yes, hist no (until Chart added) | maintainer | 2026-05-27 | Pass |
 | Manual: Chart pane enables historical on Dashboard | maintainer | 2026-05-27 | Pass |
 | Regression: Charts / News tabs + quote batch on Dashboard | maintainer | 2026-05-27 | Pass |
+
+---
+
+## Issue #204 — Config: canonicalize persisted symbols on load (§73)
+
+**Scope:**
+
+- [GitHub Issue #204](https://github.com/FelipeMorandini/stockterm/issues/204) — On **`Config::try_load`**, rewrite persisted ticker fields through **`normalize_symbol`** (§67), dedupe equivalent **watchlist** / **portfolio** rows, and align JSON with runtime **`watchlist_quotes`** keys. Persist canonical form on the **next normal save** (no immediate write on load).
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §73.
+
+**Status:** **Shipped** (2026-05-28) — manual sign-off complete.
+
+**Prerequisite:** §67 / Issue **#79** shipped (`normalize_symbol`, `symbols_equivalent`).
+
+### Automated (local) — required when implementing
+
+1. Symbol migration unit tests:
+
+   ```bash
+   cargo test canonicalize_persisted
+   cargo test load_config
+   cargo clippy -- -D warnings
+   ```
+
+   **Pass:** Exit 0; §73.7 table tests green.
+
+2. Regression — §67 symbol tests unchanged:
+
+   ```bash
+   cargo test normalize_symbol
+   cargo test symbols_equivalent
+   ```
+
+   **Pass:** §67 / §43 tests still green.
+
+### Manual — legacy mixed-case config migration
+
+**Prep:** Backup `~/.stockterm.json`. Craft a test file (or hand-edit) with mixed-case symbols, e.g.:
+
+```json
+{
+  "watchlist": ["aapl", "AAPL", "MSFT"],
+  "portfolio": [
+    { "symbol": "aapl", "shares": 1.0, "purchase_price": 100.0 },
+    { "symbol": "AAPL", "shares": 2.0, "purchase_price": 110.0 }
+  ],
+  "alerts": [{ "symbol": "msft", "condition": "Above", "price": 1.0, "triggered": false }],
+  "default_symbol": "btc - usd",
+  "last_symbol": "aapl",
+  "refresh_rate": 0,
+  "api_key": "",
+  "provider": "yahoo"
+}
+```
+
+(Adjust field names to match your file; ensure valid JSON.)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Start app with test config | App launches; watchlist shows **one** **AAPL** row (not two); **MSFT** present. |
+| 2 | Open Portfolio tab | **One** **AAPL** holding (first row kept per §73.2); symbol column uppercase/canonical. |
+| 3 | Open Alerts tab | Alert symbol displays **MSFT** (canonical). |
+| 4 | Wait for quote refresh on watchlist | Prices appear for **AAPL** / **MSFT** (no silent empty rows from key mismatch). |
+| 5 | Trigger a config save (e.g. switch tab, toggle a setting, or add/remove a watchlist symbol) | Quit app; reopen `~/.stockterm.json` — symbols are canonical (`AAPL`, `MSFT`, `BTC-USD`, …); no duplicate case variants in **watchlist**. |
+
+### Manual — invalid symbol drop
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Add a watchlist entry with a control character or disallowed symbol (if reproducible) or use a crafted JSON invalid ticker | Entry **dropped** on load (not shown) or rejected on add per §67 policy; app does not panic. |
+
+### Manual — dashboard symbol override (optional)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Hand-edit a dashboard pane **`options.symbol`** with spaces/mixed case (e.g. `"aapl"`) | After load, override is canonical or cleared; chart pane still resolves symbol. |
+
+### Regression
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Fresh default config (no file) | Behavior unchanged vs pre-#204. |
+| 2 | §67 Unicode watchlist / chart smoke | Case-only add still skips chart clear; Unicode tickers still normalize. |
+| 3 | Saved filters / dashboards | Unrelated config keys unchanged after load. |
+
+### Sign-off — Issue #204
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo test canonicalize_persisted` + `load_config` + clippy | Maintainer | 2026-05-28 | Pass |
+| Manual: mixed-case JSON → deduped watchlist + portfolio | Maintainer | 2026-05-28 | Pass |
+| Manual: quotes populate after refresh | Maintainer | 2026-05-28 | Pass |
+| Manual: disk JSON canonical after save | Maintainer | 2026-05-28 | Pass |
+| Regression: default config + §67 smoke | Maintainer | 2026-05-28 | Pass |

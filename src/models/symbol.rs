@@ -1,6 +1,206 @@
-//! Symbol normalization and classification (Issue #23 / SPEC §43; metadata §44.2; Unicode §67 / #79).
+//! Symbol normalization and classification (Issue #23 / SPEC §43; metadata §44.2; Unicode §67 / #79; config load §73 / #204).
 
+use crate::models::alerts::Alert;
+use crate::models::dashboard::DashboardDefinition;
+use crate::models::portfolio::PortfolioItem;
 use unicode_normalization::UnicodeNormalization;
+
+/// Summary of config symbol migration performed during load (Issue #204 / §73).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SymbolCanonicalizeReport {
+    pub watchlist_rewritten: usize,
+    pub watchlist_deduped: usize,
+    pub portfolio_rewritten: usize,
+    pub portfolio_deduped: usize,
+    pub alerts_rewritten: usize,
+    pub default_symbol_rewritten: bool,
+    pub last_symbol_rewritten: bool,
+    pub dashboard_symbol_overrides_rewritten: usize,
+    pub invalid_dropped: usize,
+}
+
+impl SymbolCanonicalizeReport {
+    /// True when any persisted symbol field was rewritten, deduped, or dropped.
+    pub fn any_changes(self) -> bool {
+        self.watchlist_rewritten > 0
+            || self.watchlist_deduped > 0
+            || self.portfolio_rewritten > 0
+            || self.portfolio_deduped > 0
+            || self.alerts_rewritten > 0
+            || self.default_symbol_rewritten
+            || self.last_symbol_rewritten
+            || self.dashboard_symbol_overrides_rewritten > 0
+            || self.invalid_dropped > 0
+    }
+}
+
+fn out_contains_equivalent(out: &[String], sym: &str) -> bool {
+    out.iter().any(|x| symbols_equivalent(x, sym))
+}
+
+/// Rewrite [`watchlist`] to §67 canonical form; dedupe equivalent symbols (first wins).
+pub fn canonicalize_watchlist_symbols(
+    watchlist: &mut Vec<String>,
+    report: &mut SymbolCanonicalizeReport,
+) {
+    let raw = std::mem::take(watchlist);
+    let mut out = Vec::with_capacity(raw.len());
+    for raw_sym in raw {
+        let Some(c) = normalize_symbol(&raw_sym) else {
+            report.invalid_dropped += 1;
+            continue;
+        };
+        if out_contains_equivalent(&out, &c) {
+            report.watchlist_deduped += 1;
+            continue;
+        }
+        if c != raw_sym {
+            report.watchlist_rewritten += 1;
+        }
+        out.push(c);
+    }
+    *watchlist = out;
+}
+
+/// Rewrite portfolio row symbols; drop later rows equivalent to an earlier symbol.
+pub fn canonicalize_portfolio_symbols(
+    portfolio: &mut Vec<PortfolioItem>,
+    report: &mut SymbolCanonicalizeReport,
+) {
+    let raw = std::mem::take(portfolio);
+    let mut out = Vec::with_capacity(raw.len());
+    for mut item in raw {
+        let Some(c) = normalize_symbol(&item.symbol) else {
+            report.invalid_dropped += 1;
+            continue;
+        };
+        if out
+            .iter()
+            .any(|row: &PortfolioItem| symbols_equivalent(&row.symbol, &c))
+        {
+            report.portfolio_deduped += 1;
+            continue;
+        }
+        if item.symbol != c {
+            report.portfolio_rewritten += 1;
+            item.symbol = c;
+        }
+        out.push(item);
+    }
+    if report.portfolio_deduped > 0 {
+        tracing::warn!(
+            dropped = report.portfolio_deduped,
+            "removed duplicate portfolio rows while canonicalizing symbols on config load"
+        );
+    }
+    *portfolio = out;
+}
+
+/// Rewrite alert symbols to canonical form (alerts are not deduped).
+pub fn canonicalize_alert_symbols(alerts: &mut Vec<Alert>, report: &mut SymbolCanonicalizeReport) {
+    let mut invalid_alerts = 0usize;
+    for alert in alerts.iter_mut() {
+        let raw = alert.symbol.clone();
+        let Some(c) = normalize_symbol(&raw) else {
+            report.invalid_dropped += 1;
+            invalid_alerts += 1;
+            alert.symbol.clear();
+            continue;
+        };
+        if c != raw {
+            report.alerts_rewritten += 1;
+            alert.symbol = c;
+        }
+    }
+    alerts.retain(|a| !a.symbol.is_empty());
+    if invalid_alerts > 0 {
+        tracing::warn!(
+            dropped = invalid_alerts,
+            "removed invalid alerts while canonicalizing symbols on config load"
+        );
+    }
+}
+
+/// Rewrite optional session/default symbol fields on config.
+pub fn canonicalize_optional_symbol_field(
+    field: &mut Option<String>,
+    report: &mut SymbolCanonicalizeReport,
+    track_rewrite: impl FnOnce(&mut SymbolCanonicalizeReport),
+) {
+    let Some(raw) = field.take() else {
+        return;
+    };
+    let Some(c) = normalize_symbol(&raw) else {
+        report.invalid_dropped += 1;
+        return;
+    };
+    if c != raw {
+        track_rewrite(report);
+    }
+    *field = Some(c);
+}
+
+/// Rewrite non-empty default symbol string.
+pub fn canonicalize_default_symbol(
+    default_symbol: &mut String,
+    report: &mut SymbolCanonicalizeReport,
+) {
+    if default_symbol.is_empty() {
+        return;
+    }
+    let raw = std::mem::take(default_symbol);
+    let Some(c) = normalize_symbol(&raw) else {
+        report.invalid_dropped += 1;
+        return;
+    };
+    if c != raw {
+        report.default_symbol_rewritten = true;
+    }
+    *default_symbol = c;
+}
+
+/// Rewrite dashboard pane symbol overrides.
+pub fn canonicalize_dashboard_symbol_overrides(
+    dashboards: &mut [DashboardDefinition],
+    report: &mut SymbolCanonicalizeReport,
+) {
+    for def in dashboards.iter_mut() {
+        for pane in def.panes.iter_mut() {
+            let Some(raw) = pane.options.symbol.take() else {
+                continue;
+            };
+            let Some(c) = normalize_symbol(&raw) else {
+                report.invalid_dropped += 1;
+                continue;
+            };
+            if c != raw {
+                report.dashboard_symbol_overrides_rewritten += 1;
+            }
+            pane.options.symbol = Some(c);
+        }
+    }
+}
+
+/// Rewrite all persisted ticker fields in config (Issue #204 / §73).
+pub fn canonicalize_persisted_symbol_fields(
+    watchlist: &mut Vec<String>,
+    portfolio: &mut Vec<PortfolioItem>,
+    alerts: &mut Vec<Alert>,
+    default_symbol: &mut String,
+    last_symbol: &mut Option<String>,
+    dashboards: &mut [DashboardDefinition],
+) -> SymbolCanonicalizeReport {
+    let mut report = SymbolCanonicalizeReport::default();
+    canonicalize_watchlist_symbols(watchlist, &mut report);
+    canonicalize_portfolio_symbols(portfolio, &mut report);
+    canonicalize_alert_symbols(alerts, &mut report);
+    canonicalize_default_symbol(default_symbol, &mut report);
+    canonicalize_optional_symbol_field(last_symbol, &mut report, |r| {
+        r.last_symbol_rewritten = true;
+    });
+    canonicalize_dashboard_symbol_overrides(dashboards, &mut report);
+    report
+}
 
 /// Map Unicode dash characters to ASCII `-` (Yahoo `BTC-USD` chart paths).
 fn normalize_symbol_dash(c: char) -> char {
@@ -188,9 +388,138 @@ pub fn classify_symbol_with_hint(sym: &str, instrument_type: Option<&str>) -> Sy
 #[cfg(test)]
 mod tests {
     use super::{
-        classify_from_instrument_type, classify_symbol, classify_symbol_with_hint,
-        normalize_symbol, symbols_equivalent, SymbolKind,
+        canonicalize_dashboard_symbol_overrides, canonicalize_persisted_symbol_fields,
+        canonicalize_watchlist_symbols, classify_from_instrument_type, classify_symbol,
+        classify_symbol_with_hint, normalize_symbol, symbols_equivalent, SymbolCanonicalizeReport,
+        SymbolKind,
     };
+    use crate::models::alerts::{Alert, AlertCondition};
+    use crate::models::dashboard::{
+        DashboardDefinition, DashboardPane, DashboardPaneKind, DashboardPaneOptions,
+    };
+    use crate::models::portfolio::PortfolioItem;
+
+    #[test]
+    fn canonicalize_watchlist_mixed_case_dedupes() {
+        let mut watchlist = vec!["aapl".into(), "AAPL".into(), "msft".into()];
+        let mut report = SymbolCanonicalizeReport::default();
+        canonicalize_watchlist_symbols(&mut watchlist, &mut report);
+        assert_eq!(watchlist, vec!["AAPL", "MSFT"]);
+        assert_eq!(report.watchlist_rewritten, 2);
+        assert_eq!(report.watchlist_deduped, 1);
+    }
+
+    #[test]
+    fn canonicalize_portfolio_dedupes_equivalent_rows() {
+        let mut portfolio = vec![
+            PortfolioItem::new("aapl".into(), 1.0, 100.0),
+            PortfolioItem::new("AAPL".into(), 2.0, 110.0),
+            PortfolioItem::new("MSFT".into(), 1.0, 200.0),
+        ];
+        let mut report = SymbolCanonicalizeReport::default();
+        super::canonicalize_portfolio_symbols(&mut portfolio, &mut report);
+        assert_eq!(portfolio.len(), 2);
+        assert_eq!(portfolio[0].symbol, "AAPL");
+        assert_eq!(portfolio[0].shares, 1.0);
+        assert_eq!(portfolio[1].symbol, "MSFT");
+        assert_eq!(report.portfolio_deduped, 1);
+    }
+
+    #[test]
+    fn canonicalize_alerts_rewrite_only_no_dedup() {
+        let mut alerts = vec![
+            Alert::new("msft".into(), AlertCondition::Above, 1.0),
+            Alert::new("MSFT".into(), AlertCondition::Below, 2.0),
+        ];
+        let mut report = SymbolCanonicalizeReport::default();
+        super::canonicalize_alert_symbols(&mut alerts, &mut report);
+        assert_eq!(alerts.len(), 2);
+        assert_eq!(alerts[0].symbol, "MSFT");
+        assert_eq!(alerts[1].symbol, "MSFT");
+        assert_eq!(report.alerts_rewritten, 1);
+    }
+
+    #[test]
+    fn canonicalize_drops_invalid_watchlist_entry() {
+        let mut watchlist = vec!["AAPL".into(), "AA\u{0000}PL".into()];
+        let mut report = SymbolCanonicalizeReport::default();
+        canonicalize_watchlist_symbols(&mut watchlist, &mut report);
+        assert_eq!(watchlist, vec!["AAPL"]);
+        assert_eq!(report.invalid_dropped, 1);
+    }
+
+    #[test]
+    fn canonicalize_watchlist_unicode_dedup() {
+        let eszett = "stra\u{00df}e";
+        let mut watchlist = vec![eszett.to_string(), "STRASSE".into()];
+        let mut report = SymbolCanonicalizeReport::default();
+        canonicalize_watchlist_symbols(&mut watchlist, &mut report);
+        assert_eq!(watchlist, vec!["STRASSE"]);
+        assert_eq!(report.watchlist_deduped, 1);
+    }
+
+    #[test]
+    fn canonicalize_dashboard_symbol_override() {
+        let mut dashboards = vec![DashboardDefinition {
+            name: "chart_only".into(),
+            rows: 1,
+            cols: 1,
+            panes: vec![DashboardPane {
+                id: "c1".into(),
+                kind: DashboardPaneKind::Chart,
+                row: 0,
+                col: 0,
+                row_span: 1,
+                col_span: 1,
+                title: None,
+                options: DashboardPaneOptions {
+                    symbol: Some("aapl".into()),
+                    ..DashboardPaneOptions::default()
+                },
+            }],
+        }];
+        let mut report = SymbolCanonicalizeReport::default();
+        canonicalize_dashboard_symbol_overrides(&mut dashboards, &mut report);
+        assert_eq!(
+            dashboards[0].panes[0].options.symbol.as_deref(),
+            Some("AAPL")
+        );
+        assert_eq!(report.dashboard_symbol_overrides_rewritten, 1);
+    }
+
+    #[test]
+    fn canonicalize_drops_invalid_alert() {
+        let mut alerts = vec![
+            Alert::new("MSFT".into(), AlertCondition::Above, 1.0),
+            Alert::new("AA\u{0000}PL".into(), AlertCondition::Below, 2.0),
+        ];
+        let mut report = SymbolCanonicalizeReport::default();
+        super::canonicalize_alert_symbols(&mut alerts, &mut report);
+        assert_eq!(alerts.len(), 1);
+        assert_eq!(alerts[0].symbol, "MSFT");
+        assert_eq!(report.invalid_dropped, 1);
+    }
+
+    #[test]
+    fn canonicalize_persisted_fields_default_and_last_symbol() {
+        let mut watchlist = Vec::new();
+        let mut portfolio = Vec::new();
+        let mut alerts = Vec::new();
+        let mut default_symbol = "btc - usd".to_string();
+        let mut last_symbol = Some("aapl".to_string());
+        let mut dashboards = Vec::new();
+        let report = canonicalize_persisted_symbol_fields(
+            &mut watchlist,
+            &mut portfolio,
+            &mut alerts,
+            &mut default_symbol,
+            &mut last_symbol,
+            &mut dashboards,
+        );
+        assert!(report.any_changes());
+        assert_eq!(default_symbol, "BTC-USD");
+        assert_eq!(last_symbol.as_deref(), Some("AAPL"));
+    }
 
     #[test]
     fn normalize_symbol_trims_and_uppercases() {

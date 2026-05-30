@@ -641,16 +641,8 @@ impl App {
         let portfolio = config.portfolio.clone();
         let alerts = config.alerts.clone();
 
-        let watchlist: Vec<String> = config
-            .watchlist
-            .iter()
-            .filter_map(|s| normalize_symbol(s))
-            .collect();
-        let mut seen = HashSet::new();
-        let watchlist: Vec<String> = watchlist
-            .into_iter()
-            .filter(|s| seen.insert(s.clone()))
-            .collect();
+        // Watchlist is canonicalized on config load (Issue #204 / §73).
+        let watchlist = config.watchlist.clone();
 
         let symbol = if let Some(first) = watchlist.first() {
             first.clone()
