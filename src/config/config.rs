@@ -46,6 +46,7 @@ pub enum MarketProviderKind {
 /// | `saved_filters` | Named table filters for Stock View / Portfolio (Issue #194 / §69). Default: empty. |
 /// | `dashboards` | Composable dashboard layouts (Issue #24 / §70). Default: empty. |
 /// | `active_dashboard` | Name of dashboard to show on **Dashboard** tab. Default: omitted. |
+/// | `allow_overlapping_quote_batches` | Opt-in overlap for **immediate** user quote refresh only; background tick polls stay single-flight (Issue #191 / §68). Default: `false`. |
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub portfolio: Vec<PortfolioItem>,
@@ -102,6 +103,10 @@ pub struct Config {
     /// Active dashboard name; must match an entry in [`Self::dashboards`].
     #[serde(default)]
     pub active_dashboard: Option<String>,
+    /// When `true`, a new quote batch may start while another is in flight; superseded HTTP work is
+    /// cancelled via [`tokio_util::sync::CancellationToken`] (Issue #191 / SPEC §68). Default: `false`.
+    #[serde(default)]
+    pub allow_overlapping_quote_batches: bool,
 }
 
 fn default_notifications_enabled() -> bool {
@@ -131,6 +136,7 @@ impl Default for Config {
             saved_filters: Vec::new(),
             dashboards: Vec::new(),
             active_dashboard: None,
+            allow_overlapping_quote_batches: false,
         }
     }
 }

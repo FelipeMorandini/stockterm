@@ -11,6 +11,7 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 | `portfolio` | array | `[]` | Holdings (symbol, shares, cost). |
 | `watchlist` | array of strings | `[]` | Stock View symbols (uppercase). |
 | `refresh_rate` | number | `0` | Quote/charts/news poll interval in seconds (`0` → 30 s effective; minimum 5 s). |
+| `allow_overlapping_quote_batches` | boolean | `false` | When `true`, **immediate** user-driven quote refresh (`Enter`, portfolio jump, etc.) may start a new batch while one is in flight; superseded HTTP is cancelled via `CancellationToken`. **Background** tick polls (`refresh_rate`) stay **single-flight** even with this flag (Issue #191 / [`docs/SPEC.md`](docs/SPEC.md) §68). |
 | `api_key` | string | `""` | Polygon key; optional if `STOCKTERM_API_KEY` is set. |
 | `alerts` | array | `[]` | Price alerts. |
 | `default_symbol` | string | `""` | Startup symbol when `watchlist` is empty (empty → `AAPL`). |
@@ -237,7 +238,7 @@ These environment variables are supported for local diagnosis. Any other `STOCKT
 | `RUST_LOG` | Any build | Standard `tracing` filter (e.g. `stockterm=debug`). Default: `warn,stockterm=warn`. |
 | _(tests)_ | Authors writing **`#[tokio::test(start_paused = true)]`** + **`reqwest`** | Paused **`tokio::time::advance`** can fire **`reqwest`**’s request **`timeout`** while a **`GET`** is still in flight → spurious **`Timeout`**. Prefer wall-clock waits for **`Retry-After`** assertions or an isolated **`Client`** with a short timeout for stall tests — [`docs/SPEC.md`](docs/SPEC.md) §19.8 / §19.13.3. |
 | `STOCKTERM_DEBUG_ALERT_NOTIFY` | Build with the default **`desktop-notify`** Cargo feature | Set to exactly `1` (no trimming; no other value enables it). After `notify-rust` `Notification::show()`, StockTerm may `eprintln!` the `Result` to stderr on the **coalesced** desktop notify path (including `Ok(())`) so you can confirm the call completed. |
-| `STOCKTERM_DEBUG_HTTP_DELAY_MS` | Any build | Non-negative integer: milliseconds to sleep **once per stock quote batch** before HTTP fan-out (`src/api/http.rs`). `0`, unset, or invalid → no delay. Capped at **120000** ms. See `docs/SPEC.md` §16 / §38. |
+| `STOCKTERM_DEBUG_HTTP_DELAY_MS` | Any build | Non-negative integer: milliseconds to sleep **once per stock quote batch** before HTTP fan-out (`src/api/http.rs`). `0`, unset, or invalid → no delay. Capped at **120000** ms. See `docs/SPEC.md` §16 / §38. Used with **`allow_overlapping_quote_batches`** for Issue #191 cancel QA (§68). |
 | `STOCKTERM_DEBUG_YAHOO_QUOTE` | Any build | Set to exactly `1` (no trimming; no other value enables it). When Yahoo **`yahoo_latest_quote`** falls back from **`v7/finance/quote`** to **`v8/finance/chart`**, one line is written to **stderr** with the symbol and reason (`empty_v7` or `v7_error`). See `docs/SPEC.md` §34. |
 | `STOCKTERM_DEBUG_YAHOO_NEWS` | Any build | Set to exactly `1` (no trimming; no other value enables it). When Yahoo news is fetched, one **stderr** line per attempt (`search`, `rss`, `query2`) with outcome tokens such as `ok_items(n)`, `ok_empty`, `parse_mismatch`, or `err(…)`. See `docs/SPEC.md` §36. |
 | `STOCKTERM_DEBUG_YAHOO_OPTIONS` | Any build | Set to exactly `1`. Logs parsed options chain summary (expiration count, strikes) via **`tracing`** at **info** level — not stderr. See `docs/SPEC.md` §48. |

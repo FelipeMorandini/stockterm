@@ -9,6 +9,7 @@ use chrono::{DateTime, NaiveDate, NaiveTime, TimeZone, Utc};
 use serde::Deserialize;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
+use tokio_util::sync::CancellationToken;
 use urlencoding::encode;
 
 use crate::api::error::{ProviderError, ProviderResult};
@@ -340,6 +341,7 @@ async fn yahoo_quote_v7_batch_chunk(chunk: &[String]) -> ProviderResult<V7QuoteE
 pub(crate) async fn yahoo_latest_quotes_for_symbols(
     symbols: &[String],
     max_concurrent_fallbacks: usize,
+    cancel: &CancellationToken,
 ) -> (
     HashMap<String, TickerResponse>,
     HashMap<String, String>,
@@ -358,6 +360,9 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
     let mut pending_fallback: Vec<String> = Vec::new();
 
     for chunk in &chunks {
+        if cancel.is_cancelled() {
+            return (HashMap::new(), HashMap::new(), Vec::new());
+        }
         match yahoo_quote_v7_batch_chunk(chunk).await {
             Ok(env) => {
                 if env.quote_response.error.is_some() {
@@ -397,6 +402,9 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
     let sem = Arc::new(Semaphore::new(max_concurrent_fallbacks.max(1)));
     let mut set = JoinSet::new();
     for sym in pending_fallback {
+        if cancel.is_cancelled() {
+            return (HashMap::new(), HashMap::new(), Vec::new());
+        }
         let sem = sem.clone();
         set.spawn(async move {
             let _permit = match acquire_quote_permit(&sem, &sym, "yahoo").await {
@@ -409,6 +417,9 @@ pub(crate) async fn yahoo_latest_quotes_for_symbols(
     }
 
     while let Some(joined) = set.join_next().await {
+        if cancel.is_cancelled() {
+            return (HashMap::new(), HashMap::new(), Vec::new());
+        }
         match joined {
             Ok((sym, Ok(mut data), qt)) => {
                 if let Some(msg) = data.api_error_message() {

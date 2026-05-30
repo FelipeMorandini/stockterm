@@ -41,6 +41,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -372,6 +373,9 @@ pub struct App {
     fetch_done_tx: Option<UnboundedSender<FetchDone>>,
     inflight_recovery_tx: Option<UnboundedSender<InflightRecovery>>,
     stock_fetch_generation: u64,
+    /// Cooperative cancel handle for the active quote-batch task; cancelled and replaced in
+    /// [`Self::spawn_stock_fetch_task`] when a superseding batch starts (Issue #191 / §68).
+    stock_quote_cancel: CancellationToken,
     stock_refresh_pending: bool,
     hist_refresh_inflight: bool,
     hist_inflight_since: Option<Instant>,
@@ -531,13 +535,40 @@ fn alerts_disk_failure_head_for_quote_merge(full: &str) -> &str {
     full.split_once(" · ").map(|(head, _)| head).unwrap_or(full)
 }
 
-async fn run_stock_quote_batch(generation: u64, symbols: Vec<String>, config: Config) -> FetchDone {
+/// Empty stock batch after cooperative cancel (Issue #191 / §68.4.6).
+fn cancelled_stock_fetch_done(generation: u64, symbol_count: usize) -> FetchDone {
+    tracing::debug!(generation, symbol_count, "quote batch cancelled");
+    FetchDone::Stock {
+        generation,
+        quotes: HashMap::new(),
+        instrument_types: HashMap::new(),
+        errors: vec![],
+    }
+}
+
+async fn run_stock_quote_batch(
+    generation: u64,
+    symbols: Vec<String>,
+    config: Config,
+    cancel: CancellationToken,
+) -> FetchDone {
+    let symbol_count = symbols.len();
     maybe_debug_http_delay().await;
+    if cancel.is_cancelled() {
+        return cancelled_stock_fetch_done(generation, symbol_count);
+    }
 
     if config.provider == MarketProviderKind::Yahoo {
         let (quotes_raw, instrument_types, mut errors) =
-            crate::api::yahoo::yahoo_latest_quotes_for_symbols(&symbols, MAX_CONCURRENT_QUOTES)
-                .await;
+            crate::api::yahoo::yahoo_latest_quotes_for_symbols(
+                &symbols,
+                MAX_CONCURRENT_QUOTES,
+                &cancel,
+            )
+            .await;
+        if cancel.is_cancelled() {
+            return cancelled_stock_fetch_done(generation, symbol_count);
+        }
         let mut quotes = HashMap::new();
         for (sym, mut data) in quotes_raw {
             if let Some(msg) = data.api_error_message() {
@@ -561,6 +592,9 @@ async fn run_stock_quote_batch(generation: u64, symbols: Vec<String>, config: Co
     let sem = std::sync::Arc::new(Semaphore::new(MAX_CONCURRENT_QUOTES));
     let mut set = JoinSet::new();
     for sym in symbols {
+        if cancel.is_cancelled() {
+            return cancelled_stock_fetch_done(generation, symbol_count);
+        }
         let sem = sem.clone();
         let cfg = config.clone();
         let provider = provider.clone();
@@ -578,6 +612,9 @@ async fn run_stock_quote_batch(generation: u64, symbols: Vec<String>, config: Co
     let mut errors = Vec::new();
 
     while let Some(joined) = set.join_next().await {
+        if cancel.is_cancelled() {
+            return cancelled_stock_fetch_done(generation, symbol_count);
+        }
         match joined {
             Ok((sym, Ok(mut data))) => {
                 if let Some(msg) = data.api_error_message() {
@@ -732,6 +769,7 @@ impl App {
             fetch_done_tx: None,
             inflight_recovery_tx: None,
             stock_fetch_generation: 0,
+            stock_quote_cancel: CancellationToken::new(),
             stock_refresh_pending: false,
             hist_refresh_inflight: false,
             hist_inflight_since: None,
@@ -1441,9 +1479,10 @@ impl App {
         true
     }
 
-    /// User-driven refresh (Enter, portfolio jump, etc.). Coalesces if a batch is already running.
+    /// User-driven refresh (Enter, portfolio jump, etc.). Coalesces if a batch is already running
+    /// unless [`Config::allow_overlapping_quote_batches`] is enabled (Issue #191 / §68).
     pub fn request_immediate_stock_poll(&mut self) {
-        if self.stock_refresh_inflight {
+        if self.stock_refresh_inflight && !self.config.allow_overlapping_quote_batches {
             self.stock_refresh_pending = true;
             return;
         }
@@ -1485,6 +1524,16 @@ impl App {
             return;
         }
 
+        if self.config.allow_overlapping_quote_batches && self.stock_refresh_inflight {
+            tracing::debug!(
+                generation = self.stock_fetch_generation,
+                "superseding in-flight quote batch"
+            );
+        }
+        self.stock_quote_cancel.cancel();
+        self.stock_quote_cancel = CancellationToken::new();
+        let cancel = self.stock_quote_cancel.clone();
+
         self.stock_refresh_inflight = true;
         self.stock_inflight_since = Some(Instant::now());
         self.stock_fetch_generation += 1;
@@ -1493,27 +1542,28 @@ impl App {
         let recovery_tx = self.inflight_recovery_tx.clone();
 
         tokio::spawn(async move {
-            let done = match AssertUnwindSafe(run_stock_quote_batch(generation, symbols, cfg))
-                .catch_unwind()
-                .await
-            {
-                Ok(done) => done,
-                Err(payload) => {
-                    #[cfg(debug_assertions)]
-                    log_quote_batch_panic(&*payload);
-                    #[cfg(not(debug_assertions))]
-                    drop(payload);
-                    FetchDone::Stock {
-                        generation,
-                        quotes: HashMap::new(),
-                        instrument_types: HashMap::new(),
-                        errors: vec![(
-                            String::new(),
-                            ProviderError::ApiMessage("quote batch task panicked".into()),
-                        )],
+            let done =
+                match AssertUnwindSafe(run_stock_quote_batch(generation, symbols, cfg, cancel))
+                    .catch_unwind()
+                    .await
+                {
+                    Ok(done) => done,
+                    Err(payload) => {
+                        #[cfg(debug_assertions)]
+                        log_quote_batch_panic(&*payload);
+                        #[cfg(not(debug_assertions))]
+                        drop(payload);
+                        FetchDone::Stock {
+                            generation,
+                            quotes: HashMap::new(),
+                            instrument_types: HashMap::new(),
+                            errors: vec![(
+                                String::new(),
+                                ProviderError::ApiMessage("quote batch task panicked".into()),
+                            )],
+                        }
                     }
-                }
-            };
+                };
             deliver_fetch_done(&tx, recovery_tx.as_ref(), done, InflightRecovery::Stock);
         });
     }
@@ -4012,14 +4062,17 @@ pub(crate) fn search_result_matches_current(
 #[cfg(test)]
 mod tests {
     use super::{
-        data_poll_interval_secs, search_result_matches_current, App, ChartDisplayMode, FetchDone,
+        data_poll_interval_secs, run_stock_quote_batch, search_result_matches_current, App,
+        ChartDisplayMode, FetchDone,
     };
     use crate::app::app_error::{push_error_log, ErrorLogEntry, UiErrorCategory, ERROR_LOG_CAP};
     use crate::app::Tab;
     use crate::config::Config;
+    use crate::models::ticker::TickerResponse;
     use crate::models::time_range::TimeRange;
-    use std::collections::VecDeque;
+    use std::collections::{HashMap, VecDeque};
     use std::time::{Duration, Instant};
+    use tokio_util::sync::CancellationToken;
 
     fn fill_error_log(app: &mut App, n: usize) {
         for i in 0..n {
@@ -4801,6 +4854,182 @@ mod tests {
         app.settings_toggle_provider();
         assert_eq!(app.config.provider, MarketProviderKind::Yahoo);
         assert!(app.settings_inline_error.is_some());
+    }
+
+    fn test_ticker_response_for_symbol(symbol: &str, close: f64) -> TickerResponse {
+        use crate::models::ticker::TickerResult;
+
+        TickerResponse {
+            ticker: symbol.to_string(),
+            results: vec![TickerResult {
+                o: close,
+                h: close,
+                l: close,
+                c: close,
+                v: 0.0,
+                t: 1,
+            }],
+            status: "OK".to_string(),
+            error: None,
+        }
+    }
+
+    /// Issue #191 / §68.6 — stale generation must not mutate `watchlist_quotes`.
+    #[test]
+    fn apply_stock_fetch_done_stale_generation_does_not_mutate_watchlist_quotes_issue_191() {
+        use std::collections::HashMap;
+
+        let mut app = App::new();
+        app.symbol = "AAPL".into();
+        app.stock_fetch_generation = 2;
+        app.watchlist_quotes.insert(
+            "AAPL".into(),
+            test_ticker_response_for_symbol("AAPL", 100.0),
+        );
+
+        let mut stale = HashMap::new();
+        stale.insert(
+            "AAPL".into(),
+            test_ticker_response_for_symbol("AAPL", 999.0),
+        );
+        app.apply_stock_fetch_done(1, stale, HashMap::new(), vec![]);
+
+        let price = app
+            .watchlist_quotes
+            .get("AAPL")
+            .and_then(|r| r.latest_result())
+            .map(|b| b.c)
+            .expect("original quote remains");
+        assert!((price - 100.0).abs() < f64::EPSILON);
+    }
+
+    /// Issue #191 / §68.6 — stale apply while a newer batch is in flight keeps inflight set.
+    #[test]
+    fn apply_stock_fetch_done_stale_generation_leaves_inflight_when_newer_batch_issue_191() {
+        use std::collections::HashMap;
+
+        let mut app = App::new();
+        app.stock_fetch_generation = 2;
+        app.stock_refresh_inflight = true;
+
+        let mut stale = HashMap::new();
+        stale.insert("AAPL".into(), test_ticker_response_for_symbol("AAPL", 50.0));
+        app.apply_stock_fetch_done(1, stale, HashMap::new(), vec![]);
+
+        assert!(app.stock_refresh_inflight);
+    }
+
+    /// Issue #191 / §68.4.6 — cancelled batch for current generation clears inflight.
+    #[test]
+    fn apply_stock_fetch_done_empty_current_generation_clears_inflight_issue_191() {
+        let mut app = App::new();
+        app.stock_fetch_generation = 1;
+        app.stock_refresh_inflight = true;
+
+        app.apply_stock_fetch_done(1, HashMap::new(), HashMap::new(), vec![]);
+
+        assert!(!app.stock_refresh_inflight);
+    }
+
+    /// Issue #191 / §68.4.5 — overlap disabled coalesces immediate poll into pending.
+    #[test]
+    fn request_immediate_stock_poll_coalesces_when_single_flight_issue_191() {
+        let mut app = App::new();
+        app.config.allow_overlapping_quote_batches = false;
+        app.stock_refresh_inflight = true;
+
+        app.request_immediate_stock_poll();
+
+        assert!(app.stock_refresh_pending);
+    }
+
+    /// Issue #191 / §68.4.5 — overlap enabled does not set pending on immediate poll.
+    #[test]
+    fn request_immediate_stock_poll_overlap_does_not_set_pending_issue_191() {
+        let mut app = App::new();
+        app.config.allow_overlapping_quote_batches = true;
+        app.stock_refresh_inflight = true;
+
+        app.request_immediate_stock_poll();
+
+        assert!(!app.stock_refresh_pending);
+    }
+
+    /// Issue #191 / §68.6 — throttled background polls remain single-flight when overlap is on.
+    #[test]
+    fn try_spawn_stock_poll_throttled_remains_single_flight_with_overlap_flag_issue_191() {
+        let mut app = App::new();
+        app.config.allow_overlapping_quote_batches = true;
+        app.stock_refresh_inflight = true;
+        app.stock_fetch_generation = 3;
+        app.last_stock_network_poll = None;
+
+        app.try_spawn_stock_poll_throttled();
+
+        assert_eq!(app.stock_fetch_generation, 3);
+        assert!(app.stock_refresh_inflight);
+    }
+
+    /// Issue #191 / §68.6 — overlap supersede: stale `FetchDone` must not clear inflight or quotes.
+    #[test]
+    fn overlap_supersede_stale_fetch_preserves_quotes_and_inflight_issue_191() {
+        use std::collections::HashMap;
+
+        let mut app = App::new();
+        app.config.allow_overlapping_quote_batches = true;
+        app.symbol = "AAPL".into();
+        app.watchlist_quotes.insert(
+            "AAPL".into(),
+            test_ticker_response_for_symbol("AAPL", 200.0),
+        );
+        app.stock_fetch_generation = 2;
+        app.stock_refresh_inflight = true;
+
+        let mut superseded = HashMap::new();
+        superseded.insert("AAPL".into(), test_ticker_response_for_symbol("AAPL", 1.0));
+        app.apply_stock_fetch_done(1, superseded, HashMap::new(), vec![]);
+
+        assert!(app.stock_refresh_inflight);
+        assert_eq!(app.stock_fetch_generation, 2);
+        let price = app
+            .watchlist_quotes
+            .get("AAPL")
+            .and_then(|r| r.latest_result())
+            .map(|b| b.c)
+            .expect("authoritative quote unchanged");
+        assert!((price - 200.0).abs() < f64::EPSILON);
+    }
+
+    #[tokio::test]
+    async fn run_stock_quote_batch_returns_empty_when_cancelled_before_network_issue_191() {
+        use crate::config::MarketProviderKind;
+
+        let cancel = CancellationToken::new();
+        cancel.cancel();
+        let done = run_stock_quote_batch(
+            3,
+            vec!["AAPL".into()],
+            Config {
+                provider: MarketProviderKind::Yahoo,
+                ..Config::default()
+            },
+            cancel,
+        )
+        .await;
+        match done {
+            FetchDone::Stock {
+                generation,
+                quotes,
+                instrument_types,
+                errors,
+            } => {
+                assert_eq!(generation, 3);
+                assert!(quotes.is_empty());
+                assert!(instrument_types.is_empty());
+                assert!(errors.is_empty());
+            }
+            _ => panic!("expected FetchDone::Stock"),
+        }
     }
 
     /// Issue #160 / audit — stale Yahoo `instrument_types` must not refill cache on Polygon.
