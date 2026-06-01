@@ -13716,7 +13716,8 @@ After maintainer approval of **§74**, the **engineer** implemented per [`.curso
 ### 74.13 Shipment record
 
 - **Date:** 2026-05-30.
-- **Tracking:** [Issue #214](https://github.com/FelipeMorandini/stockterm/issues/214) — phase 1 (chain watchdog) shipped; phase 2 (**`reqwest`** hard-abort) remains open per §74.10.
+- **PR:** [#217](https://github.com/FelipeMorandini/stockterm/pull/217).
+- **Tracking:** [Issue #214](https://github.com/FelipeMorandini/stockterm/issues/214) — phase 1 shipped; phase 2 (**`reqwest`** hard-abort) optional per §74.10.
 - **Code:** [`src/app/app.rs`](../src/app/app.rs) (`stock_inflight_chain_since`, overlap-aware `recover_stale_inflight_flags`); [`README.md`](../README.md) (`STOCKTERM_INFLIGHT_STALE_SECS` overlap note).
 - **Automated:** `cargo test issue_214`, `cargo clippy -- -D warnings`.
 - **Manual QA:** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#214** — sign-off **2026-05-30**.
