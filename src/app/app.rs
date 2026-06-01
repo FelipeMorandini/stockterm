@@ -370,6 +370,9 @@ pub struct App {
     /// True while a watchlist / quote batch is in flight.
     pub stock_refresh_inflight: bool,
     stock_inflight_since: Option<Instant>,
+    /// Start of the current continuous stock-quote inflight chain (Issue #214 / §74).
+    /// Unlike [`stock_inflight_since`], not reset on overlap supersede.
+    stock_inflight_chain_since: Option<Instant>,
     fetch_done_tx: Option<UnboundedSender<FetchDone>>,
     inflight_recovery_tx: Option<UnboundedSender<InflightRecovery>>,
     stock_fetch_generation: u64,
@@ -766,6 +769,7 @@ impl App {
             last_options_network_poll: None,
             stock_refresh_inflight: false,
             stock_inflight_since: None,
+            stock_inflight_chain_since: None,
             fetch_done_tx: None,
             inflight_recovery_tx: None,
             stock_fetch_generation: 0,
@@ -1534,8 +1538,12 @@ impl App {
         self.stock_quote_cancel = CancellationToken::new();
         let cancel = self.stock_quote_cancel.clone();
 
+        let now = Instant::now();
+        if !self.stock_refresh_inflight {
+            self.stock_inflight_chain_since = Some(now);
+        }
         self.stock_refresh_inflight = true;
-        self.stock_inflight_since = Some(Instant::now());
+        self.stock_inflight_since = Some(now);
         self.stock_fetch_generation += 1;
         let generation = self.stock_fetch_generation;
         let cfg = self.config.clone();
@@ -1583,6 +1591,7 @@ impl App {
 
         self.stock_refresh_inflight = false;
         self.stock_inflight_since = None;
+        self.stock_inflight_chain_since = None;
         self.last_stock_network_poll = Some(Instant::now());
 
         for (k, v) in quotes {
@@ -1845,15 +1854,30 @@ impl App {
     fn recover_stale_inflight_flags(&mut self) {
         let stale_after = inflight_stale_after();
 
-        if self.stock_refresh_inflight
-            && Self::inflight_is_stale(self.stock_inflight_since, stale_after)
-        {
-            tracing::warn!(
-                target: "stockterm::fetch",
-                domain = "stock",
-                "cleared stale inflight after channel delivery failure"
-            );
-            self.apply_inflight_recovery(InflightRecovery::Stock);
+        if self.stock_refresh_inflight {
+            let overlap = self.config.allow_overlapping_quote_batches;
+            let stale_reference = if overlap {
+                self.stock_inflight_chain_since
+            } else {
+                self.stock_inflight_since
+            };
+            if Self::inflight_is_stale(stale_reference, stale_after) {
+                if overlap {
+                    self.stock_quote_cancel.cancel();
+                    tracing::warn!(
+                        target: "stockterm::fetch",
+                        domain = "stock",
+                        "cleared stale stock inflight chain after overlap hang"
+                    );
+                } else {
+                    tracing::warn!(
+                        target: "stockterm::fetch",
+                        domain = "stock",
+                        "cleared stale inflight after channel delivery failure"
+                    );
+                }
+                self.apply_inflight_recovery(InflightRecovery::Stock);
+            }
         }
 
         if self.hist_refresh_inflight
@@ -2648,6 +2672,7 @@ impl App {
             InflightRecovery::Stock => {
                 self.stock_refresh_inflight = false;
                 self.stock_inflight_since = None;
+                self.stock_inflight_chain_since = None;
                 // Issue #77 / SPEC §16.3: coalesced refresh must not stick pending when FetchDone send failed.
                 if std::mem::take(&mut self.stock_refresh_pending) {
                     self.spawn_stock_fetch_task();
@@ -4777,28 +4802,90 @@ mod tests {
     /// Issue #78 / SPEC §39.2 — stale watchdog clears stock inflight after channel failures.
     #[test]
     fn recover_stale_inflight_flags_clears_stock_inflight() {
-        let _guard = InflightStaleEnvGuard::set_secs(0);
         let mut app = App::new();
         app.stock_refresh_inflight = true;
-        app.stock_inflight_since = Some(Instant::now() - Duration::from_millis(10));
+        app.stock_inflight_since = Some(Instant::now() - Duration::from_secs(300));
         app.recover_stale_inflight_flags();
         assert!(!app.stock_refresh_inflight);
         assert!(app.stock_inflight_since.is_none());
+        assert!(app.stock_inflight_chain_since.is_none());
     }
 
-    struct InflightStaleEnvGuard;
-
-    impl InflightStaleEnvGuard {
-        fn set_secs(secs: u64) -> Self {
-            std::env::set_var("STOCKTERM_INFLIGHT_STALE_SECS", secs.to_string());
-            Self
-        }
+    /// Issue #214 / §74.7 — overlap chain watchdog fires despite recent supersede reset.
+    #[test]
+    fn recover_stale_overlap_chain_clears_inflight_issue_214() {
+        let mut app = App::new();
+        app.config.allow_overlapping_quote_batches = true;
+        app.stock_refresh_inflight = true;
+        app.stock_inflight_chain_since = Some(Instant::now() - Duration::from_secs(300));
+        app.stock_inflight_since = Some(Instant::now());
+        app.recover_stale_inflight_flags();
+        assert!(!app.stock_refresh_inflight);
+        assert!(app.stock_inflight_chain_since.is_none());
     }
 
-    impl Drop for InflightStaleEnvGuard {
-        fn drop(&mut self) {
-            std::env::remove_var("STOCKTERM_INFLIGHT_STALE_SECS");
-        }
+    /// Issue #214 / §74.7 — normal apply clears chain timestamp.
+    #[test]
+    fn apply_stock_fetch_done_clears_chain_since_issue_214() {
+        let mut app = App::new();
+        app.stock_fetch_generation = 1;
+        app.stock_refresh_inflight = true;
+        app.stock_inflight_chain_since = Some(Instant::now());
+        app.stock_inflight_since = Some(Instant::now());
+
+        app.apply_stock_fetch_done(1, HashMap::new(), HashMap::new(), vec![]);
+
+        assert!(!app.stock_refresh_inflight);
+        assert!(app.stock_inflight_chain_since.is_none());
+    }
+
+    /// Issue #214 / §74.7 — chain watchdog honors coalesced pending respawn.
+    #[tokio::test]
+    async fn recover_stale_overlap_chain_respawns_pending_issue_214() {
+        let (fetch_tx, _fetch_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut app = App::new();
+        app.fetch_done_tx = Some(fetch_tx);
+        app.config.allow_overlapping_quote_batches = true;
+        app.symbol = "AAPL".into();
+        app.watchlist = vec!["AAPL".into()];
+        app.stock_refresh_inflight = true;
+        app.stock_refresh_pending = true;
+        app.stock_inflight_chain_since = Some(Instant::now() - Duration::from_secs(300));
+        app.stock_inflight_since = Some(Instant::now());
+        let generation_before = app.stock_fetch_generation;
+
+        app.recover_stale_inflight_flags();
+
+        assert!(!app.stock_refresh_pending);
+        assert!(app.stock_fetch_generation > generation_before);
+        assert!(app.stock_refresh_inflight);
+        assert!(app.stock_inflight_chain_since.is_some());
+    }
+
+    /// Issue #214 / §74.3 — supersede updates per-spawn timestamp but not chain start.
+    #[tokio::test]
+    async fn spawn_stock_fetch_overlap_supersede_preserves_chain_since_issue_214() {
+        let (fetch_tx, _fetch_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut app = App::new();
+        app.fetch_done_tx = Some(fetch_tx);
+        app.config.allow_overlapping_quote_batches = true;
+        app.symbol = "AAPL".into();
+        app.watchlist = vec!["AAPL".into()];
+
+        app.request_immediate_stock_poll();
+        let chain_after_first = app.stock_inflight_chain_since;
+        let since_after_first = app.stock_inflight_since;
+        assert!(chain_after_first.is_some());
+        assert!(since_after_first.is_some());
+
+        tokio::time::sleep(Duration::from_millis(25)).await;
+
+        app.request_immediate_stock_poll();
+        assert_eq!(app.stock_inflight_chain_since, chain_after_first);
+        assert!(
+            app.stock_inflight_since.unwrap() >= since_after_first.unwrap(),
+            "supersede should refresh per-spawn timestamp"
+        );
     }
 
     /// Clears `STOCKTERM_API_KEY` for hermetic provider-toggle tests; restores on drop.

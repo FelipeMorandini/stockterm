@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Cleared 2026-05-30 — §68 / [#191](https://github.com/FelipeMorandini/stockterm/issues/191) shipped; follow-up [#214](https://github.com/FelipeMorandini/stockterm/issues/214) (overlap + inflight watchdog). -->
+<!-- Cleared 2026-05-30 — [#214](https://github.com/FelipeMorandini/stockterm/issues/214) / §74 shipped; session-fresh epic filed as GitHub issue (see ROADMAP §4.1). -->

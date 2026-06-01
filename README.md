@@ -2,7 +2,11 @@
 
 Terminal UI (TUI) for stock quotes, watchlists, charts, and alerts. Rust + [ratatui](https://github.com/ratatui-org/ratatui) + Tokio.
 
-Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md). Manual verification steps live in [`docs/QA_PLAN.md`](docs/QA_PLAN.md).
+Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md). Manual verification steps live in [`docs/QA_PLAN.md`](docs/QA_PLAN.md). Gap analysis and deferred work: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+### What's next
+
+The actionable GitHub backlog is empty (deferred: [#68](https://github.com/FelipeMorandini/stockterm/issues/68) decimal precision, [#214](https://github.com/FelipeMorandini/stockterm/issues/214) overlap inflight watchdog). The main **product** gap is **session-fresh / intraday watchlist quotes** (M2 remainder in ROADMAP §6) — fresher “today’s market” prices via Yahoo session or `1m`/`5m` chart data, not streaming. File a GitHub issue, then run `/plan` before implementation.
 
 ## Config file (`~/.stockterm.json`)
 
@@ -234,7 +238,7 @@ These environment variables are supported for local diagnosis. Any other `STOCKT
 | `STOCKTERM_LOG_DIR` | Any build | Directory for `stockterm.log` (default: `{cache_dir}/stockterm/logs`). Supports `~/…` paths. See `docs/SPEC.md` §38. |
 | `STOCKTERM_LOG_STDERR` | Any build | Set to exactly `1` to mirror **WARN+** logs to stderr in addition to the log file (default: off — keeps the TUI clean). |
 | `STOCKTERM_EVENT_JOIN_MS` | Any build | Milliseconds to wait for the crossterm event thread after `App::run` exits (default **2000**). See §39.1 / [`src/app/event.rs`](src/app/event.rs). |
-| `STOCKTERM_INFLIGHT_STALE_SECS` | Tests / diagnostics | Seconds before the main loop clears a stuck `*_refresh_inflight` flag when both fetch and recovery sends failed (default **120**). See §39.2. |
+| `STOCKTERM_INFLIGHT_STALE_SECS` | Tests / diagnostics | Seconds before the main loop clears a stuck `*_refresh_inflight` flag when both fetch and recovery sends failed (default **120**). With **`allow_overlapping_quote_batches`**, stock quotes use a **chain** start time that is not reset on supersede — see §39.2 / §74. |
 | `RUST_LOG` | Any build | Standard `tracing` filter (e.g. `stockterm=debug`). Default: `warn,stockterm=warn`. |
 | _(tests)_ | Authors writing **`#[tokio::test(start_paused = true)]`** + **`reqwest`** | Paused **`tokio::time::advance`** can fire **`reqwest`**’s request **`timeout`** while a **`GET`** is still in flight → spurious **`Timeout`**. Prefer wall-clock waits for **`Retry-After`** assertions or an isolated **`Client`** with a short timeout for stall tests — [`docs/SPEC.md`](docs/SPEC.md) §19.8 / §19.13.3. |
 | `STOCKTERM_DEBUG_ALERT_NOTIFY` | Build with the default **`desktop-notify`** Cargo feature | Set to exactly `1` (no trimming; no other value enables it). After `notify-rust` `Notification::show()`, StockTerm may `eprintln!` the `Result` to stderr on the **coalesced** desktop notify path (including `Ok(())`) so you can confirm the call completed. |

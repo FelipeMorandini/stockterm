@@ -6222,6 +6222,68 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
 ---
 
+## Issue #214 — Overlap quote batches: inflight chain watchdog (§74)
+
+**Scope:**
+
+- [GitHub Issue #214](https://github.com/FelipeMorandini/stockterm/issues/214) — When **`allow_overlapping_quote_batches: true`**, repeated supersede must not prevent §39.2 stale inflight recovery; add **`stock_inflight_chain_since`** watchdog path per **§74**.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §74 (architect plan **2026-05-30**).
+
+**Status:** **Shipped** (2026-05-30) — manual QA sign-off **2026-05-30** below.
+
+**Prerequisite:** Set **`"allow_overlapping_quote_batches": true`** in `~/.stockterm.json` for overlap-only manual steps. Default single-flight regression steps run without this flag.
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo test recover_stale
+   cargo test issue_214
+   cargo test stock_fetch
+   cargo clippy -- -D warnings
+   ```
+
+   **Pass:** All exit 0; new **`issue_214`** / **`inflight_chain`** tests green; existing **`recover_stale_inflight_flags_clears_stock_inflight`** unchanged.
+
+2. Overlap chain stale unit test (§74.7):
+
+   ```bash
+   cargo test issue_214
+   ```
+
+   **Pass:** With **`allow_overlapping_quote_batches = true`**, recent **`stock_inflight_since`** + old **`stock_inflight_chain_since`** → **`recover_stale_inflight_flags`** clears **`stock_refresh_inflight`**.
+
+### Manual — single-flight regression (always run)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Default config (**overlap off**), `STOCKTERM_DEBUG_HTTP_DELAY_MS=5000 cargo run --release` | UI responsive; **Refreshing quotes…** clears after batch completes. |
+| 2 | Simulate stuck inflight: run with `STOCKTERM_INFLIGHT_STALE_SECS=5` and a hung batch (debug delay > 5s, no overlap supersede) | Status leaves **Refreshing quotes…** within ~5s (§39.2 baseline). |
+
+### Manual — overlap chain watchdog (requires `allow_overlapping_quote_batches: true`)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Add `"allow_overlapping_quote_batches": true` to `~/.stockterm.json`; restart app | Config loads; overlap spawn policy active (see §68). |
+| 2 | Large watchlist or `STOCKTERM_DEBUG_HTTP_DELAY_MS=120000`; start refresh | **Refreshing quotes…** appears. |
+| 3 | Every **2–3 s** for **15+ s**, trigger immediate poll (e.g. **`Enter`** on symbol change or portfolio jump) | Supersede occurs; status may stay **Refreshing quotes…** during delay. |
+| 4 | With `STOCKTERM_INFLIGHT_STALE_SECS=10` (test env), continue superseding OR wait from **first** stuck refresh | Within **~10 s from chain start**, status **leaves** perpetual **Refreshing quotes…** even if supersede kept resetting per-spawn timer. |
+| 5 | Tail log file (`tracing`) | **`inflight chain stale`** or existing stale-inflight **`warn!`** at most once per recovery; **no** terminal **`println!`**. |
+| 6 | After recovery, trigger one more refresh | Quotes update normally; no stuck inflight. |
+
+### Sign-off — Issue #214
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo test issue_214` + clippy | Maintainer | 2026-05-30 | Pass |
+| Unit: overlap chain stale despite recent supersede | Maintainer | 2026-05-30 | Pass |
+| Manual: single-flight regression (overlap off) | Maintainer | 2026-05-30 | Pass |
+| Manual: overlap chain watchdog (overlap on) | Maintainer | 2026-05-30 | Pass |
+
+---
+
 ## Issue #194 — Saved named filters + optional regex mode (§69)
 
 **Scope:**
@@ -6317,7 +6379,7 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
 **Spec:** [`docs/SPEC.md`](SPEC.md) §70.
 
-**Status:** **Phases A–C shipped** (Phase A **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207); Phases B–C **PR:** [#210](https://github.com/FelipeMorandini/stockterm/pull/210); sign-off **2026-05-27**). Issue **#24** may stay open for Phase D per triage policy.
+**Status:** **Phases A–D shipped** (Phase A **PR:** [#207](https://github.com/FelipeMorandini/stockterm/pull/207); Phases B–C **PR:** [#210](https://github.com/FelipeMorandini/stockterm/pull/210); Phase D **§71** **PR:** [#211](https://github.com/FelipeMorandini/stockterm/pull/211); sign-off **2026-05-27**). Issue **#24** closed on GitHub; Phase D QA → Issue **#208**.
 
 **Prerequisites:** §3 watchlist + quote batch, §31 layout (regression), §23 filters (watchlist panes respect `watchlist_filter_indices_cache`), §69 saved filters optional, §58 snapshot patterns.
 
@@ -6425,7 +6487,7 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
 **Prerequisite:** §70 Phases A–C shipped (read-only panes, `dashboard_layout_cache`, `normalize_dashboards` on load). §24 keymap, §22 `try_save_config_with_session`, §18.13 modal layout.
 
-**Status:** **Implemented** (2026-05-27) — automated tests + audit passed; **manual sign-off pending** before merge.
+**Status:** **Shipped** (2026-05-27) — automated tests + audit passed; manual sign-off **2026-05-27** (backlog hygiene sync with ROADMAP §2.1).
 
 ### Automated (local) — required when implementing
 
@@ -6507,13 +6569,13 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 
 | Check | Tester | Date | Pass/Fail |
 |-------|--------|------|-----------|
-| Automated: dashboard + editor + validate tests + clippy | | | |
-| Manual: preset create without JSON | | | |
-| Manual: add/remove pane + grid edit + live preview | | | |
-| Manual: overlap / OOB inline errors block save | | | |
-| Manual: save persists without restart | | | |
-| Manual: discard / save-failure paths | | | |
-| Regression: §70 read-only + core tabs | | | |
+| Automated: dashboard + editor + validate tests + clippy | maintainer | 2026-05-27 | Pass |
+| Manual: preset create without JSON | maintainer | 2026-05-27 | Pass |
+| Manual: add/remove pane + grid edit + live preview | maintainer | 2026-05-27 | Pass |
+| Manual: overlap / OOB inline errors block save | maintainer | 2026-05-27 | Pass |
+| Manual: save persists without restart | maintainer | 2026-05-27 | Pass |
+| Manual: discard / save-failure paths | maintainer | 2026-05-27 | Pass |
+| Regression: §70 read-only + core tabs | maintainer | 2026-05-27 | Pass |
 
 ---
 
