@@ -70,7 +70,7 @@ _None at this time — all roadmap-labelled issues are either shipped or deferre
 | [#214](https://github.com/FelipeMorandini/stockterm/issues/214) | Overlap quote batches: phase 2 hard-abort (optional) | **Open follow-up** — phase 1 chain watchdog **shipped** **§74** (sign-off **2026-05-30**); see §74.10. |
 | [#68](https://github.com/FelipeMorandini/stockterm/issues/68)  | Portfolio: optional decimal types | Optional precision upgrade; current `f64` matches providers. |
 
-**Product gap (no open issue yet):** M2 remainder — intraday / session-fresh watchlist quote feel (see [§6](#6-recommended-next-milestones) item 3, [§4.1](#41-core--real-time-quotes)).
+**Product gap:** M2 remainder — intraday / session-fresh watchlist quote feel ([#216](https://github.com/FelipeMorandini/stockterm/issues/216); see [§6](#6-recommended-next-milestones) item 3, [§4.1](#41-core--real-time-quotes)).
 
 **Triage policy:** [#68](https://github.com/FelipeMorandini/stockterm/issues/68) is intentionally deferred/low priority and should not be auto-closed during backlog sweeps. [#214](https://github.com/FelipeMorandini/stockterm/issues/214) phase 1 is shipped (**§74**); keep issue open only if tracking phase 2 hard-abort. Closed shipped issues ([#24](https://github.com/FelipeMorandini/stockterm/issues/24), [#208](https://github.com/FelipeMorandini/stockterm/issues/208), [#191](https://github.com/FelipeMorandini/stockterm/issues/191)) stay closed — do not reopen for doc-only hygiene.
 
@@ -286,7 +286,7 @@ _Recent follow-ups from ship:_ [Issue #39](https://github.com/FelipeMorandini/st
 
 ## 6. Recommended Next Milestones
 
-> **Status (2026-05-30):** M0 – M8 are largely delivered. Actionable `roadmap`-labelled backlog: _none_ — see [§2.1](#21-active-backlog-github) (deferred [#68](https://github.com/FelipeMorandini/stockterm/issues/68); optional [#214](https://github.com/FelipeMorandini/stockterm/issues/214) phase 2). **Next product epic (unfiled):** intraday / session-fresh watchlist quotes ([§4.1](#41-core--real-time-quotes)). The milestone list below is preserved for historical context.
+> **Status (2026-05-30):** M0 – M8 are largely delivered. Actionable `roadmap`-labelled backlog: _none_ — see [§2.1](#21-active-backlog-github) (deferred [#68](https://github.com/FelipeMorandini/stockterm/issues/68); optional [#214](https://github.com/FelipeMorandini/stockterm/issues/214) phase 2). **Next product epic:** [#216](https://github.com/FelipeMorandini/stockterm/issues/216) — intraday / session-fresh watchlist quotes ([§4.1](#41-core--real-time-quotes)). The milestone list below is preserved for historical context.
 
 Suggested ordering (each should land its own `docs/SPEC.md` update + GitHub
 issue before code):
