@@ -5,4 +5,4 @@ bullets into GitHub issues and clear the list.
 
 ---
 
-<!-- Cleared 2026-05-30 — [#214](https://github.com/FelipeMorandini/stockterm/issues/214) / §74 shipped; session-fresh epic → [#216](https://github.com/FelipeMorandini/stockterm/issues/216). -->
+<!-- Cleared 2026-06-01 — [#216](https://github.com/FelipeMorandini/stockterm/issues/216) / §75 shipped (session-fresh Yahoo quotes). -->

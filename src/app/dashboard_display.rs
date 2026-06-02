@@ -138,6 +138,7 @@ mod tests {
                     c: 150.0,
                     v: 1.0,
                     t: 0,
+                    prev_close: None,
                 }],
                 status: String::new(),
                 error: None,

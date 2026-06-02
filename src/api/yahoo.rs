@@ -144,6 +144,8 @@ struct V7QuoteWireError {
 struct V7QuoteItem {
     symbol: Option<String>,
     quote_type: Option<String>,
+    #[serde(default)]
+    market_state: Option<String>,
     regular_market_price: Option<f64>,
     regular_market_open: Option<f64>,
     regular_market_day_high: Option<f64>,
@@ -152,6 +154,20 @@ struct V7QuoteItem {
     regular_market_volume: Option<serde_json::Value>,
     regular_market_time: Option<i64>,
     regular_market_previous_close: Option<f64>,
+    #[serde(default)]
+    pre_market_price: Option<f64>,
+    #[serde(default)]
+    pre_market_time: Option<i64>,
+    #[serde(default)]
+    post_market_price: Option<f64>,
+    #[serde(default)]
+    post_market_time: Option<i64>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    regular_market_change: Option<f64>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    regular_market_change_percent: Option<f64>,
 }
 
 fn v7_volume_as_f64(v: Option<&serde_json::Value>) -> f64 {
@@ -178,11 +194,67 @@ fn normalize_v7_symbol_key(s: &str) -> String {
     s.trim().to_uppercase()
 }
 
+/// Reject NaN / infinite adapter prices before they reach the UI (Issue #216 audit).
+fn require_finite_quote_price(price: f64, requested: &str) -> ProviderResult<f64> {
+    if price.is_finite() {
+        Ok(price)
+    } else {
+        Err(ProviderError::ApiMessage(format!(
+            "Invalid quote price for {}",
+            requested
+        )))
+    }
+}
+
+/// Select session-aware display price and timestamp from Yahoo **`v7`** quote row (Issue #216 / §75).
+///
+/// | `marketState` prefix | Price | Time (seconds) |
+/// |----------------------|-------|----------------|
+/// | `PRE`, `PREPRE` | `preMarketPrice` → `regularMarketPrice` | `preMarketTime` → `regularMarketTime` → now |
+/// | `POST`, `POSTPOST` | `postMarketPrice` → `regularMarketPrice` | `postMarketTime` → `regularMarketTime` → now |
+/// | `REGULAR`, `CLOSED`, empty / unknown | `regularMarketPrice` (required) | `regularMarketTime` → now |
+fn yahoo_v7_session_price(q: &V7QuoteItem, requested: &str) -> ProviderResult<(f64, i64)> {
+    let state = q
+        .market_state
+        .as_deref()
+        .unwrap_or("")
+        .trim()
+        .to_ascii_uppercase();
+    let now = Utc::now().timestamp();
+
+    let (close, time_sec) = if state.starts_with("PRE") {
+        let close = q
+            .pre_market_price
+            .or(q.regular_market_price)
+            .ok_or_else(|| {
+                ProviderError::ApiMessage(format!("No pre-market price for {}", requested))
+            })?;
+        let t = q.pre_market_time.or(q.regular_market_time).unwrap_or(now);
+        (close, t)
+    } else if state.starts_with("POST") {
+        let close = q
+            .post_market_price
+            .or(q.regular_market_price)
+            .ok_or_else(|| {
+                ProviderError::ApiMessage(format!("No post-market price for {}", requested))
+            })?;
+        let t = q.post_market_time.or(q.regular_market_time).unwrap_or(now);
+        (close, t)
+    } else {
+        let close = q.regular_market_price.ok_or_else(|| {
+            ProviderError::ApiMessage(format!("No regularMarketPrice for {}", requested))
+        })?;
+        let t = q.regular_market_time.unwrap_or(now);
+        (close, t)
+    };
+
+    let close = require_finite_quote_price(close, requested)?;
+    Ok((close, time_sec))
+}
+
 /// Maps one **`V7QuoteItem`** into [`TickerResponse`] (one synthetic bar). See [`v7_envelope_to_ticker_with_type`].
 fn v7_item_to_ticker_response(q: &V7QuoteItem, requested: &str) -> ProviderResult<TickerResponse> {
-    let close = q.regular_market_price.ok_or_else(|| {
-        ProviderError::ApiMessage(format!("No regularMarketPrice for {}", requested))
-    })?;
+    let (close, t_sec) = yahoo_v7_session_price(q, requested)?;
 
     let open = q
         .regular_market_open
@@ -191,9 +263,6 @@ fn v7_item_to_ticker_response(q: &V7QuoteItem, requested: &str) -> ProviderResul
     let high = q.regular_market_day_high.unwrap_or(close);
     let low = q.regular_market_day_low.unwrap_or(close);
     let vol = v7_volume_as_f64(q.regular_market_volume.as_ref());
-    let t_sec = q
-        .regular_market_time
-        .unwrap_or_else(|| Utc::now().timestamp());
     let t_ms = normalize_bar_timestamp_to_ms((t_sec.max(0) as u64).saturating_mul(1000));
 
     let ticker_name = q.symbol.clone().unwrap_or_else(|| requested.to_uppercase());
@@ -207,6 +276,7 @@ fn v7_item_to_ticker_response(q: &V7QuoteItem, requested: &str) -> ProviderResul
             c: close,
             v: vol,
             t: t_ms,
+            prev_close: q.regular_market_previous_close,
         }],
         status: "OK".to_string(),
         error: None,
@@ -242,9 +312,10 @@ fn v7_select_item_for_symbol<'a>(
 /// | `regularMarketOpen` | **`o`** (else `regularMarketPreviousClose`, else **`c`**) |
 /// | `regularMarketDayHigh` | **`h`** (else **`c`**) |
 /// | `regularMarketDayLow` | **`l`** (else **`c`**) |
-/// | `regularMarketPrice` | **`c`** (required for a successful row) |
+/// | `regularMarketPrice` | **`c`** (session-aware via [`yahoo_v7_session_price`]) |
 /// | `regularMarketVolume` | **`v`** |
-/// | `regularMarketTime` (Unix **seconds**) | **`t`** = ms |
+/// | session time (Unix **seconds**) | **`t`** = ms |
+/// | `regularMarketPreviousClose` | **`prev_close`** |
 fn v7_envelope_to_ticker_with_type(
     env: &V7QuoteEnvelope,
     requested: &str,
@@ -451,10 +522,15 @@ fn v7_quote_url(query_base: &str, symbol: &str) -> String {
     format!("{base}/v7/finance/quote?symbols={enc_sym}")
 }
 
-fn v8_chart_latest_url(query_base: &str, symbol: &str) -> String {
+fn v8_chart_intraday_latest_url(query_base: &str, symbol: &str, interval: &str) -> String {
     let base = query_base.trim_end_matches('/');
     let enc_sym = encode(symbol);
-    format!("{base}/v8/finance/chart/{enc_sym}?range=1d&interval=1d")
+    format!("{base}/v8/finance/chart/{enc_sym}?range=1d&interval={interval}")
+}
+
+/// Quote fallback URL — **`1m`** intraday bars for fresher **`c`** / **`t`** (Issue #216 / §75).
+fn v8_chart_latest_url(query_base: &str, symbol: &str) -> String {
+    v8_chart_intraday_latest_url(query_base, symbol, "1m")
 }
 
 async fn yahoo_quote_v7_at_with_type(
@@ -468,7 +544,7 @@ async fn yahoo_quote_v7_at_with_type(
     v7_envelope_to_ticker_with_type(&env, &sym)
 }
 
-/// Latest quote via **v8 chart** `range=1d` (fallback when v7 is empty or errors).
+/// Latest quote via **v8 chart** `range=1d&interval=1m` (fallback when v7 is empty or errors).
 async fn yahoo_quote_at(symbol: &str, query_base: &str) -> ProviderResult<TickerResponse> {
     let sym = yahoo_wire_symbol(symbol);
     let url = v8_chart_latest_url(query_base, &sym);
@@ -577,12 +653,16 @@ fn chart_to_ticker(env: &ChartEnvelope, requested: &str) -> ProviderResult<Ticke
     };
 
     let meta = &series.meta;
-    let close = meta
-        .regular_market_price
-        .or_else(|| last_close_from_bars(series))
-        .ok_or_else(|| ProviderError::ApiMessage(format!("No price data for {}", requested)))?;
 
-    // Open: prefer session open, then chart previous close, then close.
+    let bar = last_close_and_time_from_bars(series);
+    let bar_close = bar.map(|(c, _)| c);
+    let bar_t_sec = bar.map(|(_, t)| t);
+    let meta_close = meta.regular_market_price.filter(|p| p.is_finite());
+    let close = bar_close
+        .or(meta_close)
+        .ok_or_else(|| ProviderError::ApiMessage(format!("No price data for {}", requested)))?;
+    let close = require_finite_quote_price(close, requested)?;
+
     let open = meta
         .regular_market_open
         .or(meta.chart_previous_close)
@@ -590,8 +670,8 @@ fn chart_to_ticker(env: &ChartEnvelope, requested: &str) -> ProviderResult<Ticke
     let high = meta.regular_market_day_high.unwrap_or(close);
     let low = meta.regular_market_day_low.unwrap_or(close);
     let vol = meta.regular_market_volume.map(|v| v as f64).unwrap_or(0.0);
-    let t_sec = meta
-        .regular_market_time
+    let t_sec = bar_t_sec
+        .or(meta.regular_market_time)
         .unwrap_or_else(|| Utc::now().timestamp());
     let t_ms = normalize_bar_timestamp_to_ms((t_sec.max(0) as u64).saturating_mul(1000));
 
@@ -609,23 +689,26 @@ fn chart_to_ticker(env: &ChartEnvelope, requested: &str) -> ProviderResult<Ticke
             c: close,
             v: vol,
             t: t_ms,
+            prev_close: meta.chart_previous_close,
         }],
         status: "OK".to_string(),
         error: None,
     })
 }
 
-fn last_close_from_bars(series: &ChartSeries) -> Option<f64> {
+/// Latest intraday bar by **timestamp** (not array order), with finite close (Issue #216 / §75).
+fn last_close_and_time_from_bars(series: &ChartSeries) -> Option<(f64, i64)> {
     let ts = series.timestamp.as_ref()?;
     let quote = series.indicators.as_ref()?.quote.as_ref()?.first()?;
     let closes = quote.close.as_ref()?;
-    let mut best: Option<(i64, f64)> = None;
-    for (i, &t) in ts.iter().enumerate() {
-        if let Some(Some(c)) = closes.get(i) {
-            best = Some((t, *c));
-        }
-    }
-    best.map(|(_, c)| c)
+    ts.iter()
+        .zip(closes.iter())
+        .filter_map(|(&t, close_opt)| {
+            let c = close_opt.as_ref().copied()?;
+            c.is_finite().then_some((t, c))
+        })
+        .max_by_key(|(t, _)| *t)
+        .map(|(t, c)| (c, t))
 }
 
 /// Yahoo v8 chart using `range=` + `interval=` (intraday and rolling windows).
@@ -1771,6 +1854,170 @@ mod tests {
     }
 
     #[test]
+    fn issue_216_v7_maps_post_market_price_when_market_state_post() {
+        let json = r#"{
+            "quoteResponse": {
+                "result": [{
+                    "symbol": "AAPL",
+                    "marketState": "POST",
+                    "regularMarketPrice": 195.0,
+                    "postMarketPrice": 196.25,
+                    "postMarketTime": 1700003600,
+                    "regularMarketOpen": 194.0,
+                    "regularMarketDayHigh": 196.0,
+                    "regularMarketDayLow": 193.5,
+                    "regularMarketVolume": 52800000,
+                    "regularMarketTime": 1700000000
+                }],
+                "error": null
+            }
+        }"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
+        let (tr, _) = v7_envelope_to_ticker_with_type(&env, "AAPL").expect("map");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 196.25).abs() < 1e-9);
+        assert_eq!(bar.t, 1_700_003_600_000);
+    }
+
+    #[test]
+    fn issue_216_yahoo_v7_session_v7_maps_pre_market_price() {
+        let json = r#"{
+            "quoteResponse": {
+                "result": [{
+                    "symbol": "AAPL",
+                    "marketState": "PRE",
+                    "regularMarketPrice": 194.0,
+                    "preMarketPrice": 194.75,
+                    "preMarketTime": 1700001000,
+                    "regularMarketOpen": 193.0,
+                    "regularMarketDayHigh": 195.0,
+                    "regularMarketDayLow": 192.0,
+                    "regularMarketVolume": 1000,
+                    "regularMarketTime": 1699900000
+                }],
+                "error": null
+            }
+        }"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
+        let (tr, _) = v7_envelope_to_ticker_with_type(&env, "AAPL").expect("map");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 194.75).abs() < 1e-9);
+        assert_eq!(bar.t, 1_700_001_000_000);
+    }
+
+    #[test]
+    fn issue_216_v7_prev_close_populates_ticker_result() {
+        let json = r#"{
+            "quoteResponse": {
+                "result": [{
+                    "symbol": "AAPL",
+                    "regularMarketPrice": 195.5,
+                    "regularMarketOpen": 194.0,
+                    "regularMarketPreviousClose": 190.0,
+                    "regularMarketDayHigh": 196.25,
+                    "regularMarketDayLow": 193.5,
+                    "regularMarketVolume": 52800000,
+                    "regularMarketTime": 1700000000
+                }],
+                "error": null
+            }
+        }"#;
+        let env: V7QuoteEnvelope = serde_json::from_str(json).expect("parse v7");
+        let (tr, _) = v7_envelope_to_ticker_with_type(&env, "AAPL").expect("map");
+        let bar = tr.latest_result().expect("bar");
+        assert_eq!(bar.prev_close, Some(190.0));
+        assert!((bar.change_reference() - 190.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn issue_216_chart_to_ticker_uses_last_minute_bar_close() {
+        let json = include_str!("../../tests/fixtures/yahoo_chart_aapl.json");
+        let env: ChartEnvelope = serde_json::from_str(json).expect("parse envelope");
+        let tr = chart_to_ticker(&env, "AAPL").expect("map");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 188.2).abs() < 1e-9);
+        assert_eq!(bar.t, 1_700_058_600_000);
+        assert_eq!(bar.prev_close, Some(187.44));
+    }
+
+    #[test]
+    fn issue_216_chart_to_ticker_meta_only_when_no_bars() {
+        let json = r#"{
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 200.0,
+                        "regularMarketOpen": 198.0,
+                        "regularMarketDayHigh": 201.0,
+                        "regularMarketDayLow": 197.0,
+                        "regularMarketVolume": 1000,
+                        "regularMarketTime": 1700000000,
+                        "chartPreviousClose": 195.0
+                    }
+                }],
+                "error": null
+            }
+        }"#;
+        let env: ChartEnvelope = serde_json::from_str(json).expect("parse");
+        let tr = chart_to_ticker(&env, "AAPL").expect("map");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 200.0).abs() < 1e-9);
+        assert_eq!(bar.t, 1_700_000_000_000);
+        assert_eq!(bar.prev_close, Some(195.0));
+    }
+
+    #[test]
+    fn issue_216_last_close_and_time_from_bars_picks_max_timestamp() {
+        let json = r#"{
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 999.0,
+                        "regularMarketTime": 1
+                    },
+                    "timestamp": [1700000100, 1700000300, 1700000200],
+                    "indicators": {
+                        "quote": [{
+                            "close": [10.0, 30.0, 20.0]
+                        }]
+                    }
+                }],
+                "error": null
+            }
+        }"#;
+        let env: ChartEnvelope = serde_json::from_str(json).expect("parse");
+        let tr = chart_to_ticker(&env, "AAPL").expect("map");
+        let bar = tr.latest_result().expect("bar");
+        assert!((bar.c - 30.0).abs() < 1e-9);
+        assert_eq!(bar.t, 1_700_000_300_000);
+    }
+
+    #[test]
+    fn issue_216_v7_rejects_non_finite_session_price() {
+        let item = V7QuoteItem {
+            symbol: Some("AAPL".into()),
+            quote_type: None,
+            market_state: None,
+            regular_market_price: Some(f64::NAN),
+            regular_market_open: None,
+            regular_market_day_high: None,
+            regular_market_day_low: None,
+            regular_market_volume: None,
+            regular_market_time: None,
+            regular_market_previous_close: None,
+            pre_market_price: None,
+            pre_market_time: None,
+            post_market_price: None,
+            post_market_time: None,
+            regular_market_change: None,
+            regular_market_change_percent: None,
+        };
+        assert!(v7_item_to_ticker_response(&item, "AAPL").is_err());
+    }
+
+    #[test]
     fn chart_to_ticker_fixture() {
         let json = include_str!("../../tests/fixtures/yahoo_chart_aapl.json");
         let env: ChartEnvelope = serde_json::from_str(json).expect("parse envelope");
@@ -1937,11 +2184,11 @@ mod tests {
     }
 
     #[test]
-    fn v8_chart_latest_url_builds_expected_path() {
+    fn issue_216_v8_chart_latest_url_uses_1m_interval() {
         let url = v8_chart_latest_url("https://mock.test/", "AAPL");
         assert_eq!(
             url,
-            "https://mock.test/v8/finance/chart/AAPL?range=1d&interval=1d"
+            "https://mock.test/v8/finance/chart/AAPL?range=1d&interval=1m"
         );
     }
 }
@@ -1954,7 +2201,8 @@ mod wiremock_quote_fallback_tests {
 
     const SYMBOL: &str = "AAPL";
     const CHART_FIXTURE: &str = include_str!("../../tests/fixtures/yahoo_chart_aapl.json");
-    const EXPECTED_CLOSE: f64 = 293.32;
+    /// Last non-null close in the chart fixture (preferred over meta when bars exist — §75).
+    const EXPECTED_CLOSE: f64 = 188.2;
 
     async fn mount_v8_chart_ok(srv: &MockServer) {
         Mock::given(method("GET"))

@@ -4955,6 +4955,7 @@ mod tests {
                 c: close,
                 v: 0.0,
                 t: 1,
+                prev_close: None,
             }],
             status: "OK".to_string(),
             error: None,

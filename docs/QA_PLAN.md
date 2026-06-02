@@ -6767,3 +6767,103 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 | Manual: quotes populate after refresh | Maintainer | 2026-05-28 | Pass |
 | Manual: disk JSON canonical after save | Maintainer | 2026-05-28 | Pass |
 | Regression: default config + §67 smoke | Maintainer | 2026-05-28 | Pass |
+
+---
+
+## Issue #216 — Session-fresh / intraday watchlist quote feel (§75)
+
+**Scope:**
+
+- [GitHub Issue #216](https://github.com/FelipeMorandini/stockterm/issues/216) — Improve watchlist quote freshness on Yahoo: session-aware **`v7`** pricing (pre/post market), change vs **previous close**, and **`v8`** quote fallback using **`interval=1m`** instead of daily bars. **Not** streaming / Level-2.
+
+**Spec:** [`docs/SPEC.md`](SPEC.md) §75 (architect plan **2026-06-01**).
+
+**Status:** **Shipped** (2026-06-01) — manual QA sign-off **2026-06-01** below.
+
+**Prerequisite:** Default provider **Yahoo** (`~/.stockterm.json` **`"provider": "yahoo"`**). Polygon regression steps are optional (§75.11).
+
+### Automated (local)
+
+1. From the repo root:
+
+   ```bash
+   cargo test issue_216
+   cargo test yahoo_v7_session
+   cargo test change_reference
+   cargo test chart_to_ticker
+   cargo test yahoo_latest_quote
+   cargo clippy -- -D warnings
+   ```
+
+   **Pass:** All exit 0; §75.8 table tests green; existing §32 **`wiremock`** orchestration test updated for **`interval=1m`** fallback URL.
+
+2. Model regression:
+
+   ```bash
+   cargo test ticker_response_matches
+   cargo test deserialize_without_ticker_field
+   ```
+
+   **Pass:** Polygon JSON fixtures still deserialize; **`prev_close`** defaults to **`None`**.
+
+### Manual — Yahoo regular session (market hours or liquid symbol)
+
+**Prep:** Watchlist **AAPL**, **MSFT** (or other liquid US equities). **`refresh_rate`** ≤ **30** s. **`cargo run --release`**.
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Open **Stock View**; wait for quote refresh | **Last** shows plausible live-ish prices; no perpetual **Loading…** |
+| 2 | Compare **Chg** / **%** to a browser Yahoo quote for the same symbol | Direction and magnitude roughly match Yahoo **change vs previous close** (not necessarily vs open) |
+| 3 | Select a row; read detail pane **Open** vs **Change** | **Open** still shows session open; **Change** aligns with previous-close baseline per §75.4 |
+| 4 | Trigger **`r`** refresh or wait one poll cycle | **Last** / **Chg** update without app restart |
+
+### Manual — Yahoo extended hours (optional; run when market is PRE or POST)
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | During pre-market or after-hours, observe a liquid symbol on watchlist | **Last** reflects extended-hours price (moves with after-hours activity), not frozen regular-session close only |
+| 2 | Compare to Yahoo Finance web **extended hours** price | Same ballpark (provider drift acceptable) |
+
+### Manual — Yahoo v7 fallback / intraday chart path (optional)
+
+**Prep:** If **`STOCKTERM_DEBUG_YAHOO_QUOTE=1`**, stderr may log **`v7 unusable … using v8 chart`** when fallback runs.
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Add a symbol that reliably hits **`v7`** (e.g. **AAPL**) | Normal batched refresh; no error overlay |
+| 2 | (Maintainer-only) Temporarily force fallback via unit/wiremock coverage, or use a symbol known to miss batched **`v7`** but succeed on **`v8`** | Quote still populates; price not stuck at prior day’s single daily close when minute bars exist |
+
+### Manual — Alerts regression
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Armed alert on watchlist symbol; wait for quote refresh | **Status** still **Armed** / **TRIGGERED** per §18; **`get_current_price`** uses updated **`c`** |
+| 2 | Fire threshold cross (paper trade / test alert) | Bell / toast behavior unchanged |
+
+### Manual — Polygon provider (optional regression)
+
+**Prep:** **`"provider": "polygon"`** with valid **`api_key`**; restart app.
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | Load watchlist quotes | Prices populate (daily-bar semantics per README) |
+| 2 | If two daily bars returned, check change direction | **Chg** may use prior bar close when **`prev_close`** set; no panic / empty table |
+
+### Regression
+
+| Step | Action | Pass criteria |
+|------|--------|---------------|
+| 1 | §9.15 batched **`v7`** with 5+ symbols | Single primary batch request pattern unchanged; all rows get quotes |
+| 2 | §68 single-flight quote refresh | **Refreshing quotes…** clears; no stuck inflight |
+| 3 | Dashboard watchlist pane | Precomputed rows still render (§70) |
+
+### Sign-off — Issue #216
+
+| Check | Tester | Date | Pass/Fail |
+|-------|--------|------|-----------|
+| `cargo test issue_216` + clippy | Maintainer | 2026-06-01 | Pass |
+| Unit: session price + prev_close + 1m fallback | Maintainer | 2026-06-01 | Pass |
+| Manual: Yahoo regular session change vs prev close | Maintainer | 2026-06-01 | Pass |
+| Manual: extended hours (optional) | Maintainer | 2026-06-01 | N/A |
+| Manual: alerts regression | Maintainer | 2026-06-01 | Pass |
+| Regression: batch quotes + single-flight | Maintainer | 2026-06-01 | Pass |

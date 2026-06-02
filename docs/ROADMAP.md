@@ -70,7 +70,7 @@ _None at this time — all roadmap-labelled issues are either shipped or deferre
 | [#214](https://github.com/FelipeMorandini/stockterm/issues/214) | Overlap quote batches: phase 2 hard-abort (optional) | **Open follow-up** — phase 1 chain watchdog **shipped** **§74** (sign-off **2026-05-30**); see §74.10. |
 | [#68](https://github.com/FelipeMorandini/stockterm/issues/68)  | Portfolio: optional decimal types | Optional precision upgrade; current `f64` matches providers. |
 
-**Product gap:** M2 remainder — intraday / session-fresh watchlist quote feel ([#216](https://github.com/FelipeMorandini/stockterm/issues/216); see [§6](#6-recommended-next-milestones) item 3, [§4.1](#41-core--real-time-quotes)).
+**Recently shipped:** [#216](https://github.com/FelipeMorandini/stockterm/issues/216) / **§75** — session-fresh watchlist quotes (sign-off **2026-06-01**). **Product gap:** _none_ at M2 quote freshness — see [§4.1](#41-core--real-time-quotes).
 
 **Triage policy:** [#68](https://github.com/FelipeMorandini/stockterm/issues/68) is intentionally deferred/low priority and should not be auto-closed during backlog sweeps. [#214](https://github.com/FelipeMorandini/stockterm/issues/214) phase 1 is shipped (**§74**); keep issue open only if tracking phase 2 hard-abort. Closed shipped issues ([#24](https://github.com/FelipeMorandini/stockterm/issues/24), [#208](https://github.com/FelipeMorandini/stockterm/issues/208), [#191](https://github.com/FelipeMorandini/stockterm/issues/191)) stay closed — do not reopen for doc-only hygiene.
 
@@ -112,6 +112,8 @@ incomplete, broken, or unwired; **Missing** = no code path.
     `spawn_event_thread` (`src/app/event.rs`); `stock_refresh_inflight` + status
     **“Refreshing quotes…”**; Settings row **0** persists `refresh_rate`.
   - **Shipped:** §35.6.1 unit tests + [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#4** sign-off **2026-05-18**.
+- **Shipped — session-fresh / intraday feel ([#216](https://github.com/FelipeMorandini/stockterm/issues/216), [`docs/SPEC.md`](SPEC.md) §75)**
+  - Evidence: Yahoo **`v7`** session-aware pricing (PRE/POST/regular); **`v8`** quote fallback **`interval=1m`**; **`TickerResult::prev_close`** + **`change_reference()`** for watchlist/detail change %; Polygon **`prev_close`** from prior daily bar. **Manual QA** [`docs/QA_PLAN.md`](QA_PLAN.md) Issue **#216** (sign-off **2026-06-01**).
 
 ### 4.2 Core — Symbol search with typeahead
 
@@ -286,7 +288,7 @@ _Recent follow-ups from ship:_ [Issue #39](https://github.com/FelipeMorandini/st
 
 ## 6. Recommended Next Milestones
 
-> **Status (2026-05-30):** M0 – M8 are largely delivered. Actionable `roadmap`-labelled backlog: _none_ — see [§2.1](#21-active-backlog-github) (deferred [#68](https://github.com/FelipeMorandini/stockterm/issues/68); optional [#214](https://github.com/FelipeMorandini/stockterm/issues/214) phase 2). **Next product epic:** [#216](https://github.com/FelipeMorandini/stockterm/issues/216) — intraday / session-fresh watchlist quotes ([§4.1](#41-core--real-time-quotes)). The milestone list below is preserved for historical context.
+> **Status (2026-06-01):** M0 – M8 are largely delivered. Actionable `roadmap`-labelled backlog: _none_ — see [§2.1](#21-active-backlog-github) (deferred [#68](https://github.com/FelipeMorandini/stockterm/issues/68); optional [#214](https://github.com/FelipeMorandini/stockterm/issues/214) phase 2). **Recently shipped:** [#216](https://github.com/FelipeMorandini/stockterm/issues/216) / **§75** — session-fresh watchlist quotes (sign-off **2026-06-01**). The milestone list below is preserved for historical context.
 
 Suggested ordering (each should land its own `docs/SPEC.md` update + GitHub
 issue before code):
@@ -304,7 +306,7 @@ issue before code):
    - Add request timeout, non-2xx handling, structured errors.
 3. **M2 — Real-time-ish quotes & multi-symbol watchlist**
    - **Partial — delivered:** [Issue #3](https://github.com/FelipeMorandini/stockterm/issues/3) — `Watchlist` in `Config`, multi-row table on Stock View, bounded concurrent Polygon quotes, `refresh_rate` throttle, background fetch via `tokio::select!` (see `docs/SPEC.md`).
-   - **Remaining:** intraday / "latest quote" feel (likely Yahoo `chart?range=1d&interval=1m` or fresher session fields in batched **`v7`** quotes) — file a GitHub issue before `/plan`. **Shipped:** [#191](https://github.com/FelipeMorandini/stockterm/issues/191) cancel semantics — [`docs/SPEC.md`](SPEC.md) §68.
+   - **Shipped:** intraday / session-fresh watchlist quotes — [#216](https://github.com/FelipeMorandini/stockterm/issues/216) / **§75** (sign-off **2026-06-01**). **Shipped:** [#191](https://github.com/FelipeMorandini/stockterm/issues/191) cancel semantics — [`docs/SPEC.md`](SPEC.md) §68.
 4. **M3 — Search typeahead + News + Settings UI**
    - Implement `draw_search` with debounced typeahead suggestions.
    - Implement `draw_news` listing headlines (publisher, title, date, link).
