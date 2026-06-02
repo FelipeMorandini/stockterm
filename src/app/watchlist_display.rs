@@ -57,9 +57,10 @@ fn quote_cells_for_symbol(
 ) -> (String, String, String, String, WatchlistPriceTrend) {
     match watchlist_quote_for_symbol(quotes, sym).and_then(|r| r.latest_result()) {
         Some(bar) => {
-            let price_change = bar.c - bar.o;
-            let pct = if bar.o.abs() > f64::EPSILON {
-                (price_change / bar.o) * 100.0
+            let ref_price = bar.change_reference();
+            let price_change = bar.c - ref_price;
+            let pct = if ref_price.abs() > f64::EPSILON {
+                (price_change / ref_price) * 100.0
             } else {
                 0.0
             };

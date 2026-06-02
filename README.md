@@ -6,7 +6,9 @@ Product behavior and milestones are documented in [`docs/SPEC.md`](docs/SPEC.md)
 
 ### What's next
 
-The actionable GitHub backlog is empty (deferred: [#68](https://github.com/FelipeMorandini/stockterm/issues/68) decimal precision, [#214](https://github.com/FelipeMorandini/stockterm/issues/214) overlap inflight watchdog). The main **product** gap is **session-fresh / intraday watchlist quotes** (M2 remainder in ROADMAP §6) — fresher “today’s market” prices via Yahoo session or `1m`/`5m` chart data, not streaming. File a GitHub issue, then run `/plan` before implementation.
+The actionable GitHub backlog is empty (deferred: [#68](https://github.com/FelipeMorandini/stockterm/issues/68) decimal precision, [#214](https://github.com/FelipeMorandini/stockterm/issues/214) overlap inflight watchdog phase 2). Recent work: [#216](https://github.com/FelipeMorandini/stockterm/issues/216) session-fresh Yahoo quotes (**§75**).
+
+**Quotes (Issue #216 / §75):** With **`provider: "yahoo"`** (default), watchlist prices use session-aware **`v7`** fields (regular / pre / post market) and **`v8`** **`1m`** chart fallback when **`v7`** is unavailable. Change % is vs **previous close** when Yahoo supplies it. With **`provider: "polygon"`**, quotes are **daily-bar** snapshots (free tier); intraday freshness requires a paid Polygon plan.
 
 ## Config file (`~/.stockterm.json`)
 

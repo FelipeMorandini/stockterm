@@ -501,9 +501,10 @@ pub(crate) fn draw_stock_detail_in(
             f.render_widget(Paragraph::new(text).block(block), area);
             return;
         };
-        let price_change = result.c - result.o;
-        let percent_change = if result.o.abs() > f64::EPSILON {
-            (price_change / result.o) * 100.0
+        let ref_price = result.change_reference();
+        let price_change = result.c - ref_price;
+        let percent_change = if ref_price.abs() > f64::EPSILON {
+            (price_change / ref_price) * 100.0
         } else {
             0.0
         };
@@ -1174,6 +1175,7 @@ mod theme_tracking_tests {
                 c: 105.0,
                 v: 1000.0,
                 t: 1,
+                prev_close: None,
             }],
             status: "OK".into(),
             error: None,

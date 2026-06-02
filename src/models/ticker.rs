@@ -26,6 +26,16 @@ pub struct TickerResult {
     #[serde(default)]
     pub v: f64,
     pub t: u64,
+    /// Previous session close for day change when the provider supplies it (Issue #216 / §75).
+    #[serde(default)]
+    pub prev_close: Option<f64>,
+}
+
+impl TickerResult {
+    /// Reference price for day change: previous close when known, else session open.
+    pub fn change_reference(&self) -> f64 {
+        self.prev_close.filter(|p| p.is_finite()).unwrap_or(self.o)
+    }
 }
 
 impl TickerResponse {
@@ -128,6 +138,34 @@ mod tests {
         };
         assert!(ticker_response_matches_symbol(&resp, "MSFT"));
         assert!(!ticker_response_matches_symbol(&resp, "AAPL"));
+    }
+
+    #[test]
+    fn change_reference_falls_back_to_open() {
+        let bar = TickerResult {
+            o: 100.0,
+            h: 105.0,
+            l: 99.0,
+            c: 102.0,
+            v: 1_000.0,
+            t: 1_700_000_000_000,
+            prev_close: None,
+        };
+        assert!((bar.change_reference() - 100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn change_reference_uses_prev_close_when_set() {
+        let bar = TickerResult {
+            o: 100.0,
+            h: 105.0,
+            l: 99.0,
+            c: 102.0,
+            v: 1_000.0,
+            t: 1_700_000_000_000,
+            prev_close: Some(98.0),
+        };
+        assert!((bar.change_reference() - 98.0).abs() < 1e-9);
     }
 
     #[test]

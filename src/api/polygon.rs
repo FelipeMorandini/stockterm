@@ -124,12 +124,30 @@ async fn fetch_polygon_historical_merged(
     })
 }
 
+/// When Polygon returns ≥2 daily bars, set **`prev_close`** on the latest bar from the prior bar's close (Issue #216 / §75).
+fn enrich_polygon_quote_prev_close(data: &mut TickerResponse) {
+    if data.results.len() < 2 {
+        return;
+    }
+    let mut indices: Vec<usize> = (0..data.results.len()).collect();
+    indices.sort_by_key(|&i| data.results[i].t);
+    let Some(&latest_idx) = indices.last() else {
+        return;
+    };
+    let Some(&prev_idx) = indices.get(indices.len().saturating_sub(2)) else {
+        return;
+    };
+    let prev_c = data.results[prev_idx].c;
+    data.results[latest_idx].prev_close = Some(prev_c);
+}
+
 pub struct PolygonProvider;
 
 #[async_trait]
 impl MarketDataProvider for PolygonProvider {
     /// Daily aggregates over a rolling calendar window; [`TickerResponse::latest_result`] (max `t`)
     /// is the **most recent bar** in the response — typically the last **US session** in range.
+    /// Polygon free tier is end-of-day only; intraday freshness requires a paid plan (§75.11).
     async fn get_quote(&self, symbol: &str, config: &Config) -> ProviderResult<TickerResponse> {
         let key = polygon_key(config)?;
         let to = Local::now().format("%Y-%m-%d").to_string();
@@ -145,10 +163,11 @@ impl MarketDataProvider for PolygonProvider {
             enc(&to),
             enc(&key)
         );
-        let ticker_data: TickerResponse = fetch_json(&url).await?;
+        let mut ticker_data: TickerResponse = fetch_json(&url).await?;
         if let Some(msg) = ticker_data.api_error_message() {
             return Err(ProviderError::ApiMessage(msg));
         }
+        enrich_polygon_quote_prev_close(&mut ticker_data);
         Ok(ticker_data)
     }
 
