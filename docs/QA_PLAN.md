@@ -6867,3 +6867,5 @@ The test injects a synthetic Polygon page with `t = 1_700_000_000` (seconds-shap
 | Manual: extended hours (optional) | Maintainer | 2026-06-01 | N/A |
 | Manual: alerts regression | Maintainer | 2026-06-01 | Pass |
 | Regression: batch quotes + single-flight | Maintainer | 2026-06-01 | Pass |
+
+**PR:** [#218](https://github.com/FelipeMorandini/stockterm/pull/218) — closes [#216](https://github.com/FelipeMorandini/stockterm/issues/216).
